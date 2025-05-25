@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
-import { PRODUCTS } from "@/lib/image-assets"
+import { STRIPE_PRODUCTS } from "@/lib/image-assets"
 import FallbackImage from "@/components/fallback-image"
 import { ShoppingBag } from "lucide-react"
 
@@ -20,7 +20,7 @@ export default function AllProductsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {PRODUCTS.map((product) => (
+          {STRIPE_PRODUCTS.map((product) => (
             <div
               key={product.id}
               className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"

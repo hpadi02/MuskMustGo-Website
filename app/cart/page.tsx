@@ -3,15 +3,19 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, Minus, ArrowLeft, Loader2 } from "lucide-react"
+import { Trash2, Plus, Minus, ArrowLeft, Loader2, AlertCircle } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
 import { useCart } from "@/hooks/use-cart-simplified"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { createCheckoutSession } from "@/lib/stripe-checkout"
 
 export default function CartPage() {
   const { items, removeItem, updateItemQuantity, clearCart, getCartTotal } = useCart()
   const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const [showPreviewMessage, setShowPreviewMessage] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
   const subtotal = getCartTotal()
   const shipping = subtotal > 50 ? 0 : 5.99
@@ -62,29 +66,71 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     setIsCheckingOut(true)
+
     try {
-      // Save order to history
-      saveOrderToHistory()
+      // Check if any items have Stripe IDs
+      const stripeItems = items.filter((item) => item.stripeId)
 
-      // Simulate checkout process
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      if (stripeItems.length > 0) {
+        // Use client-side Stripe checkout
+        const result = await createCheckoutSession(stripeItems)
 
-      // Clear cart
-      clearCart()
+        if (!result.success) {
+          // Check if it's a redirect blocking issue
+          if (result.isRedirectBlocked) {
+            // Show preview environment message
+            setShowPreviewMessage(true)
 
-      // Redirect to success page
-      router.push("/success")
+            // Simulate successful checkout for demo purposes after a delay
+            setTimeout(() => {
+              saveOrderToHistory()
+              clearCart()
+              router.push("/success")
+            }, 2000)
+          } else {
+            // Show other errors
+            toast({
+              title: "Checkout error",
+              description: result.error || "There was a problem creating your checkout session",
+              variant: "destructive",
+            })
+          }
+        } else {
+          // Save order to history and clear cart only if successful
+          saveOrderToHistory()
+          clearCart()
+        }
+        // Note: If successful, user will be redirected to Stripe
+      } else {
+        // Fallback for items without Stripe IDs (like custom emoji magnet)
+        saveOrderToHistory()
+
+        // Show toast notification
+        toast({
+          title: "Order processed",
+          description: "Your order has been processed successfully",
+        })
+
+        // Clear cart
+        clearCart()
+
+        // Redirect to success page
+        router.push("/success")
+      }
     } catch (error) {
       console.error("Checkout error:", error)
+      toast({
+        title: "Checkout error",
+        description: "There was a problem processing your checkout. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsCheckingOut(false)
     }
   }
 
-  // Update the renderCustomOptions function to better display emoji customizations
-
   // Helper function to display customization options
-  const renderCustomOptions = (item) => {
+  const renderCustomOptions = (item: any) => {
     if (!item.customOptions) return null
 
     return (
@@ -94,7 +140,7 @@ export default function CartPage() {
           {Object.entries(item.customOptions).map(([key, value]) => (
             <div key={key} className="flex flex-col items-center">
               <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
-              <span className="text-2xl bg-dark-300 p-2 rounded-full">{value}</span>
+              <span className="text-2xl bg-dark-300 p-2 rounded-full">{value as string}</span>
             </div>
           ))}
         </div>
@@ -140,6 +186,25 @@ export default function CartPage() {
     <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
       <div className="container mx-auto px-6">
         <h1 className="text-4xl md:text-5xl font-bold mb-12 tracking-tight">Your Cart</h1>
+
+        {/* Preview Environment Message */}
+        {showPreviewMessage && (
+          <div className="mb-8 bg-blue-600/20 border border-blue-500/30 rounded-lg p-6">
+            <div className="flex items-start">
+              <AlertCircle className="h-6 w-6 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="text-lg font-medium text-blue-400 mb-2">Preview Environment</h3>
+                <p className="text-white/80 mb-3">
+                  You're viewing this in a preview environment where Stripe checkout redirects are blocked for security.
+                  In production, you would be redirected to Stripe's secure checkout page.
+                </p>
+                <p className="text-white/60 text-sm">
+                  Simulating successful checkout... You'll be redirected to the success page shortly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
@@ -234,19 +299,21 @@ export default function CartPage() {
                 size="lg"
                 className="w-full bg-white hover:bg-white/90 text-black py-6 rounded-md text-lg font-medium"
                 onClick={handleCheckout}
-                disabled={isCheckingOut}
+                disabled={isCheckingOut || showPreviewMessage}
               >
-                {isCheckingOut ? (
+                {isCheckingOut || showPreviewMessage ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {showPreviewMessage ? "Processing Demo Checkout..." : "Redirecting to Stripe..."}
                   </>
                 ) : (
-                  "Checkout"
+                  "Checkout with Stripe"
                 )}
               </Button>
 
               <div className="mt-6 text-center text-sm text-white/50">
-                <p>We accept all major credit cards and PayPal</p>
+                <p>Secure checkout powered by Stripe</p>
+                <p className="mt-2 text-xs">Using Stripe Test Mode</p>
               </div>
             </div>
           </div>

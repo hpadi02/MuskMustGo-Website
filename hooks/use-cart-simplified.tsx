@@ -11,6 +11,8 @@ export type CartItem = {
   quantity: number
   customOptions?: Record<string, any>
   customId?: string // Added to track unique customized products
+  stripeId?: string // Stripe price ID
+  productId?: string // Stripe product ID
 }
 
 type CartContextType = {
