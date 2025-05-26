@@ -24,7 +24,7 @@ export default function CartPage() {
   // Save cart to localStorage for order history
   const saveOrderToHistory = () => {
     try {
-      // Generate a random order ID
+      // Generate a random order ID (will be replaced by backend)
       const orderId = `MMG-${Math.floor(Math.random() * 10000)}`
 
       // Create order object
@@ -42,6 +42,7 @@ export default function CartPage() {
           price: item.price,
         })),
         shipping: shipping,
+        payment_id: null, // Will be updated after Stripe payment
       }
 
       // Get existing orders or initialize empty array
