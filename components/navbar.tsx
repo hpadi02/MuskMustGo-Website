@@ -56,6 +56,11 @@ export default function Navbar() {
                     MAGNETS
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem className="focus:bg-dark-100 focus:text-white">
+                  <Link href="/shop/stickers" className="w-full">
+                    STICKERS
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -138,6 +143,20 @@ export default function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   All Products
+                </Link>
+                <Link
+                  href="/shop/magnets"
+                  className="block text-white hover:text-red-500"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Magnets
+                </Link>
+                <Link
+                  href="/shop/stickers"
+                  className="block text-white hover:text-red-500"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Stickers
                 </Link>
               </div>
             </div>

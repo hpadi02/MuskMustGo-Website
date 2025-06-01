@@ -49,6 +49,7 @@ export const PRODUCTS = [
       "Customizable emojis",
     ],
     customizable: true,
+    stripeId: null, // Not in Stripe yet
   },
   {
     id: "no-elon-magnet",
@@ -68,8 +69,235 @@ export const PRODUCTS = [
       "Made in USA",
     ],
     customizable: false,
+    stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa", // Say No to Elon! - magnet
   },
 ]
+
+// Stripe products from the provided JSON
+export const STRIPE_PRODUCTS = [
+  {
+    id: "say-no-to-elon-sticker",
+    name: "Say No to Elon! - Bumper Sticker",
+    price: 12.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfUW4ydHdrdmlkVTFlTFpqc2JlbUZVUmc100RPNBx2an",
+    model: "All Models",
+    dimensions: '6" x 6"',
+    description:
+      'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
+    features: [
+      "Premium vinyl material",
+      "Weather and UV resistant",
+      "Easy application",
+      "Removable without residue",
+      '6" x 6" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
+    productId: "prod_SMP5jwQujuz3Cl",
+  },
+  {
+    id: "say-no-to-elon-magnet",
+    name: "Say No to Elon! - Magnet",
+    price: 16.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfalZ3QVN4eEsyQ1N6SktrWDNkRVdBcnBX00dwrqJs0b",
+    model: "All Models",
+    dimensions: '6" x 6"',
+    description:
+      'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
+    features: [
+      "High-quality magnetic material",
+      "Waterproof and UV resistant",
+      "Strong magnetic hold",
+      "Won't damage paint",
+      '6" x 6" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa",
+    productId: "prod_SMP47IhOUcO1kn",
+  },
+  {
+    id: "love-car-not-ceo-sticker",
+    name: "Love the Car, NOT the CEO! - Bumper Sticker",
+    price: 12.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfekJocENTY3dwVkJKMlhDUkNJUEMxV0xY00abXceio1",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description:
+      "Let the world know that you drive a Tesla because they are great cars, not because you are an Elon fanboi.",
+    features: [
+      "Premium vinyl material",
+      "Weather and UV resistant",
+      "Easy application",
+      "Removable without residue",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
+    productId: "prod_SMP21kBsg5qxRM",
+  },
+  {
+    id: "love-car-not-ceo-magnet",
+    name: "Love the Car, NOT the CEO! - Magnet",
+    price: 16.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfMm9jVVVaaWRQRFhiY1Byd1FKSkV6Z01I00ZHeyzabV",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description:
+      "Let the world know that you drive a Tesla because they are great cars, not because you are an Elon fanboi.",
+    features: [
+      "High-quality magnetic material",
+      "Waterproof and UV resistant",
+      "Strong magnetic hold",
+      "Won't damage paint",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
+    productId: "prod_SMP2rxDM8XwFoX",
+  },
+  {
+    id: "love-teslas-hate-nazis-sticker",
+    name: "Love Teslas, Hate Nazis - Bumper Sticker",
+    price: 12.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfSjZVSU1UVm5ZY0RrcVV0MzhmR0xQSUlw00E0wZEUmz",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description:
+      'Tired of people calling Teslas "swasticars" because of Elon\'s Nazi salutes and statements? Make it clear that you want nothing to do with Nazis!',
+    features: [
+      "Premium vinyl material",
+      "Weather and UV resistant",
+      "Easy application",
+      "Removable without residue",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
+    productId: "prod_SMOzL5UlT5wbsO",
+  },
+  {
+    id: "love-teslas-hate-nazis-magnet",
+    name: "Love Teslas, Hate Nazis - Magnet",
+    price: 16.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfcDJkZ1FsWHl6eGFZTXI2cmgyUUhCeWVP00lWHIuzqE",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description:
+      'Tired of people calling Teslas "swasticars" because of Elon\'s Nazi salutes and statements? Make it clear that you want nothing to do with Nazis!',
+    features: [
+      "High-quality magnetic material",
+      "Waterproof and UV resistant",
+      "Strong magnetic hold",
+      "Won't damage paint",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
+    productId: "prod_SMOymK1lY8V7nB",
+  },
+  {
+    id: "deport-elon-sticker",
+    name: "Deport Elon! - Bumper Sticker",
+    price: 12.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfVDZObWREOUVnTmZ2cGRuZFlZdlQyVjJ400dJ6dnb4N",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description: "Let's send this illegal immigrant back where he came from!",
+    features: [
+      "Premium vinyl material",
+      "Weather and UV resistant",
+      "Easy application",
+      "Removable without residue",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
+    productId: "prod_SMOv2AdKsIZdCv",
+  },
+  {
+    id: "deport-elon-magnet",
+    name: "Deport Elon! - Magnet",
+    price: 16.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfTHhWdlV3MU5hWGF2VXBHcksxTDkyeGk100OhPWMho3",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description: "Let's send this illegal immigrant back where he came from!",
+    features: [
+      "High-quality magnetic material",
+      "Waterproof and UV resistant",
+      "Strong magnetic hold",
+      "Won't damage paint",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
+    productId: "prod_SMOvz7QTtXbzeO",
+  },
+  {
+    id: "elon-did-not-invent-sticker",
+    name: "Elon Did Not Invent This Car - Bumper Sticker",
+    price: 12.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfSWZJUWl2WlBlejFtYjBZbHFUODV5NWJN00HM6zzngu",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description:
+      "Elon Musk had nothing to do with the creation of Tesla technology. This is a great way to let the world know that your love of Teslas has nothing to do with Elon Musk.",
+    features: [
+      "Premium vinyl material",
+      "Weather and UV resistant",
+      "Easy application",
+      "Removable without residue",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
+    productId: "prod_SMOtyyjmBf1DjJ",
+  },
+  {
+    id: "elon-did-not-invent-magnet",
+    name: "Elon Did Not Invent This Car - Magnet",
+    price: 16.99,
+    image:
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfV2JzYk5qcHgxSVNqTUxXUXRaVGRyYWFK00EyDQn0nX",
+    model: "All Models",
+    dimensions: '6" x 10"',
+    description:
+      "Elon Musk had nothing to do with the creation of Tesla technology. This is a great way to let the world know that your love of Teslas has nothing to do with Elon Musk.",
+    features: [
+      "High-quality magnetic material",
+      "Waterproof and UV resistant",
+      "Strong magnetic hold",
+      "Won't damage paint",
+      '6" x 10" size',
+      "Made in USA",
+    ],
+    customizable: false,
+    stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
+    productId: "prod_SMOtIBBTRR6MWe",
+  },
+]
+
+// Filter products by type
+export const MAGNET_PRODUCTS = STRIPE_PRODUCTS.filter((product) => product.name.includes("Magnet"))
+export const STICKER_PRODUCTS = STRIPE_PRODUCTS.filter((product) => product.name.includes("Sticker"))
 
 // Articles data
 export const ARTICLES = [

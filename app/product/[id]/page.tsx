@@ -10,51 +10,13 @@ import { useCart } from "@/hooks/use-cart-simplified"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-
-// Update the PRODUCTS array to change stickers to magnets
-const PRODUCTS = [
-  {
-    id: "tesla-elon-magnet",
-    name: "Tesla vs Elon Emoji Magnet",
-    price: 20.0,
-    image: "/images/emoji-musk.png",
-    model: "All Models",
-    description:
-      "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji magnet. Fully customizable with your choice of emojis.",
-    features: [
-      "Premium magnetic material",
-      "Weather and UV resistant",
-      "Easy application and removal",
-      "Fits on any metal surface",
-      "Made in USA",
-      "Customizable emojis",
-    ],
-    customizable: true,
-    dimensions: "3x3 inches",
-  },
-  {
-    id: "no-elon-magnet",
-    name: "No Elon Bumper Magnet",
-    price: 16.0,
-    image: "/images/no-elon-musk.png",
-    model: "All Models",
-    description:
-      "Make a statement with this bold 'No Elon' bumper magnet. Perfect for Tesla owners who want to separate the car from its controversial CEO.",
-    features: [
-      "High-quality magnetic material",
-      "Waterproof and UV resistant",
-      "Strong magnetic hold",
-      "Won't damage paint",
-      "Made in USA",
-    ],
-    customizable: false,
-    dimensions: "8x2 inches",
-  },
-]
+import { STRIPE_PRODUCTS, PRODUCTS } from "@/lib/image-assets"
 
 export default function ProductPage({ params }: { params: { id: string } }) {
-  // Find product by ID or use the first product as fallback
-  const product = PRODUCTS.find((p) => p.id === params.id) || PRODUCTS[0]
+  // Find product by ID from either STRIPE_PRODUCTS or PRODUCTS
+  const product =
+    STRIPE_PRODUCTS.find((p) => p.id === params.id) || PRODUCTS.find((p) => p.id === params.id) || STRIPE_PRODUCTS[0]
+
   const router = useRouter()
   const { toast } = useToast()
 
@@ -85,6 +47,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       price: product.price,
       image: product.image,
       quantity,
+      stripeId: product.stripeId,
+      productId: product.productId,
     })
 
     setAdded(true)
@@ -121,6 +85,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               width={500}
               height={500}
               className="object-contain max-w-full max-h-full"
+              unoptimized={true}
             />
           </div>
 
