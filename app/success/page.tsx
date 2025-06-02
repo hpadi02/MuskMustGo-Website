@@ -43,34 +43,35 @@ export default function SuccessPage() {
           const lastOrder = JSON.parse(lastOrderJSON)
           setOrder(lastOrder)
 
-          // If we have a Stripe session ID, POST to backend
+          // If we have a Stripe session ID, POST to Ed's backend
           if (sessionId) {
             console.log("Processing Stripe session:", sessionId)
 
-            // Prepare order data for backend
+            // Prepare order data for Ed's backend API
             const orderData = {
               payment_id: sessionId, // Stripe session/payment ID
-              customer_email: "customer@example.com", // You'd get this from Stripe session
-              total_amount: Math.round(lastOrder.total * 100), // Convert to cents
-              items: lastOrder.items.map((item: OrderItem) => ({
-                product_id: item.id,
-                name: item.name,
-                price: Math.round(item.price * 100), // Convert to cents
-                quantity: item.quantity,
-                custom_options: item.customOptions || null,
-              })),
-              shipping_address: {
-                // You'd get this from Stripe session
-                line1: "123 Main St",
+              customer: {
+                email: "customer@example.com", // You'd get this from Stripe session
+                firstname: "Customer",
+                lastname: "User",
+                addr1: "123 Main St",
                 city: "San Francisco",
-                state: "CA",
+                state_prov: "CA",
                 postal_code: "94105",
                 country: "US",
               },
-              created_at: new Date().toISOString(),
+              items: lastOrder.items.map((item: OrderItem) => ({
+                product_id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                customOptions: item.customOptions || null,
+              })),
+              shipping: lastOrder.shipping || 0,
+              tax: 0, // Calculate tax if needed
             }
 
-            // POST to backend database
+            // POST to our API route which will forward to Ed's backend
             const response = await fetch("/api/orders", {
               method: "POST",
               headers: {
@@ -79,12 +80,21 @@ export default function SuccessPage() {
               body: JSON.stringify(orderData),
             })
 
+            const responseText = await response.text()
+            console.log("API response:", responseText)
+
             if (!response.ok) {
-              throw new Error("Failed to save order to database")
+              throw new Error(`Failed to save order: ${response.status} - ${responseText}`)
             }
 
-            const result = await response.json()
-            console.log("Order saved to database:", result)
+            let result
+            try {
+              result = JSON.parse(responseText)
+            } catch {
+              result = { message: responseText }
+            }
+
+            console.log("Order saved to Ed's backend:", result)
 
             // Update order with backend order ID
             const updatedOrder = {
@@ -100,7 +110,9 @@ export default function SuccessPage() {
         }
       } catch (error) {
         console.error("Error processing order:", error)
-        setError("There was an issue processing your order. Please contact support.")
+        setError(
+          `There was an issue processing your order: ${error instanceof Error ? error.message : "Unknown error"}. Please contact support.`,
+        )
       } finally {
         setIsProcessing(false)
       }
@@ -132,7 +144,7 @@ export default function SuccessPage() {
           <Loader2 className="w-20 h-20 text-red-500 mx-auto mb-8 animate-spin" />
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Processing Your Order...</h1>
           <p className="text-xl text-white/80 mb-8">
-            Please wait while we confirm your payment and save your order details.
+            Please wait while we confirm your payment and save your order to Ed's backend.
           </p>
         </div>
       </div>
@@ -193,7 +205,7 @@ export default function SuccessPage() {
         <h1 className="text-4xl md:text-5xl font-bold mb-6">Order Confirmed!</h1>
 
         <p className="text-xl text-white/80 mb-8">
-          Thank you for your purchase. We've received your order and will process it right away.
+          Thank you for your purchase. We've received your order and saved it to Ed's backend.
         </p>
 
         <div className="bg-dark-300 p-6 rounded-lg mb-8">
@@ -248,7 +260,7 @@ export default function SuccessPage() {
 
         <p className="text-white/60 mb-12">
           A confirmation email has been sent to your email address.
-          {sessionId && " Your payment has been processed successfully."}
+          {sessionId && " Your payment has been processed and order saved to the backend."}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
