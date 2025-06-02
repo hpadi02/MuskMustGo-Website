@@ -1,30 +1,57 @@
-# Muskmustgo redesign
+# MuskMustGo Website Redesign
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+This is the redesigned MuskMustGo website, featuring a modern frontend and dynamic integration with a backend API. The redesign focuses on improved user experience, updated visuals, and seamless product ordering.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/hpadi02s-projects/v0-muskmustgo-redesign)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/2G8aChD55Nt)
+## About the Redesign
 
-## Overview
-
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+- **Modern UI/UX:** The site has been rebuilt with a fresh look and responsive design.
+- **Dynamic Functionality:** The frontend now communicates with a backend API for user registration, login, product browsing, and order placement.
+- **API Integration:** All customer and order data is handled via the backend service, not static files.
 
 ## Deployment
 
-Your project is live at:
+The site is deployed using Vercel for production, but can also be run as a dynamic service on your own server.
 
-**[https://vercel.com/hpadi02s-projects/v0-muskmustgo-redesign](https://vercel.com/hpadi02s-projects/v0-muskmustgo-redesign)**
+## How to Run Locally or on a Server
 
-## Build your app
+1. **Clone the repository:**
+   ```sh
+   git clone https://github.com/yourusername/MuskMustGo-Website.git
+   cd MuskMustGo-Website
+   ```
 
-Continue building your app on:
+2. **Install dependencies:**
+   ```sh
+   npm install
+   # or
+   pnpm install
+   ```
 
-**[https://v0.dev/chat/projects/2G8aChD55Nt](https://v0.dev/chat/projects/2G8aChD55Nt)**
+3. **Configure environment:**
+   - If needed, set up environment variables (e.g., API endpoint URLs) in a `.env` file. See `.env.example` 
 
-## How It Works
+4. **Run the development server:**
+   ```sh
+   npm run dev
+   # or
+   pnpm dev
+   ```
+   The app will be available at `http://localhost:3000` by default.
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+5. **Build and start for production:**
+   ```sh
+   npm run build
+   npm start
+   # or
+   pnpm build
+   pnpm start
+   ```
+
+## Backend API
+
+- The frontend expects a backend API 
+- Make sure the backend is running and accessible to the frontend (update API URLs as needed).
+- Registration, login, product listing, and order creation all require the backend service.
+
+---
+
