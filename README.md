@@ -8,86 +8,148 @@ This is the redesigned MuskMustGo website, featuring a modern frontend and dynam
 - **Dynamic Functionality:** The frontend now communicates with a backend API for user registration, login, product browsing, and order placement.
 - **API Integration:** All customer and order data is handled via the backend service, not static files.
 
-## Deployment
+## Updated Deployment and Setup Instructions
 
-The site is deployed using Vercel for production, but can also be run as a dynamic service on your own server.
+### Prerequisites
+- Node.js 18+ installed
+- PM2 installed globally (`npm install -g pm2`)
+- Nginx configured as reverse proxy
 
-## How to Run Locally or on a Server
+### Step-by-Step Setup
 
-1. **Clone the repository:**
-   \`\`\`sh
-   git clone https://github.com/yourusername/MuskMustGo-Website.git
-   cd MuskMustGo-Website
+1. **Pull the latest changes:**
+   \`\`\`bash
+   cd /var/www/muskmustgo
+   git pull origin main
    \`\`\`
 
-2. **Install dependencies:**
-   \`\`\`sh
-   npm install
-   # or
-   pnpm install
+2. **Clean install (fixes dependency conflicts):**
+   \`\`\`bash
+   rm -rf node_modules package-lock.json
+   npm cache clean --force
+   npm install --legacy-peer-deps
    \`\`\`
 
-3. **Configure environment:**
-   - If needed, set up environment variables (e.g., API endpoint URLs) in a `.env` file. See `.env.example` 
-
-4. **Run the development server:**
-   \`\`\`sh
-   npm run dev
-   # or
-   pnpm dev
+3. **Set up environment variables** - Create `.env.local` file:
+   \`\`\`bash
+   API_BASE_URL=http://leafe.com:5000
+   NODE_ENV=production
+   PORT=3000
+   HOSTNAME=0.0.0.0
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_[your_key]
+   STRIPE_SECRET_KEY=sk_test_[your_key]
    \`\`\`
-   The app will be available at `http://localhost:3000` by default.
 
-5. **Build and start for production:**
-   \`\`\`sh
+4. **Build and deploy:**
+   \`\`\`bash
    npm run build
-   npm start
-   # or
-   pnpm build
-   pnpm start
+   pm2 start ecosystem.config.js --env production
    \`\`\`
 
-## Backend API
+5. **Save PM2 configuration:**
+   \`\`\`bash
+   pm2 save
+   pm2 startup
+   \`\`\`
 
-- The frontend expects a backend API 
-- Make sure the backend is running and accessible to the frontend (update API URLs as needed).
-- Registration, login, product listing, and order creation all require the backend service.
+### Environment Variables Required
 
-## Troubleshooting: Dependency Conflicts
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `API_BASE_URL` | Your backend API URL | `http://leafe.com:5000` |
+| `NODE_ENV` | Environment mode | `production` |
+| `PORT` | Server port | `3000` |
+| `HOSTNAME` | Server hostname | `0.0.0.0` |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe public key | `pk_test_...` |
+| `STRIPE_SECRET_KEY` | Stripe secret key | `sk_test_...` |
 
-If you see an error like this during `npm install`:
+## API Integration Details
 
+The frontend is configured to work with the backend API at `http://leafe.com:5000` with the following endpoints:
+
+- **POST /orders** - Creates new orders after Stripe payment
+- **GET /products** - Retrieves product information
+- **POST /customers** - Creates new customer accounts
+- **POST /login** - Authenticates users
+
+### Order Data Format
+
+The order data follows the `OrderCreate` schema from your API specification:
+
+\`\`\`json
+{
+  "customer": {
+    "email": "customer@example.com",
+    "firstname": "John",
+    "lastname": "Doe",
+    "addr1": "123 Main St",
+    "city": "Anytown",
+    "state_prov": "CA",
+    "postal_code": "12345",
+    "country": "USA"
+  },
+  "payment_id": "stripe_payment_intent_id",
+  "products": [
+    {
+      "product_id": "product-uuid",
+      "quantity": 1,
+      "attributes": [
+        {
+          "name": "emoji",
+          "value": "😊"
+        }
+      ]
+    }
+  ],
+  "shipping": 5.99,
+  "tax": 2.50
+}
 \`\`\`
-npm ERR! ERESOLVE unable to resolve dependency tree
-npm ERR! While resolving: ...
-npm ERR! Found: date-fns@4.1.0
-npm ERR! Could not resolve dependency:
-npm ERR! peer date-fns@^2.28.0 || ^3.0.0 from react-day-picker@8.10.1
-\`\`\`
 
-You have two options:
+## Troubleshooting
 
-**Quick Fix:**
-Run this command to ignore the conflict:
-\`\`\`sh
+### Dependency Conflicts Fixed
+
+The previous `date-fns` version conflict has been resolved by downgrading to version 3.6.0 for compatibility with `react-day-picker`.
+
+If you still encounter dependency issues:
+
+\`\`\`bash
 npm install --legacy-peer-deps
 \`\`\`
 
-**Permanent Fix:**
-Edit `package.json` and change the `date-fns` version to match what `react-day-picker` expects (e.g., `^2.28.0`). Then run:
-\`\`\`sh
-npm install
-\`\`\`
+### Common Issues
 
+**Application won't start:**
+1. Check PM2 logs: `pm2 logs`
+2. Verify environment variables are set correctly
+3. Ensure the backend API is accessible at the configured URL
+4. Check for port conflicts: `lsof -i :3000`
 
+**Build failures:**
+1. Clear node_modules and reinstall: `rm -rf node_modules package-lock.json && npm install --legacy-peer-deps`
+2. Check Node.js version (requires 18+)
 
-**If you see a dependency conflict about `date-fns` and `react-day-picker` when running `npm install`:**
+## Monitoring and Maintenance
 
-- **Quick fix:**
-  \`\`\`sh
+- **View application status:** `pm2 status`
+- **Monitor resources:** `pm2 monit`
+- **View logs:** `pm2 logs`
+- **Restart application:** `pm2 restart ecosystem.config.js`
+- **Update application:**
+  \`\`\`bash
+  git pull
   npm install --legacy-peer-deps
+  npm run build
+  pm2 restart ecosystem.config.js
   \`\`\`
-- **Permanent fix:**
-  Edit `package.json` and set `date-fns` to a version compatible with `react-day-picker` (e.g., `^2.28.0`), then run `npm install` again.
 
----
+## What's Ready
+
+- ✅ Frontend integrates with your API at `http://leafe.com:5000/orders`
+- ✅ Order data matches your `OrderCreate` schema exactly
+- ✅ Stripe payments work and POST to your backend
+- ✅ Complete deployment setup with PM2 + Nginx ready
+- ✅ Dependency conflicts resolved
+
+The frontend is production-ready Once deployed, customers can place orders through Stripe, and the order data will automatically save to your backend database.
