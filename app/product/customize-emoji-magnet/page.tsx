@@ -10,6 +10,7 @@ import { useCart } from "@/hooks/use-cart-simplified"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
+import EmojiPreviewCanvas from "@/components/emoji-preview-canvas"
 
 // Updated emoji options using Ed's PNG files with correct file names
 const emojiOptions = {
@@ -158,36 +159,13 @@ export default function CustomizeEmojiMagnetPage() {
           <p className="text-lg text-white/70 mb-8">Dimensions: {product.dimensions}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Preview with PNG images */}
+            {/* Preview with dynamic emoji canvas */}
             <div className="bg-dark-300 p-8 rounded-lg flex flex-col items-center">
-              <div className="w-full aspect-square mb-6 bg-white rounded-lg flex items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-4 flex items-center justify-between">
-                  {/* Tesla emoji on left */}
-                  <div className="flex-1 flex items-center justify-center">
-                    <Image
-                      src={selectedEmojis.tesla.path || "/placeholder.svg"}
-                      alt={selectedEmojis.tesla.name}
-                      width={120}
-                      height={120}
-                      className="object-contain"
-                    />
-                  </div>
-                  {/* VS text in middle */}
-                  <div className="px-4">
-                    <span className="text-black font-bold text-2xl">VS</span>
-                  </div>
-                  {/* Elon emoji on right */}
-                  <div className="flex-1 flex items-center justify-center">
-                    <Image
-                      src={selectedEmojis.elon.path || "/placeholder.svg"}
-                      alt={selectedEmojis.elon.name}
-                      width={120}
-                      height={120}
-                      className="object-contain"
-                    />
-                  </div>
-                </div>
-              </div>
+              <EmojiPreviewCanvas
+                teslaEmoji={selectedEmojis.tesla}
+                elonEmoji={selectedEmojis.elon}
+                className="w-full mb-6"
+              />
               <p className="text-sm text-white/60 text-center">
                 Preview: {selectedEmojis.tesla.name} vs {selectedEmojis.elon.name}
               </p>
