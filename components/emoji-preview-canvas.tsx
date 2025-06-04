@@ -54,8 +54,8 @@ export default function EmojiPreviewCanvas({
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
               style={{
-                width: "70px",
-                height: "70px",
+                width: "85px",
+                height: "85px",
                 objectFit: "contain",
                 display: "block",
               }}
