@@ -1,5 +1,4 @@
 "use client"
-import { useState } from "react"
 
 interface EmojiPreviewCanvasProps {
   teslaEmoji: { name: string; path: string }
@@ -16,9 +15,6 @@ export default function EmojiPreviewCanvas({
   height = 400,
   className = "",
 }: EmojiPreviewCanvasProps) {
-  const [teslaImgLoaded, setTeslaImgLoaded] = useState(false)
-  const [elonImgLoaded, setElonImgLoaded] = useState(false)
-
   return (
     <div className={`relative ${className}`}>
       <div className="w-full aspect-square bg-white rounded-lg overflow-hidden flex flex-col border border-gray-200 shadow-sm">
@@ -30,12 +26,23 @@ export default function EmojiPreviewCanvas({
           <div className="flex-1">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">TESLA</h2>
           </div>
-          <div className="flex items-center justify-center w-24 h-24">
+          <div className="w-24 h-24 flex items-center justify-center bg-transparent">
             <img
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
-              className="w-20 h-20 object-contain"
-              onLoad={() => setTeslaImgLoaded(true)}
+              style={{
+                width: "80px",
+                height: "80px",
+                objectFit: "contain",
+                display: "block",
+              }}
+              onError={(e) => {
+                console.error("Tesla emoji failed to load:", teslaEmoji.path)
+                e.currentTarget.src = "/placeholder.svg"
+              }}
+              onLoad={() => {
+                console.log("Tesla emoji loaded successfully:", teslaEmoji.path)
+              }}
             />
           </div>
         </div>
@@ -45,12 +52,23 @@ export default function EmojiPreviewCanvas({
           <div className="flex-1">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">ELON</h2>
           </div>
-          <div className="flex items-center justify-center w-24 h-24">
+          <div className="w-24 h-24 flex items-center justify-center bg-transparent">
             <img
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
-              className="w-20 h-20 object-contain"
-              onLoad={() => setElonImgLoaded(true)}
+              style={{
+                width: "80px",
+                height: "80px",
+                objectFit: "contain",
+                display: "block",
+              }}
+              onError={(e) => {
+                console.error("Elon emoji failed to load:", elonEmoji.path)
+                e.currentTarget.src = "/placeholder.svg"
+              }}
+              onLoad={() => {
+                console.log("Elon emoji loaded successfully:", elonEmoji.path)
+              }}
             />
           </div>
         </div>

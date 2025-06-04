@@ -69,9 +69,9 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
   const { toast } = useToast()
   const router = useRouter()
 
-  // State for selected emojis - now storing the full emoji objects
+  // State for selected emojis - changed default Tesla emoji to thumbs_up_face instead of love_stickers
   const [selectedEmojis, setSelectedEmojis] = useState({
-    tesla: emojiOptions.tesla[0], // Default Tesla emoji (first positive)
+    tesla: emojiOptions.tesla[4], // Default Tesla emoji (thumbs_up_face)
     elon: emojiOptions.elon[2], // Default Elon emoji (vomit_face)
   })
   const [quantity, setQuantity] = useState(1)
