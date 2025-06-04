@@ -9,55 +9,52 @@ import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import EmojiPreviewCanvas from "@/components/emoji-preview-canvas"
+import Image from "next/image"
 
-// Updated emoji options based on Ed's server list
+// Updated emoji options using Ed's PNG files
 const emojiOptions = {
   // Positive emojis for Tesla (from /positives folder)
   tesla: [
-    "😍", // love_stickers
-    "😏", // smile_sly
-    "😻", // happy_heart_eyes
-    "👏", // laughing_clapping
-    "👍", // thumbs_up
-    "🥶", // icy
-    "💅", // phone_big_lashes
-    "😊", // beaming_face_with_smiling_eyes
-    "🤠", // cowboy
-    "🤠", // cowgirl (using same emoji)
-    "🤪", // crazy_smiling_sticker
-    "😘", // smiling_icon_love
-    "🔥", // smiling_symbols
-    "😂", // happy_meme
-    "🤌", // italian_chef_kiss
-    "⚡", // Tesla symbol
-    "🚗", // Car
-    "🔋", // Battery
-    "🌱", // Green/eco
-    "💯", // 100
+    { name: "love_stickers", path: "/emojis/positives/love_stickers.png" },
+    { name: "smile_sly", path: "/emojis/positives/smile_sly.png" },
+    { name: "happy_heart_eyes", path: "/emojis/positives/happy_heart_eyes.png" },
+    { name: "laughing_clapping", path: "/emojis/positives/laughing_clapping.png" },
+    { name: "thumbs_up_face", path: "/emojis/positives/thumbs_up_face.png" },
+    { name: "thumbs_up", path: "/emojis/positives/thumbs_up.png" },
+    { name: "icy", path: "/emojis/positives/icy.png" },
+    { name: "phone_big_lashes", path: "/emojis/positives/phone_big_lashes.png" },
+    { name: "beaming_face_with_smiling_eyes", path: "/emojis/positives/beaming_face_with_smiling_eyes.png" },
+    { name: "thumbs_up_smiley", path: "/emojis/positives/thumbs_up_smiley.png" },
+    { name: "cowboy", path: "/emojis/positives/cowboy.png" },
+    { name: "cowgirl", path: "/emojis/positives/cowgirl.png" },
+    { name: "crazy_smiling_sticker", path: "/emojis/positives/crazy_smiling_sticker.png" },
+    { name: "smiling_icon_love", path: "/emojis/positives/smiling_icon_love.png" },
+    { name: "smiling_symbols", path: "/emojis/positives/smiling_symbols.png" },
+    { name: "happy_meme", path: "/emojis/positives/happy_meme.png" },
+    { name: "italian_chef_kiss", path: "/emojis/positives/italian_chef_kiss.png" },
   ],
   // Negative emojis for Elon (from /negatives folder)
   elon: [
-    "😢", // orange_sad_face
-    "😠", // gradient_angry
-    "🤮", // vomit_face
-    "😡", // angry_smiley_face
-    "🖕", // middle_finger
-    "💩", // maga_shit/crazy_shit/mad_shit
-    "👹", // angry_face_with_horns
-    "🤢", // disgusted_face_emoticon
-    "🤬", // poop_throwing_up (angry face)
-    "😤", // tired_smiley
-    "🙄", // black_eyes_thumb_down (eye roll)
-    "👎", // thumbs_down
-    "🤦", // thumbs_down_frown
-    "😒", // angry_face
-    "💀", // skeleton_middle_finger
-    "🤡", // clown
-    "🤥", // yao_ming_disgusted_face
-    "🤑", // money face
-    "😵", // smiling_no_good
-    "🗣️", // talking/ranting
+    { name: "orange_sad_face", path: "/emojis/negatives/orange_sad_face.png" },
+    { name: "gradient_angry", path: "/emojis/negatives/gradient_angry.png" },
+    { name: "vomit_face", path: "/emojis/negatives/vomit_face.png" },
+    { name: "angry_smiley_face", path: "/emojis/negatives/angry_smiley_face.png" },
+    { name: "middle_finger", path: "/emojis/negatives/middle_finger.png" },
+    { name: "maga_shit", path: "/emojis/negatives/maga_shit.png" },
+    { name: "crazy_shit", path: "/emojis/negatives/crazy_shit.png" },
+    { name: "angry_face_with_horns", path: "/emojis/negatives/angry_face_with_horns.png" },
+    { name: "disgusted_face_emoticon", path: "/emojis/negatives/disgusted_face_emoticon.png" },
+    { name: "poop_throwing_up", path: "/emojis/negatives/poop_throwing_up.png" },
+    { name: "mad_shit", path: "/emojis/negatives/mad_shit.png" },
+    { name: "tired_smiley", path: "/emojis/negatives/tired_smiley.png" },
+    { name: "black_eyes_thumb_down", path: "/emojis/negatives/black_eyes_thumb_down.png" },
+    { name: "thumbs_down", path: "/emojis/negatives/thumbs_down.png" },
+    { name: "thumbs_down_frown", path: "/emojis/negatives/thumbs_down_frown.png" },
+    { name: "angry_face", path: "/emojis/negatives/angry_face.png" },
+    { name: "skeleton_middle_finger", path: "/emojis/negatives/skeleton_middle_finger.png" },
+    { name: "clown", path: "/emojis/negatives/clown.png" },
+    { name: "yao_ming_disgusted_face", path: "/emojis/negatives/yao_ming_disgusted_face.png" },
+    { name: "smiling_no_good", path: "/emojis/negatives/smiling_no_good.png" },
   ],
 }
 
@@ -76,10 +73,10 @@ export default function CustomizeEmojiMagnetPage() {
   const { toast } = useToast()
   const router = useRouter()
 
-  // State for selected emojis
+  // State for selected emojis - now storing the full emoji objects
   const [selectedEmojis, setSelectedEmojis] = useState({
-    tesla: "😍", // Default Tesla emoji (positive)
-    elon: "🤮", // Default Elon emoji (negative)
+    tesla: emojiOptions.tesla[0], // Default Tesla emoji (first positive)
+    elon: emojiOptions.elon[2], // Default Elon emoji (vomit_face)
   })
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
@@ -90,10 +87,10 @@ export default function CustomizeEmojiMagnetPage() {
   }, [selectedEmojis])
 
   // Handler for emoji selection
-  const handleEmojiChange = (type: "tesla" | "elon", emoji: string) => {
+  const handleEmojiChange = (type: "tesla" | "elon", emoji: { name: string; path: string }) => {
     setSelectedEmojis((prev) => {
       const newState = { ...prev, [type]: emoji }
-      console.log(`Changed ${type} emoji to ${emoji}`, newState)
+      console.log(`Changed ${type} emoji to ${emoji.name}`, newState)
       return newState
     })
   }
@@ -105,10 +102,10 @@ export default function CustomizeEmojiMagnetPage() {
     e.stopPropagation()
 
     // Create a unique ID for the customized product
-    const customId = `${product.id}-${selectedEmojis.tesla}-${selectedEmojis.elon}`
+    const customId = `${product.id}-${selectedEmojis.tesla.name}-${selectedEmojis.elon.name}`
 
     // Create a unique name that includes the selected emojis
-    const customName = `${product.name} (${selectedEmojis.tesla} vs ${selectedEmojis.elon})`
+    const customName = `${product.name} (${selectedEmojis.tesla.name} vs ${selectedEmojis.elon.name})`
 
     console.log("Adding customized product to cart:", {
       id: product.id,
@@ -159,13 +156,39 @@ export default function CustomizeEmojiMagnetPage() {
           <p className="text-lg text-white/70 mb-8">Dimensions: {product.dimensions}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Preview with dynamic canvas */}
+            {/* Preview with PNG images */}
             <div className="bg-dark-300 p-8 rounded-lg flex flex-col items-center">
-              <EmojiPreviewCanvas
-                teslaEmoji={selectedEmojis.tesla}
-                elonEmoji={selectedEmojis.elon}
-                className="w-full aspect-square mb-6"
-              />
+              <div className="w-full aspect-square mb-6 bg-white rounded-lg flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-4 flex items-center justify-between">
+                  {/* Tesla emoji on left */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <Image
+                      src={selectedEmojis.tesla.path || "/placeholder.svg"}
+                      alt={selectedEmojis.tesla.name}
+                      width={120}
+                      height={120}
+                      className="object-contain"
+                    />
+                  </div>
+                  {/* VS text in middle */}
+                  <div className="px-4">
+                    <span className="text-black font-bold text-2xl">VS</span>
+                  </div>
+                  {/* Elon emoji on right */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <Image
+                      src={selectedEmojis.elon.path || "/placeholder.svg"}
+                      alt={selectedEmojis.elon.name}
+                      width={120}
+                      height={120}
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-white/60 text-center">
+                Preview: {selectedEmojis.tesla.name} vs {selectedEmojis.elon.name}
+              </p>
             </div>
 
             {/* Customization Options */}
@@ -174,17 +197,23 @@ export default function CustomizeEmojiMagnetPage() {
 
               <div className="mb-8">
                 <h3 className="text-white/60 mb-3">Tesla Emoji (Positive)</h3>
-                <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto">
-                  {emojiOptions.tesla.map((emoji, index) => (
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                  {emojiOptions.tesla.map((emoji) => (
                     <Button
-                      key={`tesla-${index}`}
+                      key={emoji.name}
                       variant="outline"
-                      className={`text-2xl h-12 ${
-                        selectedEmojis.tesla === emoji ? "border-red-500 bg-red-500/10" : "border-white/20"
+                      className={`p-2 h-16 ${
+                        selectedEmojis.tesla.name === emoji.name ? "border-red-500 bg-red-500/10" : "border-white/20"
                       }`}
                       onClick={() => handleEmojiChange("tesla", emoji)}
                     >
-                      {emoji}
+                      <Image
+                        src={emoji.path || "/placeholder.svg"}
+                        alt={emoji.name}
+                        width={40}
+                        height={40}
+                        className="object-contain"
+                      />
                     </Button>
                   ))}
                 </div>
@@ -192,17 +221,23 @@ export default function CustomizeEmojiMagnetPage() {
 
               <div className="mb-8">
                 <h3 className="text-white/60 mb-3">Elon Emoji (Negative)</h3>
-                <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto">
-                  {emojiOptions.elon.map((emoji, index) => (
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                  {emojiOptions.elon.map((emoji) => (
                     <Button
-                      key={`elon-${index}`}
+                      key={emoji.name}
                       variant="outline"
-                      className={`text-2xl h-12 ${
-                        selectedEmojis.elon === emoji ? "border-red-500 bg-red-500/10" : "border-white/20"
+                      className={`p-2 h-16 ${
+                        selectedEmojis.elon.name === emoji.name ? "border-red-500 bg-red-500/10" : "border-white/20"
                       }`}
                       onClick={() => handleEmojiChange("elon", emoji)}
                     >
-                      {emoji}
+                      <Image
+                        src={emoji.path || "/placeholder.svg"}
+                        alt={emoji.name}
+                        width={40}
+                        height={40}
+                        className="object-contain"
+                      />
                     </Button>
                   ))}
                 </div>
@@ -252,7 +287,7 @@ export default function CustomizeEmojiMagnetPage() {
             <h2 className="text-xl font-medium mb-4">About This Customization</h2>
             <p className="text-white/70 mb-4">
               Our Tesla vs Elon Emoji Magnet (6" x 10") lets you express exactly how you feel about your Tesla and its
-              CEO. Choose from Ed's curated collection of emojis to create your perfect combination.
+              CEO. Choose from Ed's curated collection of custom emoji graphics to create your perfect combination.
             </p>
             <p className="text-white/70">
               The magnet is made from premium materials that are weather and UV resistant, making it perfect for your
