@@ -18,37 +18,45 @@ export default function EmojiPreviewCanvas({
 }: EmojiPreviewCanvasProps) {
   return (
     <div className={`relative ${className}`}>
-      <div className="w-full aspect-square bg-white rounded-lg overflow-hidden flex flex-col">
+      <div className="w-full aspect-square bg-white rounded-lg overflow-hidden flex flex-col border border-gray-200 shadow-sm">
+        {/* Black top bar */}
+        <div className="h-[10%] bg-black"></div>
+
         {/* Tesla Section - White Background */}
-        <div className="flex-1 bg-white flex items-center justify-between px-8">
-          <div className="flex-1">
-            <h2 className="text-black font-bold text-4xl md:text-5xl tracking-wider">TESLA</h2>
+        <div className="h-[40%] bg-white flex items-center justify-between px-6">
+          <div>
+            <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">TESLA</h2>
           </div>
-          <div className="flex-shrink-0 ml-4">
+          <div>
             <Image
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
-              width={80}
-              height={80}
+              width={100}
+              height={100}
               className="object-contain"
             />
           </div>
         </div>
 
         {/* Elon Section - Gray Background */}
-        <div className="flex-1 bg-gray-300 flex items-center justify-between px-8">
-          <div className="flex-1">
-            <h2 className="text-black font-bold text-4xl md:text-5xl tracking-wider">ELON</h2>
+        <div className="h-[40%] bg-gray-300 flex items-center justify-between px-6">
+          <div>
+            <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">ELON</h2>
           </div>
-          <div className="flex-shrink-0 ml-4">
+          <div>
             <Image
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
-              width={80}
-              height={80}
+              width={100}
+              height={100}
               className="object-contain"
             />
           </div>
+        </div>
+
+        {/* Black bottom bar with website */}
+        <div className="h-[10%] bg-black flex items-center justify-center">
+          <p className="text-white text-sm md:text-base font-medium">MuskMustGo.com</p>
         </div>
       </div>
     </div>
