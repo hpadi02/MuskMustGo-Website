@@ -11,53 +11,53 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import EmojiPreviewCanvas from "@/components/emoji-preview-canvas"
 
-// Emoji options - positive for Tesla, negative for Elon
+// Updated emoji options based on Ed's server list
 const emojiOptions = {
-  // Positive emojis for Tesla
+  // Positive emojis for Tesla (from /positives folder)
   tesla: [
-    "😍",
-    "🚗",
-    "⚡",
-    "🔋",
-    "🌱",
-    "💯",
-    "👍",
-    "❤️",
-    "😄",
-    "🥰",
-    "🤩",
-    "✨",
-    "🔥",
-    "😊",
-    "🙂",
-    "😀",
-    "🤗",
-    "👏",
-    "🌟",
-    "💪",
+    "😍", // love_stickers
+    "😏", // smile_sly
+    "😻", // happy_heart_eyes
+    "👏", // laughing_clapping
+    "👍", // thumbs_up
+    "🥶", // icy
+    "💅", // phone_big_lashes
+    "😊", // beaming_face_with_smiling_eyes
+    "🤠", // cowboy
+    "🤠", // cowgirl (using same emoji)
+    "🤪", // crazy_smiling_sticker
+    "😘", // smiling_icon_love
+    "🔥", // smiling_symbols
+    "😂", // happy_meme
+    "🤌", // italian_chef_kiss
+    "⚡", // Tesla symbol
+    "🚗", // Car
+    "🔋", // Battery
+    "🌱", // Green/eco
+    "💯", // 100
   ],
-  // Negative emojis for Elon
+  // Negative emojis for Elon (from /negatives folder)
   elon: [
-    "🤮",
-    "👎",
-    "🤡",
-    "💩",
-    "🙄",
-    "😒",
-    "🤦",
-    "🤔",
-    "🤥",
-    "🤑",
-    "💰",
-    "🗣️",
-    "🤪",
-    "😠",
-    "🤬",
-    "😤",
-    "👺",
-    "🤢",
-    "💀",
-    "☠️",
+    "😢", // orange_sad_face
+    "😠", // gradient_angry
+    "🤮", // vomit_face
+    "😡", // angry_smiley_face
+    "🖕", // middle_finger
+    "💩", // maga_shit/crazy_shit/mad_shit
+    "👹", // angry_face_with_horns
+    "🤢", // disgusted_face_emoticon
+    "🤬", // poop_throwing_up (angry face)
+    "😤", // tired_smiley
+    "🙄", // black_eyes_thumb_down (eye roll)
+    "👎", // thumbs_down
+    "🤦", // thumbs_down_frown
+    "😒", // angry_face
+    "💀", // skeleton_middle_finger
+    "🤡", // clown
+    "🤥", // yao_ming_disgusted_face
+    "🤑", // money face
+    "😵", // smiling_no_good
+    "🗣️", // talking/ranting
   ],
 }
 
@@ -166,7 +166,6 @@ export default function CustomizeEmojiMagnetPage() {
                 elonEmoji={selectedEmojis.elon}
                 className="w-full aspect-square mb-6"
               />
-              {/* Remove the emoji preview section that was here */}
             </div>
 
             {/* Customization Options */}
@@ -174,11 +173,11 @@ export default function CustomizeEmojiMagnetPage() {
               <h2 className="text-xl font-medium mb-6">Choose Your Emojis</h2>
 
               <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Tesla Emoji</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {emojiOptions.tesla.map((emoji) => (
+                <h3 className="text-white/60 mb-3">Tesla Emoji (Positive)</h3>
+                <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto">
+                  {emojiOptions.tesla.map((emoji, index) => (
                     <Button
-                      key={emoji}
+                      key={`tesla-${index}`}
                       variant="outline"
                       className={`text-2xl h-12 ${
                         selectedEmojis.tesla === emoji ? "border-red-500 bg-red-500/10" : "border-white/20"
@@ -192,11 +191,11 @@ export default function CustomizeEmojiMagnetPage() {
               </div>
 
               <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Elon Emoji</h3>
-                <div className="grid grid-cols-5 gap-2">
-                  {emojiOptions.elon.map((emoji) => (
+                <h3 className="text-white/60 mb-3">Elon Emoji (Negative)</h3>
+                <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto">
+                  {emojiOptions.elon.map((emoji, index) => (
                     <Button
-                      key={emoji}
+                      key={`elon-${index}`}
                       variant="outline"
                       className={`text-2xl h-12 ${
                         selectedEmojis.elon === emoji ? "border-red-500 bg-red-500/10" : "border-white/20"
@@ -253,7 +252,7 @@ export default function CustomizeEmojiMagnetPage() {
             <h2 className="text-xl font-medium mb-4">About This Customization</h2>
             <p className="text-white/70 mb-4">
               Our Tesla vs Elon Emoji Magnet (6" x 10") lets you express exactly how you feel about your Tesla and its
-              CEO. Choose from a variety of emojis to create your perfect combination.
+              CEO. Choose from Ed's curated collection of emojis to create your perfect combination.
             </p>
             <p className="text-white/70">
               The magnet is made from premium materials that are weather and UV resistant, making it perfect for your

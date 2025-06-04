@@ -39,30 +39,9 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="text-white/90 hover:text-white flex items-center text-sm font-medium tracking-wide">
-                  SHOP <ChevronDown className="ml-1 h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-dark-300 border-dark-100 text-white">
-                <DropdownMenuItem className="focus:bg-dark-100 focus:text-white">
-                  <Link href="/shop/all" className="w-full">
-                    ALL PRODUCTS
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-dark-100 focus:text-white">
-                  <Link href="/shop/magnets" className="w-full">
-                    MAGNETS
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-dark-100 focus:text-white">
-                  <Link href="/shop/stickers" className="w-full">
-                    STICKERS
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link href="/shop/all" className="text-white/90 hover:text-white text-sm font-medium tracking-wide">
+              SHOP
+            </Link>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -134,32 +113,13 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden bg-dark-300 absolute top-full left-0 right-0 border-t border-dark-100">
           <div className="container mx-auto px-6 py-6 space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-white/60 text-sm font-medium tracking-wide">SHOP</h3>
-              <div className="space-y-3 pl-2">
-                <Link
-                  href="/shop/all"
-                  className="block text-white hover:text-red-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  All Products
-                </Link>
-                <Link
-                  href="/shop/magnets"
-                  className="block text-white hover:text-red-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Magnets
-                </Link>
-                <Link
-                  href="/shop/stickers"
-                  className="block text-white hover:text-red-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Stickers
-                </Link>
-              </div>
-            </div>
+            <Link
+              href="/shop/all"
+              className="block text-white hover:text-red-500 text-sm font-medium tracking-wide"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              SHOP
+            </Link>
 
             <div className="space-y-4">
               <h3 className="text-white/60 text-sm font-medium tracking-wide">COMMUNITY</h3>
