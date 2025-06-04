@@ -1,5 +1,5 @@
 "use client"
-import Image from "next/image"
+import { useState } from "react"
 
 interface EmojiPreviewCanvasProps {
   teslaEmoji: { name: string; path: string }
@@ -16,6 +16,9 @@ export default function EmojiPreviewCanvas({
   height = 400,
   className = "",
 }: EmojiPreviewCanvasProps) {
+  const [teslaImgLoaded, setTeslaImgLoaded] = useState(false)
+  const [elonImgLoaded, setElonImgLoaded] = useState(false)
+
   return (
     <div className={`relative ${className}`}>
       <div className="w-full aspect-square bg-white rounded-lg overflow-hidden flex flex-col border border-gray-200 shadow-sm">
@@ -27,13 +30,12 @@ export default function EmojiPreviewCanvas({
           <div className="flex-1">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">TESLA</h2>
           </div>
-          <div className="flex items-center justify-center w-20 h-20">
-            <Image
+          <div className="flex items-center justify-center w-24 h-24">
+            <img
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
-              width={80}
-              height={80}
-              className="object-contain"
+              className="w-20 h-20 object-contain"
+              onLoad={() => setTeslaImgLoaded(true)}
             />
           </div>
         </div>
@@ -43,13 +45,12 @@ export default function EmojiPreviewCanvas({
           <div className="flex-1">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">ELON</h2>
           </div>
-          <div className="flex items-center justify-center w-20 h-20">
-            <Image
+          <div className="flex items-center justify-center w-24 h-24">
+            <img
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
-              width={80}
-              height={80}
-              className="object-contain"
+              className="w-20 h-20 object-contain"
+              onLoad={() => setElonImgLoaded(true)}
             />
           </div>
         </div>
