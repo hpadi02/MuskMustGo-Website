@@ -22,21 +22,21 @@ export default function EmojiPreviewCanvas({
         <div className="h-[10%] bg-black"></div>
 
         {/* Tesla Section */}
-        <div className="h-[40%] bg-white flex items-center pl-6 pr-4">
+        <div className="h-[40%] bg-white flex items-center px-4">
           <div className="flex-1 flex items-center">
-            <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider leading-none">TESLA</h2>
+            <h2 className="text-black font-bold text-3xl md:text-4xl tracking-wide leading-none">TESLA</h2>
           </div>
-          <div className="w-24 h-24 flex items-center justify-center ml-4">
+          <div className="w-16 h-16 flex items-center justify-center ml-3">
             <img
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
               style={{
-                width: "80px",
-                height: "80px",
-                minWidth: "80px",
-                minHeight: "80px",
-                maxWidth: "80px",
-                maxHeight: "80px",
+                width: "60px",
+                height: "60px",
+                minWidth: "60px",
+                minHeight: "60px",
+                maxWidth: "60px",
+                maxHeight: "60px",
                 objectFit: "contain",
                 display: "block",
               }}
@@ -52,21 +52,21 @@ export default function EmojiPreviewCanvas({
         </div>
 
         {/* Elon Section */}
-        <div className="h-[40%] bg-gray-300 flex items-center pl-6 pr-4">
+        <div className="h-[40%] bg-gray-300 flex items-center px-4">
           <div className="flex-1 flex items-center">
-            <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider leading-none">ELON</h2>
+            <h2 className="text-black font-bold text-3xl md:text-4xl tracking-wide leading-none">ELON</h2>
           </div>
-          <div className="w-24 h-24 flex items-center justify-center ml-4">
+          <div className="w-16 h-16 flex items-center justify-center ml-3">
             <img
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
               style={{
-                width: "80px",
-                height: "80px",
-                minWidth: "80px",
-                minHeight: "80px",
-                maxWidth: "80px",
-                maxHeight: "80px",
+                width: "60px",
+                height: "60px",
+                minWidth: "60px",
+                minHeight: "60px",
+                maxWidth: "60px",
+                maxHeight: "60px",
                 objectFit: "contain",
                 display: "block",
               }}
