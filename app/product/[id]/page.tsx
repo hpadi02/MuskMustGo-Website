@@ -9,8 +9,6 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import FallbackImage from "@/components/fallback-image"
 import { GROUPED_PRODUCTS } from "@/lib/product-data"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 
 export default function ProductPage({ params }: { params: { id: string } }) {
   // Find product by ID
@@ -121,24 +119,30 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               {product.variants.magnet && product.variants.sticker && (
                 <div className="mb-8">
                   <p className="text-white/70 mb-3">Select Type:</p>
-                  <RadioGroup
-                    value={selectedVariant}
-                    onValueChange={(value) => setSelectedVariant(value as "magnet" | "sticker")}
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="magnet" id="magnet" />
-                      <Label htmlFor="magnet" className="text-white">
-                        Magnet (${product.variants.magnet.price.toFixed(2)})
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="sticker" id="sticker" />
-                      <Label htmlFor="sticker" className="text-white">
-                        Sticker (${product.variants.sticker.price.toFixed(2)})
-                      </Label>
-                    </div>
-                  </RadioGroup>
+                  <div className="flex gap-4">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="variant"
+                        value="magnet"
+                        checked={selectedVariant === "magnet"}
+                        onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
+                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
+                      />
+                      <span className="text-white">Magnet (${product.variants.magnet.price.toFixed(2)})</span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="variant"
+                        value="sticker"
+                        checked={selectedVariant === "sticker"}
+                        onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
+                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
+                      />
+                      <span className="text-white">Sticker (${product.variants.sticker.price.toFixed(2)})</span>
+                    </label>
+                  </div>
                 </div>
               )}
 

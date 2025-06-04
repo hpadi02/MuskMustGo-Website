@@ -77,11 +77,6 @@ function getBaseName(productName: string): string {
     .join(" ")
 }
 
-// Function to format dimensions
-function formatDimensions(height: number, width: number): string {
-  return `${height}" x ${width}"`
-}
-
 // Function to group products by base name
 export function groupProducts(products: Product[]): GroupedProduct[] {
   const groupedMap = new Map<string, GroupedProduct>()
@@ -242,3 +237,7 @@ export const RAW_PRODUCTS: Product[] = [
 
 // Grouped products for the UI
 export const GROUPED_PRODUCTS = groupProducts(RAW_PRODUCTS)
+
+// Filter products by type
+export const MAGNET_PRODUCTS = RAW_PRODUCTS.filter((product) => product.product_name.includes("magnet"))
+export const STICKER_PRODUCTS = RAW_PRODUCTS.filter((product) => product.product_name.includes("sticker"))
