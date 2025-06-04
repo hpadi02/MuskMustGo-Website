@@ -1,28 +1,58 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ShoppingBag, Minus, Plus, Check, ArrowLeft } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { STRIPE_PRODUCTS, PRODUCTS } from "@/lib/image-assets"
+import FallbackImage from "@/components/fallback-image"
+import { GROUPED_PRODUCTS } from "@/lib/product-data"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 
 export default function ProductPage({ params }: { params: { id: string } }) {
-  // Find product by ID from either STRIPE_PRODUCTS or PRODUCTS
-  const product =
-    STRIPE_PRODUCTS.find((p) => p.id === params.id) || PRODUCTS.find((p) => p.id === params.id) || STRIPE_PRODUCTS[0]
+  // Find product by ID
+  const product = GROUPED_PRODUCTS.find((p) => p.baseId === params.id)
 
   const router = useRouter()
   const { toast } = useToast()
+  const { addItem } = useCart()
 
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
-  const { addItem } = useCart()
+  const [selectedVariant, setSelectedVariant] = useState<"magnet" | "sticker">(
+    product?.variants.magnet ? "magnet" : "sticker",
+  )
+
+  const selectedProduct = product?.variants[selectedVariant]
+
+  if (!product) {
+    return (
+      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+        <div className="container mx-auto px-6">
+          <h1 className="text-4xl font-bold mb-6">Product Not Found</h1>
+          <Link href="/shop/all">
+            <Button>Back to Shop</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (!selectedProduct) {
+    return (
+      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+        <div className="container mx-auto px-6">
+          <h1 className="text-4xl font-bold mb-6">Product Variant Not Available</h1>
+          <Link href="/shop/all">
+            <Button>Back to Shop</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const decreaseQuantity = () => {
     if (quantity > 1) {
@@ -34,40 +64,30 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     setQuantity(quantity + 1)
   }
 
-  const handleAddToCart = (e: React.MouseEvent) => {
-    // Prevent default behavior to avoid any external cart handlers
-    e.preventDefault()
-    e.stopPropagation()
-
-    console.log("Adding to cart:", product.id, quantity)
-
+  const handleAddToCart = () => {
     addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
+      id: selectedProduct.product_id,
+      name: `${product.baseName} (${selectedVariant})`,
+      price: selectedProduct.price,
       image: product.image,
       quantity,
-      stripeId: product.stripeId,
-      productId: product.productId,
     })
 
     setAdded(true)
 
-    // Show toast notification
     toast({
       title: "Added to cart",
-      description: `${product.name} has been added to your cart`,
+      description: `${product.baseName} (${selectedVariant}) has been added to your cart`,
     })
 
     setTimeout(() => {
       setAdded(false)
-      // Navigate to cart without using window.confirm
       router.push("/cart")
     }, 1500)
   }
 
-  // Check if this is the emoji sticker product
-  const isEmojiSticker = product.id === "tesla-elon-magnet"
+  // Check if this is the emoji customizable product
+  const isCustomizable = product.customizable
 
   return (
     <div className="bg-dark-400 text-white min-h-screen">
@@ -79,37 +99,56 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
           {/* Product Image */}
           <div className="relative aspect-square bg-dark-300 flex items-center justify-center">
-            <Image
-              src={product.image || "/placeholder.svg"}
-              alt={product.name}
-              width={500}
-              height={500}
-              className="object-contain max-w-full max-h-full"
-              unoptimized={true}
-            />
+            <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain" />
           </div>
 
           {/* Product Details */}
           <div className="flex flex-col">
             <div>
-              <p className="text-red-500 uppercase tracking-wider text-sm font-medium mb-4">{product.model}</p>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-6">
-                {product.name}
+                {product.baseName}
               </h1>
-              <p className="text-3xl font-medium mb-2">${product.price.toFixed(2)}</p>
-              <p className="text-lg text-white/70 mb-6">Dimensions: {product.dimensions}</p>
+              <p className="text-3xl font-medium mb-2">${selectedProduct.price.toFixed(2)}</p>
+              <p className="text-lg text-white/70 mb-6">
+                Dimensions: {selectedProduct.height}" x {selectedProduct.width}"
+              </p>
 
               <div className="prose prose-lg mb-10">
                 <p className="text-white/70 text-lg leading-relaxed">{product.description}</p>
               </div>
 
-              {isEmojiSticker && (
+              {/* Product Type Selection */}
+              {product.variants.magnet && product.variants.sticker && (
                 <div className="mb-8">
-                  <Link href="/product/customize-emoji-magnet">
+                  <p className="text-white/70 mb-3">Select Type:</p>
+                  <RadioGroup
+                    value={selectedVariant}
+                    onValueChange={(value) => setSelectedVariant(value as "magnet" | "sticker")}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="magnet" id="magnet" />
+                      <Label htmlFor="magnet" className="text-white">
+                        Magnet (${product.variants.magnet.price.toFixed(2)})
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="sticker" id="sticker" />
+                      <Label htmlFor="sticker" className="text-white">
+                        Sticker (${product.variants.sticker.price.toFixed(2)})
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
+
+              {isCustomizable && (
+                <div className="mb-8">
+                  <Link href={`/product/customize-emoji/${selectedVariant}`}>
                     <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3">Customize Emojis</Button>
                   </Link>
                   <p className="text-white/60 text-sm mt-2">
-                    Click above to customize which emojis appear on your magnet
+                    Click above to customize which emojis appear on your {selectedVariant}
                   </p>
                 </div>
               )}
@@ -133,6 +172,22 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                       <span className="text-white/80">{feature}</span>
                     </li>
                   ))}
+                  <li className="flex items-start">
+                    <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                      <svg
+                        className="w-3 h-3 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </span>
+                    <span className="text-white/80">
+                      Size: {selectedProduct.height}" x {selectedProduct.width}"
+                    </span>
+                  </li>
                 </ul>
               </div>
 

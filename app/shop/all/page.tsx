@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
-import { STRIPE_PRODUCTS } from "@/lib/image-assets"
 import FallbackImage from "@/components/fallback-image"
 import { ShoppingBag } from "lucide-react"
+import { GROUPED_PRODUCTS } from "@/lib/product-data"
 
 export default function AllProductsPage() {
   return (
@@ -20,23 +20,23 @@ export default function AllProductsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {STRIPE_PRODUCTS.map((product) => (
+          {GROUPED_PRODUCTS.map((product) => (
             <div
-              key={product.id}
+              key={product.baseId}
               className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
             >
-              <Link href={`/product/${product.id}`}>
+              <Link href={`/product/${product.baseId}`}>
                 <div className="relative aspect-square overflow-hidden">
                   <FallbackImage
                     src={product.image}
-                    alt={product.name}
+                    alt={product.baseName}
                     fill
                     className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <Button className="w-full bg-white text-black hover:bg-white/90 rounded-none">
-                      <ShoppingBag className="mr-2 h-4 w-4" /> Add to Cart
+                      <ShoppingBag className="mr-2 h-4 w-4" /> View Options
                     </Button>
                   </div>
                 </div>
@@ -44,11 +44,24 @@ export default function AllProductsPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-xl font-medium group-hover:text-red-500 transition-colors duration-300">
-                        {product.name}
+                        {product.baseName}
                       </h3>
-                      <p className="text-sm text-white/70 mt-1">Dimensions: {product.dimensions}</p>
+                      <p className="text-sm text-white/70 mt-1">
+                        {product.variants.magnet && product.variants.sticker
+                          ? "Available as magnet or sticker"
+                          : product.variants.magnet
+                            ? "Magnet"
+                            : "Sticker"}
+                      </p>
                     </div>
-                    <p className="text-lg font-medium">${product.price.toFixed(2)}</p>
+                    <p className="text-lg font-medium">
+                      $
+                      {Math.min(
+                        product.variants.magnet?.price || Number.POSITIVE_INFINITY,
+                        product.variants.sticker?.price || Number.POSITIVE_INFINITY,
+                      ).toFixed(2)}
+                      {product.variants.magnet && product.variants.sticker && "+"}
+                    </p>
                   </div>
                 </div>
               </Link>
