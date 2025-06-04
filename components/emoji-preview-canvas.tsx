@@ -22,33 +22,33 @@ export default function EmojiPreviewCanvas({
         {/* Black top bar */}
         <div className="h-[10%] bg-black"></div>
 
-        {/* Tesla Section - White Background */}
-        <div className="h-[40%] bg-white flex items-center justify-between px-8">
-          <div className="flex-1 flex justify-center">
+        {/* Tesla Section */}
+        <div className="h-[40%] bg-white flex items-center px-8">
+          <div className="flex-1">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">TESLA</h2>
           </div>
-          <div className="flex-shrink-0 ml-4">
+          <div className="flex items-center justify-center w-20 h-20">
             <Image
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
-              width={120}
-              height={120}
+              width={80}
+              height={80}
               className="object-contain"
             />
           </div>
         </div>
 
-        {/* Elon Section - Gray Background */}
-        <div className="h-[40%] bg-gray-300 flex items-center justify-between px-8">
-          <div className="flex-1 flex justify-center">
+        {/* Elon Section */}
+        <div className="h-[40%] bg-gray-300 flex items-center px-8">
+          <div className="flex-1">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">ELON</h2>
           </div>
-          <div className="flex-shrink-0 ml-4">
+          <div className="flex items-center justify-center w-20 h-20">
             <Image
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
-              width={120}
-              height={120}
+              width={80}
+              height={80}
               className="object-contain"
             />
           </div>
