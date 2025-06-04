@@ -31,8 +31,8 @@ export default function EmojiPreviewCanvas({
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
               style={{
-                width: "85px",
-                height: "85px",
+                width: "90px",
+                height: "90px",
                 objectFit: "contain",
                 display: "block",
               }}
@@ -45,7 +45,7 @@ export default function EmojiPreviewCanvas({
         </div>
 
         {/* Elon Section */}
-        <div className="h-[40%] bg-gray-300 flex items-center justify-between px-8">
+        <div className="h-[40%] bg-[#d1d5db] flex items-center justify-between px-8">
           <div>
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-tight leading-none">ELON</h2>
           </div>
