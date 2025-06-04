@@ -155,16 +155,13 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Preview with dynamic emoji canvas */}
+            {/* Preview with dynamic emoji canvas - removed preview text */}
             <div className="bg-dark-300 p-8 rounded-lg flex flex-col items-center">
               <EmojiPreviewCanvas
                 teslaEmoji={selectedEmojis.tesla}
                 elonEmoji={selectedEmojis.elon}
-                className="w-full mb-6"
+                className="w-full"
               />
-              <p className="text-sm text-white/60 text-center">
-                Preview: {selectedEmojis.tesla.name} vs {selectedEmojis.elon.name}
-              </p>
             </div>
 
             {/* Customization Options */}

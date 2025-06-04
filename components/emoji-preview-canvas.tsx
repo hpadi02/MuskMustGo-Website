@@ -23,32 +23,32 @@ export default function EmojiPreviewCanvas({
         <div className="h-[10%] bg-black"></div>
 
         {/* Tesla Section - White Background */}
-        <div className="h-[40%] bg-white flex items-center justify-between px-6">
-          <div>
+        <div className="h-[40%] bg-white flex items-center justify-between px-8">
+          <div className="flex-1 flex justify-center">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">TESLA</h2>
           </div>
-          <div>
+          <div className="flex-shrink-0 ml-4">
             <Image
               src={teslaEmoji.path || "/placeholder.svg"}
               alt={teslaEmoji.name}
-              width={100}
-              height={100}
+              width={120}
+              height={120}
               className="object-contain"
             />
           </div>
         </div>
 
         {/* Elon Section - Gray Background */}
-        <div className="h-[40%] bg-gray-300 flex items-center justify-between px-6">
-          <div>
+        <div className="h-[40%] bg-gray-300 flex items-center justify-between px-8">
+          <div className="flex-1 flex justify-center">
             <h2 className="text-black font-bold text-5xl md:text-6xl tracking-wider">ELON</h2>
           </div>
-          <div>
+          <div className="flex-shrink-0 ml-4">
             <Image
               src={elonEmoji.path || "/placeholder.svg"}
               alt={elonEmoji.name}
-              width={100}
-              height={100}
+              width={120}
+              height={120}
               className="object-contain"
             />
           </div>
