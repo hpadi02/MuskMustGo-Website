@@ -63,10 +63,14 @@ export default function CartPage() {
         }),
         status: "Processing",
         total: total,
-        items: items.map((item) => ({
-          ...item,
-          price: item.price,
-        })),
+        items: items.map((item) => {
+          // Remove customOptions from the saved order
+          const { customOptions, ...rest } = item
+          return {
+            ...rest,
+            price: item.price,
+          }
+        }),
         shipping: shipping,
         payment_id: null, // Will be updated after Stripe payment
       }
