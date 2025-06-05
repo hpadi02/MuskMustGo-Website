@@ -104,15 +104,15 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         </Link>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-          {/* Product Image - Contained in its own section */}
-          <div className="flex flex-col items-center justify-center">
-            <div className={`relative ${getAspectRatioClass()} bg-dark-300 w-full max-w-md overflow-hidden rounded-lg`}>
-              <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain p-4" />
+          {/* Product Image - Full height and properly sized */}
+          <div className="flex items-center justify-center">
+            <div className={`relative ${getAspectRatioClass()} bg-dark-300 w-full max-w-lg overflow-hidden rounded-lg`}>
+              <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain p-6" />
             </div>
           </div>
 
-          {/* Product Details - Separate section */}
-          <div className="flex flex-col">
+          {/* Product Details */}
+          <div className="flex flex-col justify-center">
             <div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-6">
                 {product.baseName}
