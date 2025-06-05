@@ -19,19 +19,19 @@ export default function AllProductsPage() {
           <p className="text-xl text-white/70">Express your independence with premium merchandise for Tesla owners.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
           {GROUPED_PRODUCTS.map((product) => (
             <div
               key={product.baseId}
               className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
             >
               <Link href={`/product/${product.baseId}`}>
-                <div className="relative aspect-square overflow-hidden">
+                <div className="relative overflow-hidden" style={{ aspectRatio: product.width / product.height }}>
                   <FallbackImage
                     src={product.image}
                     alt={product.baseName}
                     fill
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">

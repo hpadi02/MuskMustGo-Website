@@ -10,8 +10,10 @@ import { GROUPED_PRODUCTS } from "@/lib/product-data"
 export default function FeaturedProducts() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
 
-  // Get 4 featured products
-  const featuredProducts = GROUPED_PRODUCTS.slice(0, 4)
+  // Get "No Elon Face" and "Tesla Musk Emojis" products
+  const featuredProducts = GROUPED_PRODUCTS.filter(
+    (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_musk_emojis",
+  )
 
   return (
     <div className="w-full">
@@ -24,21 +26,33 @@ export default function FeaturedProducts() {
         {featuredProducts.map((product) => (
           <div
             key={product.baseId}
-            className="group bg-dark-400 border border-gray-800 hover:border-gray-700 transition-all duration-300"
+            className="group bg-dark-400 border border-gray-800 hover:border-gray-700 transition-all duration-300 flex flex-col"
             onMouseEnter={() => setHoveredProduct(product.baseId)}
             onMouseLeave={() => setHoveredProduct(null)}
           >
-            <Link href={`/product/${product.baseId}`}>
-              <div className="relative aspect-square overflow-hidden">
-                <FallbackImage
-                  src={product.image}
-                  alt={product.baseName}
-                  fill
-                  className="object-cover transition-transform duration-700 ease-out"
+            <Link href={`/product/${product.baseId}`} className="flex flex-col h-full">
+              <div
+                className="relative overflow-hidden flex-1 flex items-center justify-center"
+                style={{
+                  minHeight: "350px",
+                }}
+              >
+                <div
+                  className="relative w-full h-full max-w-full max-h-full"
                   style={{
-                    transform: hoveredProduct === product.baseId ? "scale(1.05)" : "scale(1)",
+                    aspectRatio: `${product.width}/${product.height}`,
                   }}
-                />
+                >
+                  <FallbackImage
+                    src={product.image}
+                    alt={product.baseName}
+                    fill
+                    className="object-contain transition-transform duration-700 ease-out"
+                    style={{
+                      transform: hoveredProduct === product.baseId ? "scale(1.05)" : "scale(1)",
+                    }}
+                  />
+                </div>
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                   <Button className="w-full bg-white text-black hover:bg-white/90 rounded-none">
