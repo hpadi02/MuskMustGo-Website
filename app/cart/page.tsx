@@ -156,33 +156,6 @@ export default function CartPage() {
     }
   }
 
-  // Helper function to display customization options
-  const renderCustomOptions = (item: any) => {
-    if (!item.customOptions) return null
-
-    return (
-      <div className="mb-4">
-        <p className="text-white/60 mb-1">Customization:</p>
-        <div className="flex flex-wrap gap-4">
-          {Object.entries(item.customOptions).map(([key, value]) => (
-            <div key={key} className="flex flex-col items-center">
-              <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
-              {typeof value === "object" && value !== null && "path" in value ? (
-                <img
-                  src={(value as any).path || "/placeholder.svg"}
-                  alt={(value as any).name}
-                  className="w-8 h-8 object-contain bg-dark-300 p-1 rounded-full"
-                />
-              ) : (
-                <span className="text-2xl bg-dark-300 p-2 rounded-full">{value as string}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   if (items.length === 0) {
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
@@ -259,8 +232,6 @@ export default function CartPage() {
                       <p className="text-xl font-medium">${(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                     <p className="text-white/60 mb-4">${item.price.toFixed(2)} each</p>
-
-                    {renderCustomOptions(item)}
 
                     <div className="flex justify-between items-center">
                       <div className="flex items-center">
