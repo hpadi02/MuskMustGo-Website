@@ -26,7 +26,7 @@ export default function AllProductsPage() {
               className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
             >
               <Link href={`/product/${product.baseId}`}>
-                <div className="relative aspect-[16/9] overflow-hidden">
+                <div className="relative overflow-hidden" style={{ aspectRatio: product.width / product.height }}>
                   <FallbackImage
                     src={product.image}
                     alt={product.baseName}

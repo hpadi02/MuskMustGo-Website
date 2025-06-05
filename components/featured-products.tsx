@@ -10,8 +10,10 @@ import { GROUPED_PRODUCTS } from "@/lib/product-data"
 export default function FeaturedProducts() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
 
-  // Get 4 featured products
-  const featuredProducts = GROUPED_PRODUCTS.slice(0, 4)
+  // Get only the No Elon and Emoji products for featured section
+  const featuredProducts = GROUPED_PRODUCTS.filter(
+    (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_musk_emojis",
+  )
 
   return (
     <div className="w-full">
@@ -29,7 +31,12 @@ export default function FeaturedProducts() {
             onMouseLeave={() => setHoveredProduct(null)}
           >
             <Link href={`/product/${product.baseId}`}>
-              <div className="relative aspect-square overflow-hidden">
+              <div
+                className="relative overflow-hidden"
+                style={{
+                  aspectRatio: `${product.width}/${product.height}`,
+                }}
+              >
                 <FallbackImage
                   src={product.image}
                   alt={product.baseName}
