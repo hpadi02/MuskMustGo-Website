@@ -1,76 +1,22 @@
-export const STRIPE_PRODUCTS = {
-  "deport-elon-sticker": {
-    id: "prod_N0bILLG1m4m0gS",
-    name: "Deport Elon! Sticker",
-    description: "Premium vinyl sticker",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfVDZObWREOUVnTmZ2cGRuZFlZdlQyVjJ400dJ6dnb4N",
-    ],
-  },
-  "deport-elon-magnet": {
-    id: "prod_N0bIe9HkOnwP0j",
-    name: "Deport Elon! Magnet",
-    description: "Premium vinyl magnet",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfVDZObWREOUVnTmZ2cGRuZFlZdlQyVjJ400dJ6dnb4N",
-    ],
-  },
-  "eat-the-rich-sticker": {
-    id: "prod_N0bHhK1XBLpkjS",
-    name: "Eat The Rich Sticker",
-    description: "Premium vinyl sticker",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfV09lV014b016aWd2a2F6V2x0a2F6a05600x0a6mJ7I",
-    ],
-  },
-  "eat-the-rich-magnet": {
-    id: "prod_N0bH1G1wDi9wKz",
-    name: "Eat The Rich Magnet",
-    description: "Premium vinyl magnet",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfV09lV014b016aWd2a2F6V2x0a2F6a05600x0a6mJ7I",
-    ],
-  },
-  "abolish-ice-sticker": {
-    id: "prod_N0bGkI24DDXv6z",
-    name: "Abolish ICE Sticker",
-    description: "Premium vinyl sticker",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfS2l6b014a0J6aWd2a2F6V2x0a2F6a05600j1a00x0I",
-    ],
-  },
-  "abolish-ice-magnet": {
-    id: "prod_N0bGlG1q0x99a7",
-    name: "Abolish ICE Magnet",
-    description: "Premium vinyl magnet",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfS2l6b014a0J6aWd2a2F6V2x0a2F6a05600j1a00x0I",
-    ],
-  },
-  "legalize-housing-sticker": {
-    id: "prod_N0bFw8nL9XN2mP",
-    name: "Legalize Housing Sticker",
-    description: "Premium vinyl sticker",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfT0R6b014a0J6aWd2a2F6V2x0a2F6a05600j1a00x0I",
-    ],
-  },
-  "legalize-housing-magnet": {
-    id: "prod_N0bFh0mPezYF8g",
-    name: "Legalize Housing Magnet",
-    description: "Premium vinyl magnet",
-    images: [
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfT0R6b014a0J6aWd2a2F6V2x0a2F6a05600j1a00x0I",
-    ],
-  },
+const IMAGE_URLS: Record<string, string> = {
+  "deport-elon.png":
+    "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfVDZObWREOUVnTmZ2cGRuZFlZdlQyVjJ400dJ6dnb4N",
+  "did-not-invent.png":
+    "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfSWZJUWl2WlBlejFtYjBZbHFUODV5NWJN00HM6zzngu",
+  "hate-nazis.png":
+    "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfSjZVSU1UVm5ZY0RrcVV0MzhmR0xQSUlw00E0wZEUmz",
+  "not-ceo-wavy.png":
+    "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfekJocENTY3dwVkJKMlhDUkNJUEMxV0xY00abXceio1",
+  "no-elon-musk.png":
+    "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfUW4ydHdrdmlkVTFlTFpqc2JlbUZVUmc100RPNBx2an",
+  "emoji-musk.png": "/images/emoji-musk.png",
 }
 
-export const GROUPED_PRODUCTS = [
+const RAW_PRODUCTS = [
   {
     baseId: "eat-the-rich",
     baseName: "Eat The Rich!",
-    image:
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfV09lV014b016aWd2a2F6V2x0a2F6a05600x0a6mJ7I",
+    image: IMAGE_URLS["hate-nazis.png"],
     description: "Seize the means of production!",
     features: [
       "Premium vinyl/magnetic material",
@@ -101,8 +47,7 @@ export const GROUPED_PRODUCTS = [
   {
     baseId: "abolish-ice",
     baseName: "Abolish ICE!",
-    image:
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfS2l6b014a0J6aWd2a2F6V2x0a2F6a05600j1a00x0I",
+    image: IMAGE_URLS["hate-nazis.png"],
     description: "No human is illegal!",
     features: [
       "Premium vinyl/magnetic material",
@@ -133,8 +78,7 @@ export const GROUPED_PRODUCTS = [
   {
     baseId: "legalize-housing",
     baseName: "Legalize Housing!",
-    image:
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfT0R6b014a0J6aWd2a2F6V2x0a2F6a05600j1a00x0I",
+    image: IMAGE_URLS["hate-nazis.png"],
     description: "Housing is a human right!",
     features: [
       "Premium vinyl/magnetic material",
@@ -165,8 +109,7 @@ export const GROUPED_PRODUCTS = [
   {
     baseId: "deport-elon",
     baseName: "Deport Elon!",
-    image:
-      "https://files.stripe.com/links/MDB8YWNjdF8xUkpLQTZIWEtHdTBEdlNVfGZsX3Rlc3RfVDZObWREOUVnTmZ2cGRuZFlZdlQyVjJ400dJ6dnb4N",
+    image: IMAGE_URLS["deport-elon.png"],
     description: "Let's send this illegal immigrant back where he came from!",
     features: [
       "Premium vinyl/magnetic material",
@@ -195,3 +138,19 @@ export const GROUPED_PRODUCTS = [
     },
   },
 ]
+
+function groupProducts(products: any) {
+  return products.map((product: any) => {
+    return {
+      ...product,
+      variants: Object.entries(product.variants).map(([key, value]: any) => {
+        return {
+          ...value,
+          name: key,
+        }
+      }),
+    }
+  })
+}
+
+export const GROUPED_PRODUCTS = groupProducts(RAW_PRODUCTS)
