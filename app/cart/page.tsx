@@ -167,7 +167,15 @@ export default function CartPage() {
           {Object.entries(item.customOptions).map(([key, value]) => (
             <div key={key} className="flex flex-col items-center">
               <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
-              <span className="text-2xl bg-dark-300 p-2 rounded-full">{value as string}</span>
+              {typeof value === "object" && value !== null && "path" in value ? (
+                <img
+                  src={(value as any).path || "/placeholder.svg"}
+                  alt={(value as any).name}
+                  className="w-8 h-8 object-contain bg-dark-300 p-1 rounded-full"
+                />
+              ) : (
+                <span className="text-2xl bg-dark-300 p-2 rounded-full">{value as string}</span>
+              )}
             </div>
           ))}
         </div>
