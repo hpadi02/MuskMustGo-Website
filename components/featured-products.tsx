@@ -10,9 +10,9 @@ import { GROUPED_PRODUCTS } from "@/lib/product-data"
 export default function FeaturedProducts() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
 
-  // Get only the No Elon and Emoji products for featured section
+  // Get "No Elon Face" and "Hate Nazis" products for better visual alignment
   const featuredProducts = GROUPED_PRODUCTS.filter(
-    (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_musk_emojis",
+    (product) => product.baseId === "no_elon_face" || product.baseId === "hate_nazis",
   )
 
   return (
@@ -35,6 +35,7 @@ export default function FeaturedProducts() {
                 className="relative overflow-hidden"
                 style={{
                   aspectRatio: `${product.width}/${product.height}`,
+                  minHeight: "300px",
                 }}
               >
                 <FallbackImage
