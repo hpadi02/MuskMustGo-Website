@@ -9,6 +9,7 @@ import { useCart } from "@/hooks/use-cart-simplified"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { createCheckoutSession } from "@/lib/stripe-checkout"
+import Image from "next/image"
 
 // Update the import for the new product data
 import { GROUPED_PRODUCTS, RAW_PRODUCTS } from "@/lib/product-data"
@@ -63,14 +64,10 @@ export default function CartPage() {
         }),
         status: "Processing",
         total: total,
-        items: items.map((item) => {
-          // Remove customOptions from the saved order
-          const { customOptions, ...rest } = item
-          return {
-            ...rest,
-            price: item.price,
-          }
-        }),
+        items: items.map((item) => ({
+          ...item,
+          price: item.price,
+        })),
         shipping: shipping,
         payment_id: null, // Will be updated after Stripe payment
       }
@@ -160,6 +157,35 @@ export default function CartPage() {
     }
   }
 
+  // Helper function to display customization options (emoji images only, no text)
+  const renderCustomOptions = (item: any) => {
+    if (!item.customOptions) return null
+
+    return (
+      <div className="mb-4">
+        <div className="flex flex-wrap gap-4">
+          {Object.entries(item.customOptions).map(([key, value]) => {
+            // Check if value is an object with a path property (emoji object)
+            if (value && typeof value === "object" && "path" in value) {
+              return (
+                <div key={key} className="flex flex-col items-center">
+                  <Image
+                    src={(value as any).path || "/placeholder.svg"}
+                    alt={key}
+                    width={40}
+                    height={40}
+                    className="bg-dark-300 p-1 rounded-full"
+                  />
+                </div>
+              )
+            }
+            return null
+          })}
+        </div>
+      </div>
+    )
+  }
+
   if (items.length === 0) {
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
@@ -236,6 +262,9 @@ export default function CartPage() {
                       <p className="text-xl font-medium">${(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                     <p className="text-white/60 mb-4">${item.price.toFixed(2)} each</p>
+
+                    {/* Show emoji images without text descriptions */}
+                    {renderCustomOptions(item)}
 
                     <div className="flex justify-between items-center">
                       <div className="flex items-center">
