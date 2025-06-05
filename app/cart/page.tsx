@@ -9,6 +9,7 @@ import { useCart } from "@/hooks/use-cart-simplified"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { createCheckoutSession } from "@/lib/stripe-checkout"
+import Image from "next/image"
 
 // Update the import for the new product data
 import { GROUPED_PRODUCTS, RAW_PRODUCTS } from "@/lib/product-data"
@@ -156,28 +157,30 @@ export default function CartPage() {
     }
   }
 
-  // Helper function to display customization options
+  // Helper function to display customization options (emoji images only, no text)
   const renderCustomOptions = (item: any) => {
     if (!item.customOptions) return null
 
     return (
       <div className="mb-4">
-        <p className="text-white/60 mb-1">Customization:</p>
         <div className="flex flex-wrap gap-4">
-          {Object.entries(item.customOptions).map(([key, value]) => (
-            <div key={key} className="flex flex-col items-center">
-              <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
-              {typeof value === "object" && value !== null && "path" in value ? (
-                <img
-                  src={(value as any).path || "/placeholder.svg"}
-                  alt={(value as any).name}
-                  className="w-8 h-8 object-contain bg-dark-300 p-1 rounded-full"
-                />
-              ) : (
-                <span className="text-2xl bg-dark-300 p-2 rounded-full">{value as string}</span>
-              )}
-            </div>
-          ))}
+          {Object.entries(item.customOptions).map(([key, value]) => {
+            // Check if value is an object with a path property (emoji object)
+            if (value && typeof value === "object" && "path" in value) {
+              return (
+                <div key={key} className="flex flex-col items-center">
+                  <Image
+                    src={(value as any).path || "/placeholder.svg"}
+                    alt={key}
+                    width={40}
+                    height={40}
+                    className="bg-dark-300 p-1 rounded-full"
+                  />
+                </div>
+              )
+            }
+            return null
+          })}
         </div>
       </div>
     )
@@ -260,6 +263,7 @@ export default function CartPage() {
                     </div>
                     <p className="text-white/60 mb-4">${item.price.toFixed(2)} each</p>
 
+                    {/* Show emoji images without text descriptions */}
                     {renderCustomOptions(item)}
 
                     <div className="flex justify-between items-center">

@@ -106,8 +106,8 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
     // Create a unique ID for the customized product
     const customId = `${selectedProduct.product_id}-${selectedEmojis.tesla.name}-${selectedEmojis.elon.name}`
 
-    // Create a unique name that includes the selected emojis
-    const customName = `${product.baseName} ${type} (${selectedEmojis.tesla.name} vs ${selectedEmojis.elon.name})`
+    // Create a clean name without emoji descriptions
+    const customName = `${product.baseName} ${type}`
 
     addItem({
       id: selectedProduct.product_id,

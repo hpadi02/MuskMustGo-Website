@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 export type CartItem = {
@@ -29,7 +29,14 @@ const CartContext = createContext<CartContextType | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [isInitialized, setIsInitialized] = useState(false)
   const { toast } = useToast()
+  const toastRef = useRef(toast)
+
+  // Update toast ref when toast changes
+  useEffect(() => {
+    toastRef.current = toast
+  }, [toast])
 
   // Calculate total items in cart
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
@@ -39,21 +46,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const savedCart = localStorage.getItem("cart")
       if (savedCart) {
-        setItems(JSON.parse(savedCart))
+        const parsedCart = JSON.parse(savedCart)
+        setItems(parsedCart)
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage:", error)
+    } finally {
+      setIsInitialized(true)
     }
   }, [])
 
-  // Save cart to localStorage whenever it changes
+  // Save cart to localStorage whenever it changes (but only after initialization)
   useEffect(() => {
+    if (!isInitialized) return
+
     try {
       localStorage.setItem("cart", JSON.stringify(items))
     } catch (error) {
       console.error("Failed to save cart to localStorage:", error)
     }
-  }, [items])
+  }, [items, isInitialized])
 
   // Generate a unique ID for customized products
   const generateCustomId = (item: CartItem) => {
@@ -85,18 +97,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const updatedItems = [...prevItems]
         updatedItems[existingItemIndex].quantity += item.quantity
 
-        toast({
-          title: "Cart updated",
-          description: `${item.name} quantity updated in your cart`,
-        })
+        // Use setTimeout to avoid setState during render
+        setTimeout(() => {
+          toastRef.current({
+            title: "Cart updated",
+            description: `${item.name} quantity updated in your cart`,
+          })
+        }, 0)
 
         return updatedItems
       } else {
         // Add new item with customId
-        toast({
-          title: "Added to cart",
-          description: `${item.name} has been added to your cart`,
-        })
+        setTimeout(() => {
+          toastRef.current({
+            title: "Added to cart",
+            description: `${item.name} has been added to your cart`,
+          })
+        }, 0)
 
         return [...prevItems, { ...item, customId }]
       }
@@ -111,10 +128,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       )
 
       if (itemToRemove) {
-        toast({
-          title: "Removed from cart",
-          description: `${itemToRemove.name} has been removed from your cart`,
-        })
+        setTimeout(() => {
+          toastRef.current({
+            title: "Removed from cart",
+            description: `${itemToRemove.name} has been removed from your cart`,
+          })
+        }, 0)
       }
 
       return prevItems.filter((item) => !(item.customId && item.customId === id) && !(!item.customId && item.id === id))
@@ -143,10 +162,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Clear cart
   const clearCart = () => {
     setItems([])
-    toast({
-      title: "Cart cleared",
-      description: "All items have been removed from your cart",
-    })
+    setTimeout(() => {
+      toastRef.current({
+        title: "Cart cleared",
+        description: "All items have been removed from your cart",
+      })
+    }, 0)
   }
 
   return (

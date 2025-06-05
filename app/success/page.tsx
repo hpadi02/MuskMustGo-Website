@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2 } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
@@ -127,12 +128,33 @@ export default function SuccessPage() {
 
     return (
       <div className="flex mt-2 space-x-4">
-        {Object.entries(item.customOptions).map(([key, value]) => (
-          <div key={key} className="flex flex-col items-center">
-            <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
-            <span className="text-2xl bg-dark-400 p-2 rounded-full">{value as string}</span>
-          </div>
-        ))}
+        {Object.entries(item.customOptions).map(([key, value]) => {
+          // Check if value is an emoji object with path property
+          if (typeof value === "object" && value !== null && "path" in value) {
+            return (
+              <div key={key} className="flex flex-col items-center">
+                <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
+                <div className="w-8 h-8 bg-dark-400 rounded-full overflow-hidden">
+                  <Image
+                    src={value.path || "/placeholder.svg"}
+                    alt={value.name || "emoji"}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            )
+          }
+
+          // Fallback for string values
+          return (
+            <div key={key} className="flex flex-col items-center">
+              <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
+              <span className="text-2xl bg-dark-400 p-2 rounded-full">{value as string}</span>
+            </div>
+          )
+        })}
       </div>
     )
   }

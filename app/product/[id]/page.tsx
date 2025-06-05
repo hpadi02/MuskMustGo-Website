@@ -87,6 +87,15 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   // Check if this is the emoji customizable product
   const isCustomizable = product.customizable
 
+  // Calculate aspect ratio based on product dimensions
+  const aspectRatio = selectedProduct.width / selectedProduct.height
+  const getAspectRatioClass = () => {
+    if (aspectRatio > 3) return "aspect-[4/1]" // Very wide (like Deport Elon)
+    if (aspectRatio > 1.5) return "aspect-[3/2]" // Wide (like Tesla Musk Emojis)
+    if (aspectRatio > 1.2) return "aspect-[5/3]" // Slightly wide
+    return "aspect-square" // Square or tall (like No Elon Face)
+  }
+
   return (
     <div className="bg-dark-400 text-white min-h-screen">
       <div className="container mx-auto px-6 md:px-10 py-32">
@@ -95,9 +104,11 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         </Link>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-          {/* Product Image */}
-          <div className="relative aspect-[16/9] bg-dark-300 flex items-center justify-center">
-            <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain" />
+          {/* Product Image - Back to top positioning */}
+          <div>
+            <div className={`relative ${getAspectRatioClass()} bg-dark-300 w-full max-w-lg overflow-hidden rounded-lg`}>
+              <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain p-6" />
+            </div>
           </div>
 
           {/* Product Details */}
