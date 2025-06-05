@@ -96,7 +96,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
           {/* Product Image */}
-          <div className="relative aspect-square bg-dark-300 flex items-center justify-center">
+          <div className="relative aspect-[16/9] bg-dark-300 flex items-center justify-center">
             <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain" />
           </div>
 
