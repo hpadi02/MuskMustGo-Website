@@ -21,23 +21,17 @@ export async function POST(req: Request) {
   try {
     const { items, returnUrl } = await req.json()
 
-    // Create line items for Stripe
-    const lineItems = items.map((item: any) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.name,
-          images: [item.image],
-          description: item.description || "",
-          metadata: {
-            productId: item.id,
-            teslaModel: item.model || "All Models",
-          },
-        },
-        unit_amount: Math.round(item.price * 100), // Convert to cents
-      },
-      quantity: item.quantity,
-    }))
+    // Create line items using existing price IDs from your products
+    const lineItems = items.map((item: any) => {
+      if (!item.stripeId) {
+        throw new Error(`Product ${item.name} does not have a Stripe price ID`)
+      }
+
+      return {
+        price: item.stripeId, // Use the existing price ID
+        quantity: item.quantity,
+      }
+    })
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({

@@ -8,6 +8,7 @@ export interface Product {
   price: number
   medium_id: string
   medium_name: string
+  stripeId?: string // Add this field
 }
 
 // Group products by their base name (without _magnet or _sticker suffix)
@@ -111,7 +112,7 @@ export function groupProducts(products: Product[]): GroupedProduct[] {
   return Array.from(groupedMap.values())
 }
 
-// Raw product data from the API
+// Raw product data from the API with Stripe integration
 export const RAW_PRODUCTS: Product[] = [
   {
     product_id: "99374b4a-c419-43b1-a878-d57f676b68f6",
@@ -122,6 +123,7 @@ export const RAW_PRODUCTS: Product[] = [
     price: 13.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
+    stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd", // Add your actual Stripe price ID
   },
   {
     product_id: "a6b2deb6-d6ee-4afe-9d9f-00f54f6dc123",
@@ -132,6 +134,7 @@ export const RAW_PRODUCTS: Product[] = [
     price: 4.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
+    stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH", // Add your actual Stripe price ID
   },
   {
     product_id: "25715ee1-0ce8-47a1-a815-c5a7fde888d3",
@@ -202,6 +205,7 @@ export const RAW_PRODUCTS: Product[] = [
     price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
+    stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa", // Add your actual Stripe price ID
   },
   {
     product_id: "adc3f2ae-9128-4352-8071-685ace54d19b",
@@ -212,6 +216,7 @@ export const RAW_PRODUCTS: Product[] = [
     price: 6.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
+    stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF", // Add your actual Stripe price ID
   },
   {
     product_id: "57ff283a-4124-4c37-ba30-217ed73cb2a9",
