@@ -7,6 +7,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2 } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
+import { useCart } from "@/hooks/use-cart-simplified"
 
 type OrderItem = {
   id: string
@@ -34,6 +35,7 @@ export default function SuccessPage() {
   const [error, setError] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
+  const { clearCart } = useCart()
 
   useEffect(() => {
     const processOrder = async () => {
@@ -43,6 +45,11 @@ export default function SuccessPage() {
         if (lastOrderJSON) {
           const lastOrder = JSON.parse(lastOrderJSON)
           setOrder(lastOrder)
+
+          // Clear the cart immediately when we reach success page with session_id
+          if (sessionId) {
+            clearCart()
+          }
 
           // If we have a Stripe session ID, try to POST to Ed's backend
           if (sessionId) {
@@ -131,7 +138,7 @@ export default function SuccessPage() {
     }
 
     processOrder()
-  }, [sessionId])
+  }, [sessionId, clearCart])
 
   // Helper function to display customization options
   const renderCustomOptions = (item: OrderItem) => {
