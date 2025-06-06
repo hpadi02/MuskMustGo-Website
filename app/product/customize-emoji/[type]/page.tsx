@@ -118,7 +118,7 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
     const customId = `${product.id}-${selectedEmojis.tesla.name}-${selectedEmojis.elon.name}`
 
     // Create a unique name that includes the selected emojis
-    const customName = `${product.name} (${selectedEmojis.tesla.name} vs ${selectedEmojis.elon.name})`
+    const customName = product.name
 
     console.log("Adding customized product to cart:", {
       id: product.id,
