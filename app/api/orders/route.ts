@@ -78,6 +78,10 @@ export async function POST(req: Request) {
     // POST to Ed's backend API
     const backendUrl = process.env.API_BASE_URL || "http://leafe.com:5000"
 
+    // Add timeout to backend request
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
     try {
       const backendResponse = await fetch(`${backendUrl}/orders`, {
         method: "POST",
@@ -87,7 +91,10 @@ export async function POST(req: Request) {
           // 'Authorization': `Bearer ${process.env.BACKEND_API_KEY}`,
         },
         body: JSON.stringify(edOrderData),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       const responseText = await backendResponse.text()
       console.log("Backend response status:", backendResponse.status)
@@ -111,17 +118,17 @@ export async function POST(req: Request) {
         backend_response: backendResult,
       })
     } catch (backendError) {
+      clearTimeout(timeoutId)
       console.error("Backend API error:", backendError)
 
+      // Return more user-friendly error
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to save order to Ed's backend",
-          details: backendError instanceof Error ? backendError.message : "Unknown error",
-          // Include the data we tried to send for debugging
-          attempted_data: edOrderData,
+          error: "Backend service temporarily unavailable",
+          details: backendError instanceof Error ? backendError.message : "Connection timeout",
         },
-        { status: 500 },
+        { status: 503 },
       )
     }
   } catch (error) {

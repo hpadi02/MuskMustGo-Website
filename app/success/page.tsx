@@ -44,75 +44,86 @@ export default function SuccessPage() {
           const lastOrder = JSON.parse(lastOrderJSON)
           setOrder(lastOrder)
 
-          // If we have a Stripe session ID, POST to Ed's backend
+          // If we have a Stripe session ID, try to POST to Ed's backend
           if (sessionId) {
             console.log("Processing Stripe session:", sessionId)
 
-            // Prepare order data for Ed's backend API
-            const orderData = {
-              payment_id: sessionId, // Stripe session/payment ID
-              customer: {
-                email: "customer@example.com", // You'd get this from Stripe session
-                firstname: "Customer",
-                lastname: "User",
-                addr1: "123 Main St",
-                city: "San Francisco",
-                state_prov: "CA",
-                postal_code: "94105",
-                country: "US",
-              },
-              items: lastOrder.items.map((item: OrderItem) => ({
-                product_id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                customOptions: item.customOptions || null,
-              })),
-              shipping: lastOrder.shipping || 0,
-              tax: 0, // Calculate tax if needed
-            }
-
-            // POST to our API route which will forward to Ed's backend
-            const response = await fetch("/api/orders", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(orderData),
-            })
-
-            const responseText = await response.text()
-            console.log("API response:", responseText)
-
-            if (!response.ok) {
-              throw new Error(`Failed to save order: ${response.status} - ${responseText}`)
-            }
-
-            let result
             try {
-              result = JSON.parse(responseText)
-            } catch {
-              result = { message: responseText }
+              // Prepare order data for Ed's backend API
+              const orderData = {
+                payment_id: sessionId,
+                customer: {
+                  email: "customer@example.com",
+                  firstname: "Customer",
+                  lastname: "User",
+                  addr1: "123 Main St",
+                  city: "San Francisco",
+                  state_prov: "CA",
+                  postal_code: "94105",
+                  country: "US",
+                },
+                items: lastOrder.items.map((item: OrderItem) => ({
+                  product_id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  quantity: item.quantity,
+                  customOptions: item.customOptions || null,
+                })),
+                shipping: lastOrder.shipping || 0,
+                tax: 0,
+              }
+
+              // POST to our API route with timeout
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+              const response = await fetch("/api/orders", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(orderData),
+                signal: controller.signal,
+              })
+
+              clearTimeout(timeoutId)
+
+              if (response.ok) {
+                const result = await response.json()
+                console.log("Order successfully saved to Ed's backend:", result)
+
+                // Update order with backend order ID
+                const updatedOrder = {
+                  ...lastOrder,
+                  id: result.order_id || lastOrder.id,
+                  payment_id: sessionId,
+                }
+                setOrder(updatedOrder)
+                localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
+              } else {
+                // Backend failed but payment succeeded - log but don't fail
+                console.warn("Backend save failed but payment succeeded:", response.status)
+              }
+            } catch (backendError) {
+              // Backend posting failed but payment succeeded - this is OK
+              console.warn("Backend posting failed but payment was successful:", backendError)
+
+              // Still update order with payment ID
+              const updatedOrder = {
+                ...lastOrder,
+                id: lastOrder.id,
+                payment_id: sessionId,
+              }
+              setOrder(updatedOrder)
+              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
             }
-
-            console.log("Order saved to Ed's backend:", result)
-
-            // Update order with backend order ID
-            const updatedOrder = {
-              ...lastOrder,
-              id: result.order_id || lastOrder.id,
-              payment_id: sessionId,
-            }
-            setOrder(updatedOrder)
-
-            // Update localStorage with payment_id
-            localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
           }
         }
       } catch (error) {
         console.error("Error processing order:", error)
+        // Only set error for critical failures, not backend posting issues
         setError(
-          `There was an issue processing your order: ${error instanceof Error ? error.message : "Unknown error"}. Please contact support.`,
+          "There was an issue displaying your order details. Your payment was successful. Please contact support if you need assistance.",
         )
       } finally {
         setIsProcessing(false)
