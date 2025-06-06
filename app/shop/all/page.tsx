@@ -23,7 +23,7 @@ export default function AllProductsPage() {
           {GROUPED_PRODUCTS.map((product) => {
             // Special handling for square products to make them proportional
             const isSquareProduct = product.height === product.width
-            const aspectRatio = isSquareProduct ? 10 / 6 : product.width / product.height
+            const aspectRatio = product.width / product.height
 
             return (
               <div
@@ -31,23 +31,26 @@ export default function AllProductsPage() {
                 className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
               >
                 <Link href={`/product/${product.baseId}`}>
-                  <div className="relative overflow-hidden" style={{ aspectRatio }}>
-                    <FallbackImage
-                      src={product.image}
-                      alt={product.baseName}
-                      fill
-                      className={`transition-transform duration-700 ease-out group-hover:scale-105 ${
-                        isSquareProduct ? "object-contain" : "object-contain"
-                      }`}
-                      style={
-                        isSquareProduct
-                          ? {
-                              background:
-                                "linear-gradient(to right, #000 0%, #000 20%, transparent 20%, transparent 80%, #000 80%, #000 100%)",
-                            }
-                          : undefined
-                      }
-                    />
+                  <div className="relative overflow-hidden" style={{ aspectRatio: isSquareProduct ? 4 : aspectRatio }}>
+                    {isSquareProduct ? (
+                      <div className="w-full h-full bg-black flex items-center justify-center">
+                        <div className="w-3/5 h-full relative">
+                          <FallbackImage
+                            src={product.image}
+                            alt={product.baseName}
+                            fill
+                            className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <FallbackImage
+                        src={product.image}
+                        alt={product.baseName}
+                        fill
+                        className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                       <Button className="w-full bg-white text-black hover:bg-white/90 rounded-none">
