@@ -23,7 +23,7 @@ export default function AllProductsPage() {
           {GROUPED_PRODUCTS.map((product) => {
             // Special handling for square products to make them proportional
             const isSquareProduct = product.height === product.width
-            const aspectRatio = isSquareProduct ? 10 / 8 : product.width / product.height
+            const aspectRatio = isSquareProduct ? 10 / 6 : product.width / product.height
 
             return (
               <div
@@ -37,10 +37,16 @@ export default function AllProductsPage() {
                       alt={product.baseName}
                       fill
                       className={`transition-transform duration-700 ease-out group-hover:scale-105 ${
-                        isSquareProduct
-                          ? "object-contain bg-gradient-to-r from-black via-transparent to-black"
-                          : "object-contain"
+                        isSquareProduct ? "object-contain" : "object-contain"
                       }`}
+                      style={
+                        isSquareProduct
+                          ? {
+                              background:
+                                "linear-gradient(to right, #000 0%, #000 20%, transparent 20%, transparent 80%, #000 80%, #000 100%)",
+                            }
+                          : undefined
+                      }
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
