@@ -37,7 +37,7 @@ export default function AllProductsPage() {
                   >
                     {isSquareProduct ? (
                       <div className="w-full h-full bg-black flex items-center justify-center">
-                        <div className="w-3/5 h-4/5 relative flex items-center justify-center">
+                        <div className="w-3/5 h-full relative">
                           <FallbackImage
                             src={product.image}
                             alt={product.baseName}
