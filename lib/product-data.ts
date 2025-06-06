@@ -8,7 +8,8 @@ export interface Product {
   price: number
   medium_id: string
   medium_name: string
-  stripeId?: string // Add this field
+  stripeId?: string // Stripe price ID
+  productId?: string // Stripe product ID
 }
 
 // Group products by their base name (without _magnet or _sticker suffix)
@@ -123,7 +124,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 13.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
-    stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd", // Add your actual Stripe price ID
+    stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
+    productId: "prod_SMOvz7QTtXbzeO",
   },
   {
     product_id: "a6b2deb6-d6ee-4afe-9d9f-00f54f6dc123",
@@ -134,7 +136,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 4.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
-    stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH", // Add your actual Stripe price ID
+    stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
+    productId: "prod_SMOv2AdKsIZdCv",
   },
   {
     product_id: "25715ee1-0ce8-47a1-a815-c5a7fde888d3",
@@ -145,6 +148,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 19.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
+    stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
+    productId: "prod_SMOtIBBTRR6MWe",
   },
   {
     product_id: "996ef07f-0994-4127-9c57-eb14b3c1d88a",
@@ -155,6 +160,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 8.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
+    stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
+    productId: "prod_SMOtyyjmBf1DjJ",
   },
   {
     product_id: "500b3f79-e18b-4a4e-a61f-166934edfa61",
@@ -165,6 +172,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 19.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
+    stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
+    productId: "prod_SMOymK1lY8V7nB",
   },
   {
     product_id: "986c722c-823f-4004-95f2-fd027eb61c2f",
@@ -175,6 +184,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 8.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
+    stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
+    productId: "prod_SMOzL5UlT5wbsO",
   },
   {
     product_id: "d2617bd5-8387-40e5-bdf9-ade5717f1cec",
@@ -185,6 +196,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 13.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
+    stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
+    productId: "prod_SMP2rxDM8XwFoX",
   },
   {
     product_id: "3e982525-202d-4c18-a15d-e02c6d631b52",
@@ -195,6 +208,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 4.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
+    stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
+    productId: "prod_SMP21kBsg5qxRM",
   },
   {
     product_id: "9e445577-58a2-4615-b63f-8e0713e1f413",
@@ -205,7 +220,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
-    stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa", // Add your actual Stripe price ID
+    stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa",
+    productId: "prod_SMP47IhOUcO1kn",
   },
   {
     product_id: "adc3f2ae-9128-4352-8071-685ace54d19b",
@@ -216,7 +232,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 6.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
-    stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF", // Add your actual Stripe price ID
+    stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
+    productId: "prod_SMP5jwQujuz3Cl",
   },
   {
     product_id: "57ff283a-4124-4c37-ba30-217ed73cb2a9",
@@ -227,6 +244,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 19.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
+    stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI",
+    productId: "prod_SMOn24zhjeCmXm",
   },
   {
     product_id: "376de82f-fc72-4e9c-ac92-93e3055ccfc2",
@@ -237,6 +256,8 @@ export const RAW_PRODUCTS: Product[] = [
     price: 8.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
+    stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO",
+    productId: "prod_SMOquwq3mLZSDE",
   },
 ]
 

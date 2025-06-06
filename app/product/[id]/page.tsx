@@ -63,12 +63,17 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   }
 
   const handleAddToCart = () => {
+    // Find the selected product variant
+    const selectedProductData = product?.variants[selectedVariant]
+
     addItem({
       id: selectedProduct.product_id,
       name: `${product.baseName} (${selectedVariant})`,
       price: selectedProduct.price,
       image: product.image,
       quantity,
+      stripeId: selectedProductData?.stripeId, // Add Stripe price ID
+      productId: selectedProductData?.productId, // Add Stripe product ID
     })
 
     setAdded(true)

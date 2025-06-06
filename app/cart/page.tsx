@@ -37,6 +37,11 @@ const findProductById = (productId: string) => {
   return null
 }
 
+// Add this helper function at the top of the component
+const hasStripeIntegration = (item: any) => {
+  return item.stripeId && item.stripeId.startsWith("price_")
+}
+
 export default function CartPage() {
   const { items, removeItem, updateItemQuantity, clearCart, getCartTotal } = useCart()
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -353,6 +358,9 @@ export default function CartPage() {
               <div className="mt-6 text-center text-sm text-white/50">
                 <p>Secure checkout powered by Stripe</p>
                 <p className="mt-2 text-xs">Using Stripe Test Mode</p>
+                {items.some((item) => hasStripeIntegration(item)) && (
+                  <p className="mt-1 text-xs text-green-400">✓ Stripe integration active</p>
+                )}
               </div>
             </div>
           </div>
