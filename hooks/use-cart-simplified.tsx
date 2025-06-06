@@ -162,6 +162,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Clear cart
   const clearCart = () => {
     setItems([])
+    // Force clear localStorage immediately
+    try {
+      localStorage.removeItem("cart")
+      localStorage.setItem("cart", JSON.stringify([]))
+    } catch (error) {
+      console.error("Failed to clear cart from localStorage:", error)
+    }
+
     setTimeout(() => {
       toastRef.current({
         title: "Cart cleared",

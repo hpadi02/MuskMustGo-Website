@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ShoppingCart, Check } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 import type { CartItem } from "@/hooks/use-cart-simplified"
-import { useToast } from "@/hooks/use-toast"
+// import { useToast } from "@/hooks/use-toast" // Removed useToast import
 
 interface AddToCartButtonProps {
   product: {
@@ -29,10 +29,10 @@ export default function AddToCartButton({
 }: AddToCartButtonProps) {
   const [isAdded, setIsAdded] = useState(false)
   const { addItem } = useCart()
-  const { toast } = useToast()
+  // const { toast } = useToast() // Removed toast
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    // Prevent default behavior to avoid any external cart handlers
+    // Prevent any default behavior
     e.preventDefault()
     e.stopPropagation()
 
@@ -48,14 +48,10 @@ export default function AddToCartButton({
       cartItem.customOptions = customOptions
     }
 
+    // ONLY add item - NO navigation
     addItem(cartItem)
 
-    // Show toast notification
-    toast({
-      title: "Added to cart",
-      description: `${product.name} has been added to your cart`,
-    })
-
+    // Show success state
     setIsAdded(true)
     setTimeout(() => {
       setIsAdded(false)
