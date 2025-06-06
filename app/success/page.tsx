@@ -46,12 +46,12 @@ export default function SuccessPage() {
           const lastOrder = JSON.parse(lastOrderJSON)
           setOrder(lastOrder)
 
-          // Clear the cart immediately when we reach success page with session_id
+          // Clear cart if we have a session_id (successful payment)
           if (sessionId) {
             clearCart()
           }
 
-          // If we have a Stripe session ID, try to POST to Ed's backend
+          // If we have a Stripe session ID, clear cart immediately and try to POST to Ed's backend
           if (sessionId) {
             console.log("Processing Stripe session:", sessionId)
 
