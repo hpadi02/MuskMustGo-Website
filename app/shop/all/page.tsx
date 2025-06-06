@@ -33,11 +33,11 @@ export default function AllProductsPage() {
                 <Link href={`/product/${product.baseId}`}>
                   <div
                     className="relative overflow-hidden"
-                    style={{ aspectRatio: isSquareProduct ? 2.5 : aspectRatio }}
+                    style={{ aspectRatio: isSquareProduct ? 1.67 : aspectRatio }}
                   >
                     {isSquareProduct ? (
                       <div className="w-full h-full bg-black flex items-center justify-center">
-                        <div className="w-3/5 h-full relative">
+                        <div className="w-3/5 aspect-square relative">
                           <FallbackImage
                             src={product.image}
                             alt={product.baseName}
