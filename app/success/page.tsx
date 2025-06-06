@@ -38,6 +38,23 @@ export default function SuccessPage() {
   const { clearCart } = useCart()
 
   useEffect(() => {
+    // IMMEDIATELY clear cart if we have session_id
+    if (sessionId) {
+      console.log("SUCCESS PAGE: Clearing cart due to successful payment")
+
+      // Clear cart through hook
+      clearCart()
+
+      // Manually clear localStorage as backup
+      try {
+        localStorage.removeItem("cart")
+        localStorage.setItem("cart", "[]")
+        console.log("SUCCESS PAGE: Cart cleared from localStorage")
+      } catch (error) {
+        console.error("Failed to manually clear cart:", error)
+      }
+    }
+
     // Clear cart immediately if we have a session_id (successful payment)
     if (sessionId) {
       console.log("Clearing cart due to successful payment")

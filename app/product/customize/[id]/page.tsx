@@ -1,186 +1,115 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
-import { useCart } from "@/hooks/use-cart-simplified"
-import { PRODUCTS } from "@/lib/image-assets"
+import { useParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 
-// Emoji options
-const emojiOptions = {
-  tesla: ["😍", "🚗", "⚡", "🔋", "🌱", "💯", "👍", "❤️"],
-  elon: ["🤮", "👎", "🤡", "💩", "🙄", "😒", "🤦", "🤔"],
-}
+const CustomizeProductPage = () => {
+  const { id } = useParams()
+  const router = useRouter()
 
-// This would normally come from a database or API
-const getProductById = (id: string) => {
-  return PRODUCTS.find((p) => p.id === id) || PRODUCTS[0]
-}
-
-export default function CustomizeProductPage({ params }: { params: { id: string } }) {
-  const product = getProductById(params.id)
-  const [selectedEmojis, setSelectedEmojis] = useState({
-    tesla: "😍",
-    elon: "🤮",
-  })
-  const [quantity, setQuantity] = useState(1)
-  const [added, setAdded] = useState(false)
-  const { addItem } = useCart()
-
-  // Create a preview image URL
-  const [previewImage, setPreviewImage] = useState("")
+  const [product, setProduct] = useState(null)
+  const [customizations, setCustomizations] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // In a real implementation, this would dynamically generate an image
-    // For now, we'll just use the original image
-    setPreviewImage(product.image)
-  }, [selectedEmojis, product.image])
+    const fetchProduct = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/products/${id}`)
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const data = await response.json()
+        setProduct(data)
+        // Initialize customizations based on product options
+        const initialCustomizations = {}
+        if (data.options) {
+          data.options.forEach((option) => {
+            initialCustomizations[option.name] = option.values[0] // Default to the first value
+          })
+        }
+        setCustomizations(initialCustomizations)
+        setLoading(false)
+      } catch (e) {
+        setError(e.message)
+        setLoading(false)
+      }
+    }
 
-  const handleEmojiChange = (type: "tesla" | "elon", emoji: string) => {
-    setSelectedEmojis((prev) => ({
-      ...prev,
-      [type]: emoji,
-    }))
+    fetchProduct()
+  }, [id])
+
+  const handleCustomizationChange = (optionName, value) => {
+    setCustomizations((prev) => ({ ...prev, [optionName]: value }))
   }
 
-  const handleAddToCart = () => {
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity,
-      customOptions: {
-        teslaEmoji: selectedEmojis.tesla,
-        elonEmoji: selectedEmojis.elon,
-      },
-    })
+  const handleAddToCart = async () => {
+    try {
+      const response = await fetch("/api/cart/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: id,
+          customizations: customizations,
+          quantity: 1, // Or allow user to specify quantity
+        }),
+      })
 
-    setAdded(true)
-    setTimeout(() => setAdded(false), 2000)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      // Optionally, show a success message or update the cart state
+      alert("Product added to cart!")
+      // Remove router.push('/cart') to prevent automatic navigation
+      // router.push('/cart');
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      alert("Failed to add product to cart.")
+    }
+  }
+
+  if (loading) {
+    return <p>Loading...</p>
+  }
+
+  if (error) {
+    return <p>Error: {error}</p>
+  }
+
+  if (!product) {
+    return <p>Product not found</p>
   }
 
   return (
-    <div className="bg-dark-400 text-white">
-      <div className="container mx-auto px-6 md:px-10 py-32">
-        <Link href={`/product/${product.id}`} className="inline-flex items-center text-white/70 hover:text-white mb-12">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to product
-        </Link>
+    <div>
+      <h1>Customize {product.name}</h1>
+      <p>{product.description}</p>
 
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-8">
-            Customize Your {product.name}
-          </h1>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Preview */}
-            <div className="bg-dark-300 p-8 rounded-lg flex flex-col items-center">
-              <div className="relative w-full aspect-square mb-6">
-                <Image src={previewImage || "/placeholder.svg"} alt={product.name} fill className="object-contain" />
-              </div>
-              <div className="flex justify-center space-x-8 text-4xl">
-                <div className="text-center">
-                  <p className="text-white/60 text-sm mb-2">Tesla</p>
-                  <span>{selectedEmojis.tesla}</span>
-                </div>
-                <div className="text-center">
-                  <p className="text-white/60 text-sm mb-2">Elon</p>
-                  <span>{selectedEmojis.elon}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Customization Options */}
-            <div className="bg-dark-300 p-8 rounded-lg">
-              <h2 className="text-xl font-medium mb-6">Choose Your Emojis</h2>
-
-              <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Tesla Emoji</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  {emojiOptions.tesla.map((emoji) => (
-                    <Button
-                      key={emoji}
-                      variant="outline"
-                      className={`text-2xl h-12 ${selectedEmojis.tesla === emoji ? "border-red-500 bg-red-500/10" : "border-white/20"}`}
-                      onClick={() => handleEmojiChange("tesla", emoji)}
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Elon Emoji</h3>
-                <div className="grid grid-cols-4 gap-4">
-                  {emojiOptions.elon.map((emoji) => (
-                    <Button
-                      key={emoji}
-                      variant="outline"
-                      className={`text-2xl h-12 ${selectedEmojis.elon === emoji ? "border-red-500 bg-red-500/10" : "border-white/20"}`}
-                      onClick={() => handleEmojiChange("elon", emoji)}
-                    >
-                      {emoji}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Quantity</h3>
-                <div className="flex items-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="border-white/20"
-                  >
-                    -
-                  </Button>
-                  <span className="mx-6 font-medium">{quantity}</span>
-                  <Button variant="outline" onClick={() => setQuantity(quantity + 1)} className="border-white/20">
-                    +
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xl font-medium">Price:</span>
-                <span className="text-xl font-medium">${(product.price * quantity).toFixed(2)}</span>
-              </div>
-
-              <Button
-                size="lg"
-                className={`${added ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} w-full py-6`}
-                onClick={handleAddToCart}
-              >
-                {added ? (
-                  <>
-                    <Check className="mr-2 h-5 w-5" /> Added to Cart
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="mr-2 h-5 w-5" /> Add to Cart
-                  </>
-                )}
-              </Button>
-            </div>
+      {product.options &&
+        product.options.map((option) => (
+          <div key={option.name}>
+            <label>{option.name}:</label>
+            <select
+              value={customizations[option.name] || option.values[0]}
+              onChange={(e) => handleCustomizationChange(option.name, e.target.value)}
+            >
+              {option.values.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
           </div>
+        ))}
 
-          <div className="mt-12 bg-dark-300 p-8 rounded-lg">
-            <h2 className="text-xl font-medium mb-4">About This Customization</h2>
-            <p className="text-white/70 mb-4">
-              Our Tesla vs Elon Emoji Sticker lets you express exactly how you feel about your Tesla and its CEO. Choose
-              from a variety of emojis to create your perfect combination.
-            </p>
-            <p className="text-white/70">
-              The sticker is made from premium vinyl material that's weather and UV resistant, making it perfect for
-              your car, laptop, water bottle, or anywhere else you want to display your Tesla pride (and Elon opinions).
-            </p>
-          </div>
-        </div>
-      </div>
+      <button onClick={handleAddToCart}>Add to Cart</button>
     </div>
   )
 }
+
+export default CustomizeProductPage

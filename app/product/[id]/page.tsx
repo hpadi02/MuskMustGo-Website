@@ -1,287 +1,133 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { ShoppingBag, Minus, Plus, Check, ArrowLeft } from "lucide-react"
-import { useCart } from "@/hooks/use-cart-simplified"
-import { useRouter } from "next/navigation"
-import { useToast } from "@/hooks/use-toast"
-import FallbackImage from "@/components/fallback-image"
-import { GROUPED_PRODUCTS } from "@/lib/product-data"
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 
-export default function ProductPage({ params }: { params: { id: string } }) {
-  // Find product by ID
-  const product = GROUPED_PRODUCTS.find((p) => p.baseId === params.id)
+interface Product {
+  id: number
+  title: string
+  price: number
+  description: string
+  category: string
+  image: string
+  rating: {
+    rate: number
+    count: number
+  }
+}
 
-  const router = useRouter()
-  const { toast } = useToast()
-  const { addItem } = useCart()
-
+const ProductPage = () => {
+  const { id } = useParams()
+  const [product, setProduct] = useState<Product | null>(null)
   const [quantity, setQuantity] = useState(1)
-  const [added, setAdded] = useState(false)
-  const [selectedVariant, setSelectedVariant] = useState<"magnet" | "sticker">(
-    product?.variants.magnet ? "magnet" : "sticker",
-  )
 
-  const selectedProduct = product?.variants[selectedVariant]
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await fetch(`https://fakestoreapi.com/products/${id}`)
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`)
+        }
+        const data = await response.json()
+        setProduct(data)
+      } catch (error) {
+        console.error("Could not fetch product:", error)
+      }
+    }
 
-  if (!product) {
-    return (
-      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        <div className="container mx-auto px-6">
-          <h1 className="text-4xl font-bold mb-6">Product Not Found</h1>
-          <Link href="/shop/all">
-            <Button>Back to Shop</Button>
-          </Link>
-        </div>
-      </div>
-    )
+    if (id) {
+      fetchProduct()
+    }
+  }, [id])
+
+  const handleAddToCart = () => {
+    if (product) {
+      const cartItem = {
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        quantity: quantity,
+        image: product.image,
+      }
+
+      const cart = localStorage.getItem("cart")
+      const cartItems = cart ? JSON.parse(cart) : []
+
+      // Check if the item already exists in the cart
+      const existingItemIndex = cartItems.findIndex((item: any) => item.id === cartItem.id)
+
+      if (existingItemIndex > -1) {
+        // If the item exists, update the quantity
+        cartItems[existingItemIndex].quantity += quantity
+      } else {
+        // If the item doesn't exist, add it to the cart
+        cartItems.push(cartItem)
+      }
+
+      localStorage.setItem("cart", JSON.stringify(cartItems))
+      alert("Product added to cart!")
+    }
   }
 
-  if (!selectedProduct) {
-    return (
-      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        <div className="container mx-auto px-6">
-          <h1 className="text-4xl font-bold mb-6">Product Variant Not Available</h1>
-          <Link href="/shop/all">
-            <Button>Back to Shop</Button>
-          </Link>
-        </div>
-      </div>
-    )
+  const incrementQuantity = () => {
+    setQuantity(quantity + 1)
   }
 
-  const decreaseQuantity = () => {
+  const decrementQuantity = () => {
     if (quantity > 1) {
       setQuantity(quantity - 1)
     }
   }
 
-  const increaseQuantity = () => {
-    setQuantity(quantity + 1)
-  }
-
-  const handleAddToCart = () => {
-    // Find the selected product variant
-    const selectedProductData = product?.variants[selectedVariant]
-
-    addItem({
-      id: selectedProduct.product_id,
-      name: `${product.baseName} (${selectedVariant})`,
-      price: selectedProduct.price,
-      image: product.image,
-      quantity,
-      stripeId: selectedProductData?.stripeId, // Add Stripe price ID
-      productId: selectedProductData?.productId, // Add Stripe product ID
-    })
-
-    setAdded(true)
-
-    toast({
-      title: "Added to cart",
-      description: `${product.baseName} (${selectedVariant}) has been added to your cart`,
-    })
-
-    setTimeout(() => {
-      setAdded(false)
-      router.push("/cart")
-    }, 1500)
-  }
-
-  // Check if this is the emoji customizable product
-  const isCustomizable = product.customizable
-
-  // Calculate aspect ratio based on product dimensions
-  const aspectRatio = selectedProduct.width / selectedProduct.height
-  const getAspectRatioClass = () => {
-    if (aspectRatio > 3) return "aspect-[4/1]" // Very wide (like Deport Elon)
-    if (aspectRatio > 1.5) return "aspect-[3/2]" // Wide (like Tesla Musk Emojis)
-    if (aspectRatio > 1.2) return "aspect-[5/3]" // Slightly wide
-    return "aspect-square" // Square or tall (like No Elon Face)
+  if (!product) {
+    return <div>Loading...</div>
   }
 
   return (
-    <div className="bg-dark-400 text-white min-h-screen">
-      <div className="container mx-auto px-6 md:px-10 py-32">
-        <Link href="/shop/all" className="inline-flex items-center text-white/70 hover:text-white mb-12">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to products
-        </Link>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-          {/* Product Image - Back to top positioning */}
-          <div>
-            <div className={`relative ${getAspectRatioClass()} bg-dark-300 w-full max-w-lg overflow-hidden rounded-lg`}>
-              <FallbackImage src={product.image} alt={product.baseName} fill className="object-contain p-6" />
-            </div>
+    <div className="container mx-auto mt-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="md:h-[500px] flex justify-center items-center">
+          <img
+            src={product.image || "/placeholder.svg"}
+            alt={product.title}
+            className="max-h-full max-w-full object-contain"
+          />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold mb-2">{product.title}</h1>
+          <p className="text-gray-700 mb-4">{product.description}</p>
+          <p className="text-xl font-semibold mb-2">Price: ${product.price}</p>
+          <div className="flex items-center mb-4">
+            <span className="mr-2">Quantity:</span>
+            <button
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-l"
+              onClick={decrementQuantity}
+            >
+              -
+            </button>
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(Number.parseInt(e.target.value))}
+              className="mx-2 border border-gray-300 text-center w-16 py-2"
+            />
+            <button
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-r"
+              onClick={incrementQuantity}
+            >
+              +
+            </button>
           </div>
-
-          {/* Product Details */}
-          <div className="flex flex-col">
-            <div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-6">
-                {product.baseName}
-              </h1>
-              <p className="text-3xl font-medium mb-2">${selectedProduct.price.toFixed(2)}</p>
-              <p className="text-lg text-white/70 mb-6">
-                Dimensions: {selectedProduct.height}" x {selectedProduct.width}"
-              </p>
-
-              <div className="prose prose-lg mb-10">
-                <p className="text-white/70 text-lg leading-relaxed">{product.description}</p>
-              </div>
-
-              {/* Product Type Selection */}
-              {product.variants.magnet && product.variants.sticker && (
-                <div className="mb-8">
-                  <p className="text-white/70 mb-3">Select Type:</p>
-                  <div className="flex gap-4">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="variant"
-                        value="magnet"
-                        checked={selectedVariant === "magnet"}
-                        onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
-                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className="text-white">Magnet (${product.variants.magnet.price.toFixed(2)})</span>
-                    </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="variant"
-                        value="sticker"
-                        checked={selectedVariant === "sticker"}
-                        onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
-                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className="text-white">Sticker (${product.variants.sticker.price.toFixed(2)})</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {isCustomizable && (
-                <div className="mb-8">
-                  <Link href={`/product/customize-emoji/${selectedVariant}`}>
-                    <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3">Customize Emojis</Button>
-                  </Link>
-                  <p className="text-white/60 text-sm mt-2">
-                    Click above to customize which emojis appear on your {selectedVariant}
-                  </p>
-                </div>
-              )}
-
-              <div className="mb-10">
-                <h3 className="text-xl font-medium mb-6">Features</h3>
-                <ul className="space-y-4">
-                  {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
-                        <svg
-                          className="w-3 h-3 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                      </span>
-                      <span className="text-white/80">{feature}</span>
-                    </li>
-                  ))}
-                  <li className="flex items-start">
-                    <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </span>
-                    <span className="text-white/80">
-                      Size: {selectedProduct.height}" x {selectedProduct.width}"
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-white/60 mb-2">Quantity</p>
-                  <div className="flex items-center">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={decreaseQuantity}
-                      className="rounded-none h-10 w-10 border-white/20 text-white hover:bg-white/10"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <span className="mx-6 font-medium w-8 text-center">{quantity}</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={increaseQuantity}
-                      className="rounded-none h-10 w-10 border-white/20 text-white hover:bg-white/10"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <Button
-                  size="lg"
-                  className={`${added ? "bg-green-600 hover:bg-green-700" : "bg-white hover:bg-white/90 text-black"} w-full px-8 py-6 text-sm tracking-wide`}
-                  onClick={handleAddToCart}
-                >
-                  {added ? (
-                    <>
-                      <Check className="mr-2 h-5 w-5" /> ADDED TO CART
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="mr-2 h-5 w-5" /> ADD TO CART
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <div className="mt-10 text-white/60 space-y-2 text-sm">
-                <p className="flex items-center">
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  Free shipping on orders over $50
-                </p>
-                <p className="flex items-center">
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                  30-day money-back guarantee
-                </p>
-              </div>
-            </div>
-          </div>
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={handleAddToCart}
+          >
+            Add to Cart
+          </button>
         </div>
       </div>
     </div>
   )
 }
+
+export default ProductPage
