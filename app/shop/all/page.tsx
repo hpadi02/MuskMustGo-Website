@@ -31,10 +31,13 @@ export default function AllProductsPage() {
                 className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
               >
                 <Link href={`/product/${product.baseId}`}>
-                  <div className="relative overflow-hidden" style={{ aspectRatio: isSquareProduct ? 4 : aspectRatio }}>
+                  <div
+                    className="relative overflow-hidden"
+                    style={{ aspectRatio: isSquareProduct ? 2.5 : aspectRatio }}
+                  >
                     {isSquareProduct ? (
                       <div className="w-full h-full bg-black flex items-center justify-center">
-                        <div className="w-3/5 h-full relative">
+                        <div className="w-3/5 h-4/5 relative flex items-center justify-center">
                           <FallbackImage
                             src={product.image}
                             alt={product.baseName}
