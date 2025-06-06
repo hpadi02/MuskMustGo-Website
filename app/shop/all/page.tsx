@@ -20,53 +20,63 @@ export default function AllProductsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
-          {GROUPED_PRODUCTS.map((product) => (
-            <div
-              key={product.baseId}
-              className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
-            >
-              <Link href={`/product/${product.baseId}`}>
-                <div className="relative overflow-hidden aspect-[3/2]">
-                  <FallbackImage
-                    src={product.image}
-                    alt={product.baseName}
-                    fill
-                    className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <Button className="w-full bg-white text-black hover:bg-white/90 rounded-none">
-                      <ShoppingBag className="mr-2 h-4 w-4" /> View Options
-                    </Button>
+          {GROUPED_PRODUCTS.map((product) => {
+            // Special handling for square products to make them proportional
+            const isSquareProduct = product.height === product.width
+            const aspectRatio = isSquareProduct ? 10 / 8 : product.width / product.height
+
+            return (
+              <div
+                key={product.baseId}
+                className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
+              >
+                <Link href={`/product/${product.baseId}`}>
+                  <div className="relative overflow-hidden" style={{ aspectRatio }}>
+                    <FallbackImage
+                      src={product.image}
+                      alt={product.baseName}
+                      fill
+                      className={`transition-transform duration-700 ease-out group-hover:scale-105 ${
+                        isSquareProduct
+                          ? "object-contain bg-gradient-to-r from-black via-transparent to-black"
+                          : "object-contain"
+                      }`}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                      <Button className="w-full bg-white text-black hover:bg-white/90 rounded-none">
+                        <ShoppingBag className="mr-2 h-4 w-4" /> View Options
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="p-5">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-medium group-hover:text-red-500 transition-colors duration-300">
-                        {product.baseName}
-                      </h3>
-                      <p className="text-sm text-white/70 mt-1">
-                        {product.variants.magnet && product.variants.sticker
-                          ? "Available as magnet or sticker"
-                          : product.variants.magnet
-                            ? "Magnet"
-                            : "Sticker"}
+                  <div className="p-5">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-medium group-hover:text-red-500 transition-colors duration-300">
+                          {product.baseName}
+                        </h3>
+                        <p className="text-sm text-white/70 mt-1">
+                          {product.variants.magnet && product.variants.sticker
+                            ? "Available as magnet or sticker"
+                            : product.variants.magnet
+                              ? "Magnet"
+                              : "Sticker"}
+                        </p>
+                      </div>
+                      <p className="text-lg font-medium">
+                        $
+                        {Math.min(
+                          product.variants.magnet?.price || Number.POSITIVE_INFINITY,
+                          product.variants.sticker?.price || Number.POSITIVE_INFINITY,
+                        ).toFixed(2)}
+                        {product.variants.magnet && product.variants.sticker && "+"}
                       </p>
                     </div>
-                    <p className="text-lg font-medium">
-                      $
-                      {Math.min(
-                        product.variants.magnet?.price || Number.POSITIVE_INFINITY,
-                        product.variants.sticker?.price || Number.POSITIVE_INFINITY,
-                      ).toFixed(2)}
-                      {product.variants.magnet && product.variants.sticker && "+"}
-                    </p>
                   </div>
-                </div>
-              </Link>
-            </div>
-          ))}
+                </Link>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
