@@ -162,7 +162,7 @@ export default function CartPage() {
     }
   }
 
-  // Helper function to display customization options (emoji images only, no text)
+  // UPDATED: Helper function to display customization options (ONLY EMOJI IMAGES, NO TEXT)
   const renderCustomOptions = (item: any) => {
     if (!item.customOptions) return null
 
@@ -174,6 +174,7 @@ export default function CartPage() {
             if (value && typeof value === "object" && "path" in value) {
               return (
                 <div key={key} className="flex flex-col items-center">
+                  {/* REMOVED TEXT LABELS - only show emoji images */}
                   <Image
                     src={(value as any).path || "/placeholder.svg"}
                     alt={key}

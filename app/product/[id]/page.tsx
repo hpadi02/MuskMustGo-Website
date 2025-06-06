@@ -5,7 +5,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ShoppingBag, Minus, Plus, Check, ArrowLeft } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
-import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import FallbackImage from "@/components/fallback-image"
 import { GROUPED_PRODUCTS } from "@/lib/product-data"
@@ -14,7 +13,6 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   // Find product by ID
   const product = GROUPED_PRODUCTS.find((p) => p.baseId === params.id)
 
-  const router = useRouter()
   const { toast } = useToast()
   const { addItem } = useCart()
 
@@ -83,10 +81,10 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       description: `${product.baseName} (${selectedVariant}) has been added to your cart`,
     })
 
+    // Reset the added state after 2 seconds - NO NAVIGATION
     setTimeout(() => {
       setAdded(false)
-      router.push("/cart")
-    }, 1500)
+    }, 2000)
   }
 
   // Check if this is the emoji customizable product

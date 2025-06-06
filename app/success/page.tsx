@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2 } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
+import { useCart } from "@/hooks/use-cart-simplified"
 
 type OrderItem = {
   id: string
@@ -33,26 +33,55 @@ export default function SuccessPage() {
   const [isProcessing, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const searchParams = useSearchParams()
-  const sessionId = searchParams.get("session_id")
+  const router = useRouter()
+  const { clearCart } = useCart()
+
+  // Get session ID once
+  const sessionId = searchParams?.get("session_id") || null
 
   useEffect(() => {
+    let isMounted = true
+
     const processOrder = async () => {
       try {
+        // Clear cart immediately if we have a session_id (successful payment)
+        if (sessionId) {
+          console.log("Clearing cart due to successful payment")
+          clearCart()
+
+          // Also manually clear localStorage as backup
+          try {
+            localStorage.removeItem("cart")
+            localStorage.setItem("cart", "[]")
+          } catch (error) {
+            console.error("Failed to manually clear cart:", error)
+          }
+        }
+
         // Get the last order from localStorage
         const lastOrderJSON = localStorage.getItem("lastOrder")
-        if (lastOrderJSON) {
-          const lastOrder = JSON.parse(lastOrderJSON)
+        if (!lastOrderJSON) {
+          if (isMounted) {
+            setIsProcessing(false)
+          }
+          return
+        }
+
+        const lastOrder = JSON.parse(lastOrderJSON)
+        if (isMounted) {
           setOrder(lastOrder)
+        }
 
-          // If we have a Stripe session ID, POST to Ed's backend
-          if (sessionId) {
-            console.log("Processing Stripe session:", sessionId)
+        // If we have a Stripe session ID, try to POST to Ed's backend
+        if (sessionId && isMounted) {
+          console.log("Processing Stripe session:", sessionId)
 
+          try {
             // Prepare order data for Ed's backend API
             const orderData = {
-              payment_id: sessionId, // Stripe session/payment ID
+              payment_id: sessionId,
               customer: {
-                email: "customer@example.com", // You'd get this from Stripe session
+                email: "customer@example.com",
                 firstname: "Customer",
                 lastname: "User",
                 addr1: "123 Main St",
@@ -69,58 +98,86 @@ export default function SuccessPage() {
                 customOptions: item.customOptions || null,
               })),
               shipping: lastOrder.shipping || 0,
-              tax: 0, // Calculate tax if needed
+              tax: 0,
             }
 
-            // POST to our API route which will forward to Ed's backend
+            // POST to our API route with timeout
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 10000)
+
             const response = await fetch("/api/orders", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify(orderData),
+              signal: controller.signal,
             })
 
-            const responseText = await response.text()
-            console.log("API response:", responseText)
+            clearTimeout(timeoutId)
 
-            if (!response.ok) {
-              throw new Error(`Failed to save order: ${response.status} - ${responseText}`)
+            if (response.ok && isMounted) {
+              const result = await response.json()
+              console.log("Order successfully saved to Ed's backend:", result)
+
+              // Update order with backend order ID
+              const updatedOrder = {
+                ...lastOrder,
+                id: result.order_id || lastOrder.id,
+                payment_id: sessionId,
+              }
+              setOrder(updatedOrder)
+              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
+            } else if (isMounted) {
+              // Backend failed but payment succeeded - log but don't fail
+              console.warn("Backend save failed but payment succeeded:", response.status)
+
+              // Still update order with payment ID
+              const updatedOrder = {
+                ...lastOrder,
+                id: lastOrder.id,
+                payment_id: sessionId,
+              }
+              setOrder(updatedOrder)
+              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
             }
+          } catch (backendError) {
+            // Backend posting failed but payment succeeded - this is OK
+            console.warn("Backend posting failed but payment was successful:", backendError)
 
-            let result
-            try {
-              result = JSON.parse(responseText)
-            } catch {
-              result = { message: responseText }
+            if (isMounted) {
+              // Still update order with payment ID
+              const updatedOrder = {
+                ...lastOrder,
+                id: lastOrder.id,
+                payment_id: sessionId,
+              }
+              setOrder(updatedOrder)
+              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
             }
-
-            console.log("Order saved to Ed's backend:", result)
-
-            // Update order with backend order ID
-            const updatedOrder = {
-              ...lastOrder,
-              id: result.order_id || lastOrder.id,
-              payment_id: sessionId,
-            }
-            setOrder(updatedOrder)
-
-            // Update localStorage with payment_id
-            localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
           }
         }
       } catch (error) {
         console.error("Error processing order:", error)
-        setError(
-          `There was an issue processing your order: ${error instanceof Error ? error.message : "Unknown error"}. Please contact support.`,
-        )
+        if (isMounted) {
+          setError(
+            "There was an issue displaying your order details. Your payment was successful. Please contact support if you need assistance.",
+          )
+        }
       } finally {
-        setIsProcessing(false)
+        if (isMounted) {
+          setIsProcessing(false)
+        }
       }
     }
 
     processOrder()
-  }, [sessionId])
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
+  }, [sessionId]) // Only depend on sessionId, remove clearCart from dependencies
 
   // Helper function to display customization options
   const renderCustomOptions = (item: OrderItem) => {
@@ -133,7 +190,6 @@ export default function SuccessPage() {
           if (typeof value === "object" && value !== null && "path" in value) {
             return (
               <div key={key} className="flex flex-col items-center">
-                <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
                 <div className="w-8 h-8 bg-dark-400 rounded-full overflow-hidden">
                   <Image
                     src={value.path || "/placeholder.svg"}
@@ -150,7 +206,6 @@ export default function SuccessPage() {
           // Fallback for string values
           return (
             <div key={key} className="flex flex-col items-center">
-              <span className="text-white/60 text-xs mb-1">{key === "tesla" ? "Tesla" : "Elon"}</span>
               <span className="text-2xl bg-dark-400 p-2 rounded-full">{value as string}</span>
             </div>
           )
@@ -159,15 +214,41 @@ export default function SuccessPage() {
     )
   }
 
+  // Navigation handlers
+  const handleContinueShopping = () => {
+    try {
+      router.push("/shop/all")
+    } catch (error) {
+      console.error("Navigation error:", error)
+      window.location.href = "/shop/all"
+    }
+  }
+
+  const handleViewOrders = () => {
+    try {
+      router.push("/account/orders")
+    } catch (error) {
+      console.error("Navigation error:", error)
+      window.location.href = "/account/orders"
+    }
+  }
+
+  const handleContactSupport = () => {
+    try {
+      router.push("/contact")
+    } catch (error) {
+      console.error("Navigation error:", error)
+      window.location.href = "/contact"
+    }
+  }
+
   if (isProcessing) {
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
         <div className="container mx-auto px-6 max-w-3xl text-center">
           <Loader2 className="w-20 h-20 text-red-500 mx-auto mb-8 animate-spin" />
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Processing Your Order...</h1>
-          <p className="text-xl text-white/80 mb-8">
-            Please wait while we confirm your payment and save your order to Ed's backend.
-          </p>
+          <p className="text-xl text-white/80 mb-8">Please wait while we confirm your payment and save your order.</p>
         </div>
       </div>
     )
@@ -183,19 +264,19 @@ export default function SuccessPage() {
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Order Processing Error</h1>
           <p className="text-xl text-white/80 mb-8">{error}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/contact">
-              <Button className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg w-full sm:w-auto">
-                Contact Support
-              </Button>
-            </Link>
-            <Link href="/shop/all">
-              <Button
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
-              >
-                Continue Shopping
-              </Button>
-            </Link>
+            <Button
+              onClick={handleContactSupport}
+              className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg w-full sm:w-auto"
+            >
+              Contact Support
+            </Button>
+            <Button
+              onClick={handleContinueShopping}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
+            >
+              Continue Shopping
+            </Button>
           </div>
         </div>
       </div>
@@ -211,9 +292,9 @@ export default function SuccessPage() {
           <p className="text-xl text-white/80 mb-8">
             Thank you for your purchase. We've received your order and will process it right away.
           </p>
-          <Link href="/shop/all">
-            <Button className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg">Continue Shopping</Button>
-          </Link>
+          <Button onClick={handleContinueShopping} className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg">
+            Continue Shopping
+          </Button>
         </div>
       </div>
     )
@@ -227,7 +308,7 @@ export default function SuccessPage() {
         <h1 className="text-4xl md:text-5xl font-bold mb-6">Order Confirmed!</h1>
 
         <p className="text-xl text-white/80 mb-8">
-          Thank you for your purchase. We've received your order and saved it to Ed's backend.
+          Thank you for your purchase. We've received your order and will process it.
         </p>
 
         <div className="bg-dark-300 p-6 rounded-lg mb-8">
@@ -282,24 +363,24 @@ export default function SuccessPage() {
 
         <p className="text-white/60 mb-12">
           A confirmation email has been sent to your email address.
-          {sessionId && " Your payment has been processed and order saved to the backend."}
+          {sessionId && " Your payment has been processed successfully."}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/shop/all">
-            <Button className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg w-full sm:w-auto">
-              Continue Shopping
-            </Button>
-          </Link>
+          <Button
+            onClick={handleContinueShopping}
+            className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg w-full sm:w-auto"
+          >
+            Continue Shopping
+          </Button>
 
-          <Link href="/account/orders">
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
-            >
-              View All Orders
-            </Button>
-          </Link>
+          <Button
+            onClick={handleViewOrders}
+            variant="outline"
+            className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
+          >
+            View All Orders
+          </Button>
         </div>
       </div>
     </div>

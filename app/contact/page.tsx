@@ -2,16 +2,26 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react"
+import { ArrowLeft, Mail, Send, CheckCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useSearchParams } from "next/navigation"
 
 export default function ContactPage() {
   const [formSubmitted, setFormSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (error) {
+      setErrorMessage(decodeURIComponent(error))
+    }
+  }, [searchParams])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,29 +48,13 @@ export default function ContactPage() {
             <p className="text-xl text-white/70">Have questions or suggestions? We'd love to hear from you.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
+          <div className="flex justify-center mb-16">
             <div className="text-center">
               <div className="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Mail className="h-8 w-8" />
               </div>
-              <h3 className="text-xl font-medium mb-2">Email</h3>
-              <p className="text-white/70">hello@muskmustgo.com</p>
-            </div>
-
-            <div className="text-center">
-              <div className="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Phone className="h-8 w-8" />
-              </div>
-              <h3 className="text-xl font-medium mb-2">Phone</h3>
-              <p className="text-white/70">(555) 123-4567</p>
-            </div>
-
-            <div className="text-center">
-              <div className="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
-                <MapPin className="h-8 w-8" />
-              </div>
-              <h3 className="text-xl font-medium mb-2">Location</h3>
-              <p className="text-white/70">San Francisco, CA</p>
+              <h3 className="text-xl font-medium mb-2">Email Support</h3>
+              <p className="text-white/70">support@muskmustgo.com</p>
             </div>
           </div>
 
@@ -110,6 +104,7 @@ export default function ContactPage() {
                     required
                     rows={6}
                     className="bg-dark-400 border-white/20 text-white resize-none"
+                    defaultValue={errorMessage ? `Order Processing Error Details:\n\n${errorMessage}\n\n` : ""}
                   />
                 </div>
 
