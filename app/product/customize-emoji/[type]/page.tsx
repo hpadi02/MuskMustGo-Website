@@ -7,7 +7,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
-import { useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import EmojiPreviewCanvas from "@/components/emoji-preview-canvas"
@@ -61,11 +60,11 @@ const emojiOptions = {
   ],
 }
 
-// Product data
+// Product data - UPDATED PRICE TO 19.99
 const product = {
   id: "tesla-elon-magnet",
   name: "Tesla vs Elon Emoji Magnet",
-  price: 20.0,
+  price: 19.99, // Changed from 20.0 to 19.99
   dimensions: '6" x 10"',
   image: "/images/emoji-musk.png",
   description:
@@ -85,7 +84,7 @@ const product = {
 
 export default function CustomizeEmojiPage({ params }: { params: { type: string } }) {
   const { toast } = useToast()
-  const router = useRouter()
+  // REMOVED useRouter - no automatic navigation
 
   // State for selected emojis - now storing the full emoji objects
   const [selectedEmojis, setSelectedEmojis] = useState({
@@ -109,7 +108,7 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
     })
   }
 
-  // Handler for adding to cart
+  // Handler for adding to cart - REMOVED NAVIGATION
   const handleAddToCart = (e: React.MouseEvent) => {
     // Prevent default behavior to avoid any external cart handlers
     e.preventDefault()
@@ -149,11 +148,10 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
       description: `${customName} has been added to your cart`,
     })
 
+    // REMOVED NAVIGATION - just reset the added state after 3 seconds
     setTimeout(() => {
       setAdded(false)
-      // Navigate to cart without using window.confirm
-      router.push("/cart")
-    }, 1500)
+    }, 3000)
   }
 
   return (
@@ -268,6 +266,17 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
                   </>
                 )}
               </Button>
+
+              {/* ADDED: Link to cart for manual navigation */}
+              {added && (
+                <div className="mt-4 text-center">
+                  <Link href="/cart">
+                    <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                      View Cart
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
