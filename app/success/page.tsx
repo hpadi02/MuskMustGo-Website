@@ -1,8 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Loader2 } from "lucide-react"
@@ -36,6 +35,7 @@ export default function SuccessPage() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
   const { clearCart } = useCart()
+  const router = useRouter()
 
   useEffect(() => {
     // IMMEDIATELY clear cart if we have session_id
@@ -231,19 +231,19 @@ export default function SuccessPage() {
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Order Processing Error</h1>
           <p className="text-xl text-white/80 mb-8">{error}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/contact">
-              <Button className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg w-full sm:w-auto">
-                Contact Support
-              </Button>
-            </Link>
-            <Link href="/shop/all">
-              <Button
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
-              >
-                Continue Shopping
-              </Button>
-            </Link>
+            <Button
+              onClick={() => router.push("/contact")}
+              className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg w-full sm:w-auto"
+            >
+              Contact Support
+            </Button>
+            <Button
+              onClick={() => router.push("/shop/all")}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
+            >
+              Continue Shopping
+            </Button>
           </div>
         </div>
       </div>
@@ -259,9 +259,12 @@ export default function SuccessPage() {
           <p className="text-xl text-white/80 mb-8">
             Thank you for your purchase. We've received your order and will process it right away.
           </p>
-          <Link href="/shop/all">
-            <Button className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg">Continue Shopping</Button>
-          </Link>
+          <Button
+            onClick={() => router.push("/shop/all")}
+            className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg"
+          >
+            Continue Shopping
+          </Button>
         </div>
       </div>
     )
@@ -334,20 +337,20 @@ export default function SuccessPage() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/shop/all">
-            <Button className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg w-full sm:w-auto">
-              Continue Shopping
-            </Button>
-          </Link>
+          <Button
+            onClick={() => router.push("/shop/all")}
+            className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg w-full sm:w-auto"
+          >
+            Continue Shopping
+          </Button>
 
-          <Link href="/account/orders">
-            <Button
-              variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
-            >
-              View All Orders
-            </Button>
-          </Link>
+          <Button
+            onClick={() => router.push("/account/orders")}
+            variant="outline"
+            className="border-white/20 text-white hover:bg-white/10 px-8 py-6 text-lg w-full sm:w-auto"
+          >
+            View All Orders
+          </Button>
         </div>
       </div>
     </div>
