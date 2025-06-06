@@ -3,23 +3,12 @@
 import { loadStripe } from "@stripe/stripe-js"
 import type { CartItem } from "@/hooks/use-cart-simplified"
 
-// Get the publishable key and validate it
-const getStripePublishableKey = () => {
-  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  if (!key) {
-    console.error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not defined")
-    return null
-  }
-  if (!key.startsWith("pk_")) {
-    console.error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY should start with 'pk_'")
-    return null
-  }
-  return key
-}
+// Your test publishable key
+const STRIPE_PUBLISHABLE_KEY =
+  "pk_test_51RJKA6HXKGu0DvSUCAmDKPO6FhWBOoaYP2GeyoYVO9JUM3kYWIlCV5w9TCAy5APL2xsxt5nLULXHpqZrmcBPwXUQ00RtQ3Yxdc"
 
-// Initialize Stripe with publishable key (only if valid)
-const publishableKey = getStripePublishableKey()
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null
+// Initialize Stripe
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY)
 
 // Check if we're in an iframe (preview environment)
 const isInIframe = () => {
@@ -32,6 +21,8 @@ const isInIframe = () => {
 
 export async function createCheckoutSession(items: CartItem[]) {
   try {
+    console.log("Starting Stripe checkout with items:", items)
+
     // Check if we're in an iframe first
     if (isInIframe()) {
       console.log("Detected iframe environment, skipping Stripe redirect")
@@ -43,20 +34,12 @@ export async function createCheckoutSession(items: CartItem[]) {
       }
     }
 
-    // Check if we have a valid publishable key
-    if (!publishableKey) {
-      return {
-        success: false,
-        error: "Stripe is not configured. Please add NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to your environment variables.",
-      }
-    }
-
     const stripe = await stripePromise
 
     if (!stripe) {
       return {
         success: false,
-        error: "Stripe failed to initialize. Please check your publishable key.",
+        error: "Stripe failed to initialize. Please check your connection.",
       }
     }
 
@@ -64,7 +47,10 @@ export async function createCheckoutSession(items: CartItem[]) {
     const stripeItems = items.filter((item) => item.stripeId)
 
     if (stripeItems.length === 0) {
-      return { success: false, error: "No valid Stripe products in cart" }
+      return {
+        success: false,
+        error: "No valid Stripe products in cart. Please add products with Stripe integration.",
+      }
     }
 
     // Create line items for Stripe checkout

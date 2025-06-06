@@ -116,6 +116,8 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
       price: selectedProduct.price,
       image: product.image,
       quantity,
+      stripeId: selectedProduct.stripeId, // Add Stripe price ID
+      productId: selectedProduct.productId, // Add Stripe product ID
       customOptions: {
         tesla: selectedEmojis.tesla,
         elon: selectedEmojis.elon,
