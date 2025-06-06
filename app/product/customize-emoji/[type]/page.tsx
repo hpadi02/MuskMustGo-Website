@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useSearchParams } from "next/navigation"
-import { useAppDispatch } from "@/redux/hooks"
-import { addToCart } from "@/redux/features/cart/cartSlice"
-import { v4 as uuidv4 } from "uuid"
+import { useCart } from "@/hooks/use-cart-simplified"
 
 const CustomizeEmojiPage = () => {
   const [emoji, setEmoji] = useState("")
@@ -15,7 +13,7 @@ const CustomizeEmojiPage = () => {
   const router = useRouter()
   const { type } = useParams()
   const searchParams = useSearchParams()
-  const dispatch = useAppDispatch()
+  const { addItem } = useCart()
 
   useEffect(() => {
     // You can fetch initial data based on the 'type' param if needed
@@ -37,18 +35,18 @@ const CustomizeEmojiPage = () => {
   }
 
   const handleAddToCart = () => {
-    const newItem = {
-      id: uuidv4(),
+    addItem({
+      id: `emoji-${type}`,
       name: `Custom Emoji - ${type}`,
-      emoji: emoji,
-      color: color,
-      size: size,
       price: price,
+      image: "/placeholder.svg",
       quantity: 1,
-    }
-
-    dispatch(addToCart(newItem))
-    // router.push('/cart'); // Removed automatic navigation to cart
+      customOptions: {
+        emoji: emoji,
+        color: color,
+        size: size,
+      },
+    })
   }
 
   return (

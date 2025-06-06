@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useRouter } from "next/navigation"
+import { useCart } from "@/hooks/use-cart-simplified"
 
 const CustomizeProductPage = () => {
   const { id } = useParams()
@@ -12,6 +13,8 @@ const CustomizeProductPage = () => {
   const [customizations, setCustomizations] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const { addItem } = useCart()
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -47,21 +50,18 @@ const CustomizeProductPage = () => {
 
   const handleAddToCart = async () => {
     try {
-      const response = await fetch("/api/cart/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId: id,
-          customizations: customizations,
-          quantity: 1, // Or allow user to specify quantity
-        }),
-      })
+      // Assuming product has a price and type. Adjust as needed.
+      const productId = product.id
+      const type = product.name // Or derive type from customizations
+      const price = product.price
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      addItem({
+        id: productId,
+        name: `Custom Product - ${type}`,
+        price: price,
+        image: "/placeholder.svg",
+        quantity: 1,
+      })
 
       // Optionally, show a success message or update the cart state
       alert("Product added to cart!")
