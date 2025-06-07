@@ -60,6 +60,12 @@ export default function SuccessPage() {
 
         // Get the last order from localStorage
         const lastOrderJSON = localStorage.getItem("lastOrder")
+        // Add this right after getting lastOrderJSON
+        console.log("Raw lastOrder from localStorage:", lastOrderJSON)
+        if (lastOrderJSON) {
+          const parsedOrder = JSON.parse(lastOrderJSON)
+          console.log("Parsed lastOrder:", parsedOrder)
+        }
         if (!lastOrderJSON) {
           if (isMounted) {
             setIsProcessing(false)
