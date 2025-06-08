@@ -73,10 +73,28 @@ export async function POST(req: Request) {
       tax: orderData.tax || 0,
     }
 
-    console.log("Transformed data for Ed's API:", edOrderData)
+    // Use Ed's actual backend URL
+    const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
+
+    console.log("=== ORDER API DEBUG INFO ===")
+    console.log("API_BASE_URL env var:", process.env.API_BASE_URL)
+    console.log("Using backend URL:", backendUrl)
+    console.log("Order data being sent:", JSON.stringify(edOrderData, null, 2))
+
+    // Add a test endpoint to verify connectivity:
+    console.log("Testing backend connectivity...")
+    try {
+      const testResponse = await fetch(`${backendUrl}/health`, {
+        method: "GET",
+        signal: AbortSignal.timeout(5000),
+      })
+      console.log("Backend health check:", testResponse.status)
+    } catch (healthError) {
+      console.error("Backend health check failed:", healthError)
+    }
 
     // POST to Ed's backend API
-    const backendUrl = process.env.API_BASE_URL || "http://leafe.com:5000"
+    // const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
 
     // Add timeout to backend request
     const controller = new AbortController()
@@ -144,11 +162,39 @@ export async function POST(req: Request) {
 }
 
 // Health check endpoint
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url)
+  const test = url.searchParams.get("test")
+
+  if (test === "backend") {
+    const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
+
+    try {
+      const response = await fetch(`${backendUrl}/health`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(10000),
+      })
+
+      return NextResponse.json({
+        success: true,
+        backend_url: backendUrl,
+        backend_status: response.status,
+        backend_response: await response.text(),
+      })
+    } catch (error) {
+      return NextResponse.json({
+        success: false,
+        backend_url: backendUrl,
+        error: error instanceof Error ? error.message : "Unknown error",
+      })
+    }
+  }
+
   return NextResponse.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    backend_url: process.env.API_BASE_URL || "http://leafe.com:5000",
+    backend_url: process.env.API_BASE_URL || "http://elonmustgo.com:5000",
   })
 }
