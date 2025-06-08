@@ -162,35 +162,7 @@ export async function POST(req: Request) {
 }
 
 // Health check endpoint
-export async function GET(req: Request) {
-  const url = new URL(req.url)
-  const test = url.searchParams.get("test")
-
-  if (test === "backend") {
-    const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
-
-    try {
-      const response = await fetch(`${backendUrl}/health`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(10000),
-      })
-
-      return NextResponse.json({
-        success: true,
-        backend_url: backendUrl,
-        backend_status: response.status,
-        backend_response: await response.text(),
-      })
-    } catch (error) {
-      return NextResponse.json({
-        success: false,
-        backend_url: backendUrl,
-        error: error instanceof Error ? error.message : "Unknown error",
-      })
-    }
-  }
-
+export async function GET() {
   return NextResponse.json({
     status: "healthy",
     timestamp: new Date().toISOString(),

@@ -58,109 +58,76 @@ export default function SuccessPage() {
           }
         }
 
-        // Get the last order from localStorage
-        const lastOrderJSON = localStorage.getItem("lastOrder")
-        // Add this right after getting lastOrderJSON
-        console.log("Raw lastOrder from localStorage:", lastOrderJSON)
-        if (lastOrderJSON) {
-          const parsedOrder = JSON.parse(lastOrderJSON)
-          console.log("Parsed lastOrder:", parsedOrder)
-        }
-        if (!lastOrderJSON) {
-          if (isMounted) {
-            setIsProcessing(false)
-          }
-          return
-        }
-
-        const lastOrder = JSON.parse(lastOrderJSON)
-        if (isMounted) {
-          setOrder(lastOrder)
-        }
-
-        // If we have a Stripe session ID, try to POST to Ed's backend
+        // If we have a Stripe session ID, fetch the order details from Stripe
         if (sessionId && isMounted) {
-          console.log("Processing Stripe session:", sessionId)
+          console.log("Fetching order details from Stripe session:", sessionId)
 
           try {
-            // Prepare order data for Ed's backend API
-            const orderData = {
-              payment_id: sessionId,
-              customer: {
-                email: "customer@example.com",
-                firstname: "Customer",
-                lastname: "User",
-                addr1: "123 Main St",
-                city: "San Francisco",
-                state_prov: "CA",
-                postal_code: "94105",
-                country: "US",
-              },
-              items: lastOrder.items.map((item: OrderItem) => ({
-                product_id: item.id,
-                name: item.name,
-                price: item.price,
-                quantity: item.quantity,
-                customOptions: item.customOptions || null,
-              })),
-              shipping: lastOrder.shipping || 0,
-              tax: 0,
-            }
+            // Fetch session details from our API
+            const response = await fetch(`/api/stripe/session/${sessionId}`)
 
-            // POST to our API route with timeout
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 10000)
+            if (response.ok) {
+              const sessionData = await response.json()
+              console.log("Session data from Stripe:", sessionData)
 
-            const response = await fetch("/api/orders", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(orderData),
-              signal: controller.signal,
-            })
-
-            clearTimeout(timeoutId)
-
-            if (response.ok && isMounted) {
-              const result = await response.json()
-              console.log("Order successfully saved to Ed's backend:", result)
-
-              // Update order with backend order ID
-              const updatedOrder = {
-                ...lastOrder,
-                id: result.order_id || lastOrder.id,
-                payment_id: sessionId,
+              // Transform Stripe session data to our order format
+              const order: Order = {
+                id: `MMG-${Date.now()}`,
+                date: new Date().toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                }),
+                status: "Processing",
+                total: sessionData.amount_total / 100, // Convert from cents
+                items:
+                  sessionData.line_items?.map((item: any) => ({
+                    id: item.price?.product?.id || "unknown",
+                    name: item.price?.product?.name || "Unknown Product",
+                    price: (item.price?.unit_amount || 0) / 100,
+                    quantity: item.quantity || 1,
+                    image: item.price?.product?.images?.[0] || "/placeholder.svg",
+                  })) || [],
+                shipping: (sessionData.shipping_cost?.amount_total || 0) / 100,
+                payment_id: sessionId, // Keep for internal use but don't display
               }
-              setOrder(updatedOrder)
-              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
-            } else if (isMounted) {
-              // Backend failed but payment succeeded - log but don't fail
-              console.warn("Backend save failed but payment succeeded:", response.status)
 
-              // Still update order with payment ID
-              const updatedOrder = {
-                ...lastOrder,
-                id: lastOrder.id,
-                payment_id: sessionId,
-              }
-              setOrder(updatedOrder)
-              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
-            }
-          } catch (backendError) {
-            // Backend posting failed but payment succeeded - this is OK
-            console.warn("Backend posting failed but payment was successful:", backendError)
+              setOrder(order)
 
-            if (isMounted) {
-              // Still update order with payment ID
-              const updatedOrder = {
-                ...lastOrder,
-                id: lastOrder.id,
-                payment_id: sessionId,
+              // Save to localStorage for order history
+              try {
+                const existingOrdersJSON = localStorage.getItem("orderHistory")
+                const existingOrders = existingOrdersJSON ? JSON.parse(existingOrdersJSON) : []
+                const updatedOrders = [order, ...existingOrders]
+                localStorage.setItem("orderHistory", JSON.stringify(updatedOrders))
+                localStorage.setItem("lastOrder", JSON.stringify(order))
+              } catch (error) {
+                console.error("Failed to save order to localStorage:", error)
               }
-              setOrder(updatedOrder)
-              localStorage.setItem("lastOrder", JSON.stringify(updatedOrder))
+            } else {
+              console.error("Failed to fetch session data:", response.status)
+              // Fallback to localStorage data
+              const lastOrderJSON = localStorage.getItem("lastOrder")
+              if (lastOrderJSON) {
+                const lastOrder = JSON.parse(lastOrderJSON)
+                setOrder(lastOrder)
+              }
             }
+          } catch (error) {
+            console.error("Error fetching session data:", error)
+            // Fallback to localStorage data
+            const lastOrderJSON = localStorage.getItem("lastOrder")
+            if (lastOrderJSON) {
+              const lastOrder = JSON.parse(lastOrderJSON)
+              setOrder(lastOrder)
+            }
+          }
+        } else {
+          // No session ID, try localStorage
+          const lastOrderJSON = localStorage.getItem("lastOrder")
+          if (lastOrderJSON) {
+            const lastOrder = JSON.parse(lastOrderJSON)
+            setOrder(lastOrder)
           }
         }
       } catch (error) {
@@ -183,7 +150,7 @@ export default function SuccessPage() {
     return () => {
       isMounted = false
     }
-  }, [sessionId]) // Only depend on sessionId, remove clearCart from dependencies
+  }, [sessionId, clearCart])
 
   // Helper function to display customization options
   const renderCustomOptions = (item: OrderItem) => {
@@ -320,12 +287,7 @@ export default function SuccessPage() {
         <div className="bg-dark-300 p-6 rounded-lg mb-8">
           <p className="text-white/60 mb-2">Order Reference</p>
           <p className="text-2xl font-medium">{order.id}</p>
-          {order.payment_id && (
-            <div className="mt-4">
-              <p className="text-white/60 mb-1">Payment ID</p>
-              <p className="text-sm font-mono text-white/80">{order.payment_id}</p>
-            </div>
-          )}
+          {/* REMOVED: Payment ID display - keeping it internal only */}
         </div>
 
         <div className="bg-dark-300 rounded-lg overflow-hidden mb-8">
