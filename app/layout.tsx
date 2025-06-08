@@ -5,6 +5,7 @@ import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/hooks/use-cart-simplified" // Use the simplified version
+import { MockSessionProvider } from "@/components/mock-session-provider"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,7 +21,7 @@ export const metadata = {
   title: "MuskMustGo - Premium Merchandise for Tesla Owners",
   description:
     "Express your independence with Tesla-specific merchandise that separates your car choice from its controversial leadership.",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -37,13 +38,15 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${montserrat.variable} font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
-          <CartProvider>
-            <div className="flex flex-col min-h-screen">
-              <Navbar />
-              <main className="flex-grow">{children}</main>
-              <Footer />
-            </div>
-          </CartProvider>
+          <MockSessionProvider>
+            <CartProvider>
+              <div className="flex flex-col min-h-screen">
+                <Navbar />
+                <main className="flex-grow">{children}</main>
+                <Footer />
+              </div>
+            </CartProvider>
+          </MockSessionProvider>
         </ThemeProvider>
       </body>
     </html>
