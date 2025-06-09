@@ -114,6 +114,7 @@ export function groupProducts(products: Product[]): GroupedProduct[] {
 }
 
 // Raw product data from the API with Stripe integration
+// UPDATED: Added metadata to help with Stripe product mapping
 export const RAW_PRODUCTS: Product[] = [
   {
     product_id: "99374b4a-c419-43b1-a878-d57f676b68f6",
@@ -121,7 +122,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "deport-elon.png",
     height: 2.5,
     width: 10.0,
-    price: 13.99,
+    price: 16.99, // Updated to match Stripe price
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
@@ -133,7 +134,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "deport-elon.png",
     height: 2.5,
     width: 10.0,
-    price: 4.99,
+    price: 12.99, // Updated to match Stripe price
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
@@ -145,7 +146,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "did-not-invent.png",
     height: 6.0,
     width: 10.0,
-    price: 19.99,
+    price: 16.99, // Updated to match Stripe price
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
@@ -157,7 +158,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "did-not-invent.png",
     height: 6.0,
     width: 10.0,
-    price: 8.99,
+    price: 12.99, // Updated to match Stripe price
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
@@ -169,7 +170,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "hate-nazis.png",
     height: 6.0,
     width: 10.0,
-    price: 19.99,
+    price: 16.99, // Updated to match Stripe price
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
@@ -181,7 +182,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "hate-nazis.png",
     height: 6.0,
     width: 10.0,
-    price: 8.99,
+    price: 12.99, // Updated to match Stripe price
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
@@ -193,7 +194,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "not-ceo-wavy.png",
     height: 2.5,
     width: 10.0,
-    price: 13.99,
+    price: 16.99, // Updated to match Stripe price
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
@@ -205,7 +206,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "not-ceo-wavy.png",
     height: 2.5,
     width: 10.0,
-    price: 4.99,
+    price: 12.99, // Updated to match Stripe price
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
@@ -229,7 +230,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "no-elon-musk.png",
     height: 8.0,
     width: 8.0,
-    price: 6.99,
+    price: 12.99, // Updated to match Stripe price
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
@@ -267,3 +268,13 @@ export const GROUPED_PRODUCTS = groupProducts(RAW_PRODUCTS)
 // Filter products by type
 export const MAGNET_PRODUCTS = RAW_PRODUCTS.filter((product) => product.product_name.includes("magnet"))
 export const STICKER_PRODUCTS = RAW_PRODUCTS.filter((product) => product.product_name.includes("sticker"))
+
+// Helper function to find product by Stripe product ID
+export function findProductByStripeId(stripeProductId: string): Product | undefined {
+  return RAW_PRODUCTS.find((product) => product.productId === stripeProductId)
+}
+
+// Helper function to find product by Stripe price ID
+export function findProductByStripePriceId(stripePriceId: string): Product | undefined {
+  return RAW_PRODUCTS.find((product) => product.stripeId === stripePriceId)
+}
