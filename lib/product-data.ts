@@ -56,6 +56,8 @@ const PRODUCT_DESCRIPTIONS: Record<string, string> = {
     'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
   tesla_musk_emojis:
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
+  say_no_to_elon__bumper:
+    'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
 }
 
 // Product features
@@ -81,23 +83,38 @@ function getBaseName(productName: string): string {
 
 // Add this function to the existing file
 export function groupProducts(products: any[]) {
+  // Handle undefined or null products array
+  if (!products || !Array.isArray(products)) {
+    console.warn("groupProducts received invalid products array:", products)
+    return []
+  }
+
   const groupedMap = new Map()
 
   // Group products by their base name
   products.forEach((product) => {
+    if (!product || !product.product_name) {
+      console.warn("Invalid product found:", product)
+      return
+    }
+
     const baseId = product.product_name.replace(/_magnet$|_sticker$/i, "")
-    const baseName = product.baseName || product.product_name
-    const isMagnet = product.medium_name.includes("magnet")
-    const isSticker = product.medium_name.includes("sticker")
+    const baseName = product.baseName || getBaseName(product.product_name)
+    const isMagnet = product.medium_name?.includes("magnet") || product.product_name?.includes("magnet")
+    const isSticker = product.medium_name?.includes("sticker") || product.product_name?.includes("sticker")
 
     if (!groupedMap.has(baseId)) {
       groupedMap.set(baseId, {
         baseId,
         baseName,
         variants: {},
-        height: product.height,
-        width: product.width,
-        image: product.images?.[0] || `/images/${product.image_name}`,
+        height: product.height || 3,
+        width: product.width || 11.5,
+        image: product.images?.[0] || IMAGE_URLS[product.image_name] || `/images/${product.image_name}`,
+        description:
+          PRODUCT_DESCRIPTIONS[baseId] || `${baseName} for Tesla owners who want to express their independence.`,
+        features: isMagnet ? MAGNET_FEATURES : STICKER_FEATURES,
+        customizable: baseId === "tesla_musk_emojis",
       })
     }
 
@@ -106,14 +123,18 @@ export function groupProducts(products: any[]) {
     if (isMagnet) {
       group.variants.magnet = {
         id: product.product_id,
-        price: product.price,
+        price: product.price || 0,
         stripeId: product.stripeId,
+        height: product.height || 3,
+        width: product.width || 11.5,
       }
     } else if (isSticker) {
       group.variants.sticker = {
         id: product.product_id,
-        price: product.price,
+        price: product.price || 0,
         stripeId: product.stripeId,
+        height: product.height || 3,
+        width: product.width || 11.5,
       }
     }
   })
