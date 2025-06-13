@@ -5,6 +5,24 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
+const INSTRUCTIONS = `
+🧪 BACKEND TESTING WALKTHROUGH
+
+1. MOCK BACKEND TEST (Always works):
+   - Click "Test Mock Backend" 
+   - Check browser console (F12 → Console tab)
+   - See detailed logs of what data would be sent to Ed
+
+2. REAL BACKEND TEST (Only when Ed's server is running):
+   - Make sure Ed's backend is running on port 5000
+   - Click "Test Ed's Backend"
+   - See if the real API accepts our data format
+
+3. ENVIRONMENT SETUP:
+   - NEXT_PUBLIC_API_BASE_URL=http://localhost:5000 (for Ed's local backend)
+   - Or leave empty to use default http://localhost:5000
+`
+
 export default function TestBackendPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
@@ -204,10 +222,38 @@ export default function TestBackendPage() {
     }
   }
 
+  console.log("🧪 Backend Test Page Instructions:", INSTRUCTIONS)
+
   return (
     <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
       <div className="container mx-auto px-6 max-w-4xl">
         <h1 className="text-4xl font-bold mb-8">Backend API Testing</h1>
+
+        <Card className="bg-blue-900/20 border-blue-500/30 mb-6">
+          <CardHeader>
+            <CardTitle className="text-blue-400">📋 Testing Instructions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-blue-300 space-y-2 text-sm">
+              <p>
+                <strong>Step 1:</strong> Click "Test Mock Backend" first - this always works and shows you the data
+                structure
+              </p>
+              <p>
+                <strong>Step 2:</strong> Open browser console (F12 → Console) to see detailed logs
+              </p>
+              <p>
+                <strong>Step 3:</strong> When Ed's backend is ready, click "Test Ed's Backend"
+              </p>
+              <p>
+                <strong>Current API URL:</strong>{" "}
+                <code className="bg-black px-2 py-1 rounded">
+                  {process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000"}
+                </code>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 mb-8">
           <Card className="bg-dark-300 border-dark-200">
