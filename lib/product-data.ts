@@ -56,8 +56,6 @@ const PRODUCT_DESCRIPTIONS: Record<string, string> = {
     'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
   tesla_musk_emojis:
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
-  say_no_to_elon__bumper:
-    'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
   tesla_vs_elon_emoji:
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
 }
@@ -74,29 +72,28 @@ const MAGNET_FEATURES = [
 
 const STICKER_FEATURES = ["Premium vinyl material", ...DEFAULT_FEATURES]
 
-// Function to get base name from product name
-function getBaseName(productName: string): string {
-  return productName
-    .replace(/_magnet$|_sticker$/i, "")
-    .replace(/-\s*(magnet|sticker)$/i, "")
-    .split(/[_\s]+/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
+// Function to get base ID from Stripe product data
+function getBaseIdFromStripe(product: any): string {
+  // If the product has a baseName from our mapping, use it to create baseId
+  if (product.baseName) {
+    return product.baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+  }
 
-// Function to extract base ID from product name (removes magnet/sticker suffix)
-function getBaseId(productName: string): string {
-  return productName
-    .toLowerCase()
-    .replace(/_magnet$|_sticker$/i, "")
-    .replace(/-\s*(magnet|sticker)$/i, "")
-    .replace(/\s+/g, "_")
+  // Fallback to product name processing
+  const name = (product.product_name || product.name || "").toLowerCase()
+  return name
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_?(bumper_)?(sticker|magnet)_?/g, "")
 }
 
 // Function to determine if product is magnet or sticker
 function getProductType(product: any): "magnet" | "sticker" | "unknown" {
   const name = (product.product_name || product.name || "").toLowerCase()
-  const medium = (product.medium_name || "").toLowerCase()
+  const medium = (product.medium_name || product.medium_id || "").toLowerCase()
 
   if (name.includes("magnet") || medium.includes("magnet")) {
     return "magnet"
@@ -107,7 +104,7 @@ function getProductType(product: any): "magnet" | "sticker" | "unknown" {
   return "unknown"
 }
 
-// Add this function to the existing file
+// Updated groupProducts function to handle Stripe data properly
 export function groupProducts(products: any[]) {
   // Handle undefined or null products array
   if (!products || !Array.isArray(products)) {
@@ -126,15 +123,14 @@ export function groupProducts(products: any[]) {
       return
     }
 
-    // Use product_name if available, otherwise use name (for Stripe products)
-    const productName = product.product_name || product.name || ""
-
-    // Extract base ID by removing magnet/sticker suffix
-    const baseId = getBaseId(productName)
-    const baseName = product.baseName || getBaseName(productName)
+    // Get the base ID for grouping
+    const baseId = getBaseIdFromStripe(product)
+    const baseName = product.baseName || product.product_name || product.name || "Unknown Product"
     const productType = getProductType(product)
 
-    console.log(`Processing product: ${productName} -> baseId: ${baseId}, type: ${productType}`)
+    console.log(
+      `Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, type: ${productType}`,
+    )
 
     // Create the grouped product if it doesn't exist
     if (!groupedMap.has(baseId)) {
@@ -151,7 +147,7 @@ export function groupProducts(products: any[]) {
         description:
           PRODUCT_DESCRIPTIONS[baseId] || `${baseName} for Tesla owners who want to express their independence.`,
         features: productType === "magnet" ? MAGNET_FEATURES : STICKER_FEATURES,
-        customizable: baseId.includes("tesla") && baseId.includes("emoji"),
+        customizable: baseId.includes("emoji") || baseId.includes("tesla_vs_elon_emoji"),
       })
     }
 
@@ -160,7 +156,7 @@ export function groupProducts(products: any[]) {
     // Create the product variant object
     const productVariant = {
       product_id: product.product_id || product.id,
-      product_name: productName,
+      product_name: product.product_name || product.name,
       image_name: product.image_name || "unknown.png",
       height: product.height || 3,
       width: product.width || 11.5,
@@ -183,20 +179,29 @@ export function groupProducts(products: any[]) {
         group.features = STICKER_FEATURES
       }
     } else {
-      // If we can't determine the type, add as both (fallback)
-      console.warn(`Could not determine product type for: ${productName}`)
-      group.variants.magnet = productVariant
+      // If we can't determine the type, log warning but don't add
+      console.warn(`Could not determine product type for: ${product.product_name || product.name}`)
     }
   })
 
   const result = Array.from(groupedMap.values())
   console.log(`Grouped ${products.length} products into ${result.length} product groups`)
 
+  // Log the final grouped products for debugging
+  result.forEach((group) => {
+    console.log(`Group: ${group.baseName}`, {
+      baseId: group.baseId,
+      hasMagnet: !!group.variants.magnet,
+      hasSticker: !!group.variants.sticker,
+      magnetPrice: group.variants.magnet?.price,
+      stickerPrice: group.variants.sticker?.price,
+    })
+  })
+
   return result
 }
 
-// Raw product data from the API with Stripe integration
-// UPDATED: Added metadata to help with Stripe product mapping
+// Keep the existing raw products as fallback
 export const RAW_PRODUCTS: Product[] = [
   {
     product_id: "99374b4a-c419-43b1-a878-d57f676b68f6",

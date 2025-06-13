@@ -1,231 +1,192 @@
-import "server-only"
 import Stripe from "stripe"
 
-// Initialize Stripe with the secret key
-const getStripe = () => {
-  // Use provided environment variable or fallback to the test key
-  const secretKey =
-    process.env.STRIPE_SECRET_KEY ||
-    "sk_test_51RJKA6HXKGu0DvSUpndydQYuU7p3ZG4FyIB9XVrXtZ7jP8r9tX0eo2IUTTJMsLnSF18tonk0ys9T0qiyoeVAmoAP00wf1KQbQW"
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
 
-  if (!secretKey) {
-    console.warn("STRIPE_SECRET_KEY is not defined in environment variables")
-    return null
-  }
-
-  if (secretKey.startsWith("pk_")) {
-    console.warn("You're using a publishable key (pk_) instead of a secret key (sk_)")
-    return null
-  }
-
-  return new Stripe(secretKey, {
-    apiVersion: "2023-10-16",
-  })
+export interface StripeProductData {
+  product_id: string
+  product_name: string
+  baseName: string
+  image_name: string
+  height: number
+  width: number
+  price: number
+  medium_id: string
+  medium_name: string
+  stripeId: string // Price ID
+  productId: string // Product ID
+  images: string[]
 }
 
-// Map Stripe products to our product format
-export async function getStripeProducts() {
+// Mapping from Stripe product names to our internal structure
+const STRIPE_PRODUCT_MAPPING: Record<
+  string,
+  {
+    baseId: string
+    baseName: string
+    image_name: string
+    height: number
+    width: number
+    customizable?: boolean
+  }
+> = {
+  "Say No to Elon! - bumper sticker": {
+    baseId: "no_elon_face",
+    baseName: "Say No to Elon!",
+    image_name: "no-elon-musk.png",
+    height: 8.0,
+    width: 8.0,
+  },
+  "Say No to Elon! - magnet": {
+    baseId: "no_elon_face",
+    baseName: "Say No to Elon!",
+    image_name: "no-elon-musk.png",
+    height: 8.0,
+    width: 8.0,
+  },
+  "Love the Car, NOT the CEO! - bumper sticker": {
+    baseId: "not_ceo_wavy",
+    baseName: "Love the Car, NOT the CEO!",
+    image_name: "not-ceo-wavy.png",
+    height: 2.5,
+    width: 10.0,
+  },
+  "Love the Car, NOT the CEO! - magnet": {
+    baseId: "not_ceo_wavy",
+    baseName: "Love the Car, NOT the CEO!",
+    image_name: "not-ceo-wavy.png",
+    height: 2.5,
+    width: 10.0,
+  },
+  "Love Teslas, Hate Nazis - bumper sticker": {
+    baseId: "hate_nazis",
+    baseName: "Love Teslas, Hate Nazis",
+    image_name: "hate-nazis.png",
+    height: 6.0,
+    width: 10.0,
+  },
+  "Love Teslas, Hate Nazis - magnet": {
+    baseId: "hate_nazis",
+    baseName: "Love Teslas, Hate Nazis",
+    image_name: "hate-nazis.png",
+    height: 6.0,
+    width: 10.0,
+  },
+  "Deport Elon! - bumper sticker": {
+    baseId: "deport_elon",
+    baseName: "Deport Elon!",
+    image_name: "deport-elon.png",
+    height: 2.5,
+    width: 10.0,
+  },
+  "Deport Elon! - magnet": {
+    baseId: "deport_elon",
+    baseName: "Deport Elon!",
+    image_name: "deport-elon.png",
+    height: 2.5,
+    width: 10.0,
+  },
+  "Elon Did Not Invent This Car - bumper sticker": {
+    baseId: "did_not_invent",
+    baseName: "Elon Did Not Invent This Car",
+    image_name: "did-not-invent.png",
+    height: 6.0,
+    width: 10.0,
+  },
+  "Elon Did Not Invent This Car - magnet": {
+    baseId: "did_not_invent",
+    baseName: "Elon Did Not Invent This Car",
+    image_name: "did-not-invent.png",
+    height: 6.0,
+    width: 10.0,
+  },
+  "Tesla vs. Elon Emoji Bumper Sticker": {
+    baseId: "tesla_vs_elon_emoji",
+    baseName: "Tesla vs. Elon Emoji",
+    image_name: "emoji-musk.png",
+    height: 8.0,
+    width: 12.0,
+    customizable: true,
+  },
+  "Tesla vs. Elon Emoji Magnet": {
+    baseId: "tesla_vs_elon_emoji",
+    baseName: "Tesla vs. Elon Emoji",
+    image_name: "emoji-musk.png",
+    height: 8.0,
+    width: 12.0,
+    customizable: true,
+  },
+}
+
+export async function getStripeProducts(): Promise<StripeProductData[]> {
   try {
-    const stripe = getStripe()
-
-    // If we couldn't initialize Stripe, return fallback products
-    if (!stripe) {
-      console.log("Using fallback product data due to Stripe initialization issues")
-      return getFallbackProducts()
-    }
-
     console.log("Fetching products from Stripe...")
 
-    // Fetch all products from Stripe
+    // Get all active products
     const products = await stripe.products.list({
       active: true,
-      expand: ["data.default_price"],
+      limit: 100,
     })
 
     console.log(`Found ${products.data.length} products in Stripe`)
 
-    // Fetch all prices to ensure we have the most up-to-date pricing
-    const prices = await stripe.prices.list({
-      active: true,
-      expand: ["data.product"],
-    })
+    const productData: StripeProductData[] = []
 
-    console.log(`Found ${prices.data.length} prices in Stripe`)
+    for (const product of products.data) {
+      try {
+        // Get prices for this product
+        const prices = await stripe.prices.list({
+          product: product.id,
+          active: true,
+        })
 
-    // Create a map of product IDs to their prices
-    const priceMap = new Map()
-    prices.data.forEach((price) => {
-      const productId = typeof price.product === "string" ? price.product : price.product?.id
-      if (!priceMap.has(productId)) {
-        priceMap.set(productId, [])
+        if (prices.data.length === 0) {
+          console.warn(`No active prices found for product: ${product.name}`)
+          continue
+        }
+
+        // Use the first active price
+        const price = prices.data[0]
+
+        // Get product mapping
+        const mapping = STRIPE_PRODUCT_MAPPING[product.name || ""]
+
+        if (!mapping) {
+          console.warn(`No mapping found for Stripe product: ${product.name}`)
+          continue
+        }
+
+        // Determine if this is a magnet or sticker
+        const isMagnet = (product.name || "").toLowerCase().includes("magnet")
+        const isSticker = (product.name || "").toLowerCase().includes("sticker")
+
+        const productInfo: StripeProductData = {
+          product_id: product.id,
+          product_name: product.name || "",
+          baseName: mapping.baseName,
+          image_name: mapping.image_name,
+          height: mapping.height,
+          width: mapping.width,
+          price: (price.unit_amount || 0) / 100, // Convert from cents
+          medium_id: isMagnet ? "magnet" : "sticker",
+          medium_name: isMagnet ? "bumper magnet" : "bumper sticker",
+          stripeId: price.id,
+          productId: product.id,
+          images: product.images || [],
+        }
+
+        productData.push(productInfo)
+        console.log(`Added product: ${product.name} - $${productInfo.price}`)
+      } catch (error) {
+        console.error(`Error processing product ${product.name}:`, error)
       }
-      priceMap.get(productId).push(price)
-    })
+    }
 
-    // Map Stripe products to our format
-    const mappedProducts = products.data.map((product) => {
-      const productPrices = priceMap.get(product.id) || []
-      const defaultPrice = productPrices.find((p) => p.id === product.default_price) || productPrices[0]
-
-      // Extract dimensions from metadata if available
-      const height = Number.parseFloat(product.metadata?.height || "0") || 3
-      const width = Number.parseFloat(product.metadata?.width || "0") || 11.5
-
-      // Determine if it's a magnet or sticker from the name
-      const isMagnet = product.name.toLowerCase().includes("magnet")
-      const isSticker = product.name.toLowerCase().includes("sticker")
-      const medium_name = isMagnet ? "bumper magnet" : isSticker ? "bumper sticker" : "product"
-
-      // Extract base product name (without magnet/sticker suffix)
-      const baseName = product.name.replace(/\s*-\s*(Magnet|Sticker)$/i, "").trim()
-
-      // Generate a product_id if not in metadata
-      const product_id = product.metadata?.product_id || product.id
-
-      // Extract image name from metadata or use first image
-      const image_name =
-        product.metadata?.image_name ||
-        (product.images && product.images.length > 0
-          ? product.images[0].split("/").pop() || "unknown.png"
-          : "unknown.png")
-
-      return {
-        product_id,
-        product_name:
-          product.metadata?.product_name ||
-          product.name
-            .toLowerCase()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, ""),
-        image_name,
-        height,
-        width,
-        price: defaultPrice?.unit_amount ? defaultPrice.unit_amount / 100 : 0,
-        medium_id: product.metadata?.medium_id || "",
-        medium_name,
-        stripeId: defaultPrice?.id || "",
-        productId: product.id,
-        baseName,
-        description: product.description || "",
-        images: product.images || [],
-      }
-    })
-
-    console.log(`Mapped ${mappedProducts.length} products successfully`)
-    return mappedProducts
+    console.log(`Successfully processed ${productData.length} products`)
+    return productData
   } catch (error) {
     console.error("Error fetching products from Stripe:", error)
-    return getFallbackProducts()
+    return []
   }
-}
-
-// Get a single product by ID
-export async function getStripeProduct(productId: string) {
-  try {
-    const stripe = getStripe()
-
-    // If we couldn't initialize Stripe, return null
-    if (!stripe) {
-      console.log("Cannot fetch product due to Stripe initialization issues")
-      return null
-    }
-
-    const product = await stripe.products.retrieve(productId, {
-      expand: ["default_price"],
-    })
-
-    // Get all prices for this product
-    const prices = await stripe.prices.list({
-      product: productId,
-      active: true,
-    })
-
-    const defaultPrice = product.default_price as Stripe.Price
-
-    return {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      images: product.images,
-      metadata: product.metadata || {},
-      default_price: defaultPrice
-        ? {
-            id: defaultPrice.id,
-            unit_amount: defaultPrice.unit_amount,
-            currency: defaultPrice.currency,
-          }
-        : null,
-      all_prices: prices.data.map((p) => ({
-        id: p.id,
-        unit_amount: p.unit_amount,
-        currency: p.currency,
-        nickname: p.nickname,
-      })),
-    }
-  } catch (error) {
-    console.error(`Error fetching product ${productId} from Stripe:`, error)
-    return null
-  }
-}
-
-// Fallback products for development/testing
-function getFallbackProducts() {
-  return [
-    {
-      product_id: "fallback_1",
-      product_name: "no_elon_musk_magnet",
-      image_name: "no-elon-musk.png",
-      height: 3,
-      width: 11.5,
-      price: 9.99,
-      medium_name: "bumper magnet",
-      stripeId: "price_fallback_1",
-      productId: "prod_fallback_1",
-      baseName: "No Elon Musk",
-      description: "Show your opposition to Elon Musk with this bumper magnet",
-      images: ["/images/no-elon-musk.png"],
-    },
-    {
-      product_id: "fallback_2",
-      product_name: "no_elon_musk_sticker",
-      image_name: "no-elon-musk.png",
-      height: 3,
-      width: 11.5,
-      price: 7.99,
-      medium_name: "bumper sticker",
-      stripeId: "price_fallback_2",
-      productId: "prod_fallback_2",
-      baseName: "No Elon Musk",
-      description: "Show your opposition to Elon Musk with this bumper sticker",
-      images: ["/images/no-elon-musk.png"],
-    },
-    {
-      product_id: "fallback_3",
-      product_name: "emoji_musk_magnet",
-      image_name: "emoji-musk.png",
-      height: 3,
-      width: 3,
-      price: 8.99,
-      medium_name: "bumper magnet",
-      stripeId: "price_fallback_3",
-      productId: "prod_fallback_3",
-      baseName: "Emoji Musk",
-      description: "Express yourself with this customizable emoji magnet",
-      images: ["/images/emoji-musk.png"],
-    },
-    {
-      product_id: "fallback_4",
-      product_name: "emoji_musk_sticker",
-      image_name: "emoji-musk.png",
-      height: 3,
-      width: 3,
-      price: 6.99,
-      medium_name: "bumper sticker",
-      stripeId: "price_fallback_4",
-      productId: "prod_fallback_4",
-      baseName: "Emoji Musk",
-      description: "Express yourself with this customizable emoji sticker",
-      images: ["/images/emoji-musk.png"],
-    },
-  ]
 }
