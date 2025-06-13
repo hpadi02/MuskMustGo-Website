@@ -4,14 +4,15 @@ import { ArrowLeft } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
 import { getStripeProducts } from "@/lib/stripe-products"
 import { groupProducts } from "@/lib/product-data"
+import AddToCartClient from "@/components/add-to-cart-client"
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
   // Fetch products from Stripe
   const products = await getStripeProducts()
-  
+
   // Group products by base name
   const groupedProducts = groupProducts(products)
-  
+
   // Find product by ID
   const product = groupedProducts.find((p) => p.baseId === params.id)
 
@@ -78,12 +79,9 @@ export default async function ProductPage({ params }: { params: { id: string } }
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-6">
                 {product.baseName}
               </h1>
-              
-              {/* Product Type Selection - Server Component */}
+
               <div className="mb-8">
-                <p className="text-3xl font-medium mb-2">
-                  ${product.variants[defaultVariant].price.toFixed(2)}
-                </p>
+                <p className="text-3xl font-medium mb-2">${product.variants[defaultVariant].price.toFixed(2)}</p>
                 <p className="text-lg text-white/70 mb-6">
                   Dimensions: {selectedProduct.height}" x {selectedProduct.width}"
                 </p>
@@ -118,4 +116,63 @@ export default async function ProductPage({ params }: { params: { id: string } }
                           xmlns="http://www.w3.org/2000/svg"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
-                        \
+                        </svg>
+                      </span>
+                      <span className="text-white/80">{feature}</span>
+                    </li>
+                  ))}
+                  <li className="flex items-start">
+                    <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                      <svg
+                        className="w-3 h-3 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </span>
+                    <span className="text-white/80">
+                      Size: {selectedProduct.height}" x {selectedProduct.width}"
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Add to Cart Component - Client Side */}
+              <AddToCartClient product={product} defaultVariant={defaultVariant} />
+
+              <div className="mt-10 text-white/60 space-y-2 text-sm">
+                <p className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  Free shipping on orders over $50
+                </p>
+                <p className="flex items-center">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  30-day money-back guarantee
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
