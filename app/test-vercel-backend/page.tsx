@@ -232,6 +232,51 @@ export default function TestVercelBackendPage() {
     }
   }
 
+  const testServerConnectivity = async () => {
+    setIsLoading(true)
+    setError(null)
+    setResult(null)
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000"
+      const pingUrl = `${backendUrl}/ping`
+      setCurrentUrl(pingUrl)
+
+      console.log("Testing server connectivity:", pingUrl)
+
+      const response = await fetch(pingUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const responseText = await response.text()
+      console.log("Ping response:", responseText)
+
+      let responseData
+      try {
+        responseData = JSON.parse(responseText)
+      } catch {
+        responseData = { message: responseText, raw_response: responseText }
+      }
+
+      setResult({
+        ...responseData,
+        test_url: pingUrl,
+        response_status: response.status,
+        test_type: "connectivity-check",
+        server_reachable: response.ok,
+      })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred"
+      setError(`Server connectivity failed: ${errorMessage}`)
+      console.error("Connectivity test failed:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
       <div className="container mx-auto px-6 max-w-5xl">
@@ -258,11 +303,30 @@ export default function TestVercelBackendPage() {
         </Card>
 
         <Tabs defaultValue="mock" className="mb-8">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="ping">Ping Test</TabsTrigger>
             <TabsTrigger value="health">Health Check</TabsTrigger>
             <TabsTrigger value="mock">Mock Backend</TabsTrigger>
             <TabsTrigger value="real">Real Backend</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="ping">
+            <Card className="bg-dark-300 border-dark-200">
+              <CardHeader>
+                <CardTitle className="text-white">🏓 Server Connectivity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white/70 mb-4">Test if Ed's server is reachable and responding to requests.</p>
+                <Button
+                  onClick={testServerConnectivity}
+                  disabled={isLoading}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {isLoading ? "Pinging..." : "Ping Ed's Server"}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="health">
             <Card className="bg-dark-300 border-dark-200">
