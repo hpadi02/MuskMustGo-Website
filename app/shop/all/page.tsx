@@ -13,8 +13,14 @@ export default async function AllProductsPage() {
 
   try {
     products = await getStripeProducts()
-    // Group products by base name
-    groupedProducts = groupProducts(products)
+
+    // If we got products from Stripe, group them
+    if (products && products.length > 0) {
+      groupedProducts = groupProducts(products)
+    } else {
+      // If no products from Stripe, use static data
+      groupedProducts = GROUPED_PRODUCTS
+    }
   } catch (error) {
     console.error("Error in AllProductsPage:", error)
     // Fallback to static data if there's an error
@@ -22,7 +28,7 @@ export default async function AllProductsPage() {
   }
 
   // If we still don't have products, use the static data
-  if (groupedProducts.length === 0) {
+  if (!groupedProducts || groupedProducts.length === 0) {
     groupedProducts = GROUPED_PRODUCTS
   }
 
@@ -38,6 +44,15 @@ export default async function AllProductsPage() {
           <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-6">All Products</h1>
           <p className="text-xl text-white/70">Express your independence with premium merchandise for Tesla owners.</p>
         </div>
+
+        {process.env.STRIPE_SECRET_KEY?.startsWith("pk_") && (
+          <div className="bg-yellow-900/20 border border-yellow-700 text-yellow-200 p-4 mb-8 max-w-4xl mx-auto">
+            <p className="font-medium">⚠️ Using fallback product data</p>
+            <p className="text-sm mt-1">
+              The Stripe secret key is incorrectly configured. Please check your environment variables.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
           {groupedProducts.map((product) => {

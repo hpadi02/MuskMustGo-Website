@@ -6,13 +6,13 @@ const getStripe = () => {
   const secretKey = process.env.STRIPE_SECRET_KEY
 
   if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not defined in environment variables")
+    console.warn("STRIPE_SECRET_KEY is not defined in environment variables")
+    return null
   }
 
   if (secretKey.startsWith("pk_")) {
-    throw new Error(
-      "You're using a publishable key (pk_) instead of a secret key (sk_). Please check your environment variables.",
-    )
+    console.warn("You're using a publishable key (pk_) instead of a secret key (sk_)")
+    return null
   }
 
   return new Stripe(secretKey, {
@@ -24,6 +24,12 @@ const getStripe = () => {
 export async function getStripeProducts() {
   try {
     const stripe = getStripe()
+
+    // If we couldn't initialize Stripe, return fallback products
+    if (!stripe) {
+      console.log("Using fallback product data due to Stripe initialization issues")
+      return getFallbackProducts()
+    }
 
     // Fetch all products from Stripe
     const products = await stripe.products.list({
@@ -97,14 +103,7 @@ export async function getStripeProducts() {
     })
   } catch (error) {
     console.error("Error fetching products from Stripe:", error)
-
-    // Provide fallback data for development/testing
-    if (process.env.NODE_ENV === "development") {
-      console.log("Using fallback product data for development")
-      return getFallbackProducts()
-    }
-
-    return []
+    return getFallbackProducts()
   }
 }
 
@@ -112,6 +111,12 @@ export async function getStripeProducts() {
 export async function getStripeProduct(productId: string) {
   try {
     const stripe = getStripe()
+
+    // If we couldn't initialize Stripe, return null
+    if (!stripe) {
+      console.log("Cannot fetch product due to Stripe initialization issues")
+      return null
+    }
 
     const product = await stripe.products.retrieve(productId, {
       expand: ["default_price"],
@@ -181,6 +186,34 @@ function getFallbackProducts() {
       baseName: "No Elon Musk",
       description: "Show your opposition to Elon Musk with this bumper sticker",
       images: ["/images/no-elon-musk.png"],
+    },
+    {
+      product_id: "fallback_3",
+      product_name: "emoji_musk_magnet",
+      image_name: "emoji-musk.png",
+      height: 3,
+      width: 3,
+      price: 8.99,
+      medium_name: "bumper magnet",
+      stripeId: "price_fallback_3",
+      productId: "prod_fallback_3",
+      baseName: "Emoji Musk",
+      description: "Express yourself with this customizable emoji magnet",
+      images: ["/images/emoji-musk.png"],
+    },
+    {
+      product_id: "fallback_4",
+      product_name: "emoji_musk_sticker",
+      image_name: "emoji-musk.png",
+      height: 3,
+      width: 3,
+      price: 6.99,
+      medium_name: "bumper sticker",
+      stripeId: "price_fallback_4",
+      productId: "prod_fallback_4",
+      baseName: "Emoji Musk",
+      description: "Express yourself with this customizable emoji sticker",
+      images: ["/images/emoji-musk.png"],
     },
   ]
 }

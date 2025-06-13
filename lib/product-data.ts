@@ -81,36 +81,36 @@ function getBaseName(productName: string): string {
 
 // Add this function to the existing file
 export function groupProducts(products: any[]) {
-  // Group products by base name (removing magnet/sticker suffix)
   const groupedMap = new Map()
 
+  // Group products by their base name
   products.forEach((product) => {
-    const baseName = product.baseName || product.product_name.replace(/_magnet|_sticker/g, "")
-    const baseId = product.product_id.replace(/_magnet|_sticker/g, "")
+    const baseId = product.product_name.replace(/_magnet$|_sticker$/i, "")
+    const baseName = product.baseName || product.product_name
+    const isMagnet = product.medium_name.includes("magnet")
+    const isSticker = product.medium_name.includes("sticker")
 
     if (!groupedMap.has(baseId)) {
       groupedMap.set(baseId, {
         baseId,
         baseName,
+        variants: {},
         height: product.height,
         width: product.width,
         image: product.images?.[0] || `/images/${product.image_name}`,
-        variants: {},
       })
     }
 
-    // Add as magnet or sticker variant
-    const isMagnet = product.medium_name?.includes("magnet") || product.product_id?.includes("magnet")
-    const isSticker = product.medium_name?.includes("sticker") || product.product_id?.includes("sticker")
+    const group = groupedMap.get(baseId)
 
     if (isMagnet) {
-      groupedMap.get(baseId).variants.magnet = {
+      group.variants.magnet = {
         id: product.product_id,
         price: product.price,
         stripeId: product.stripeId,
       }
     } else if (isSticker) {
-      groupedMap.get(baseId).variants.sticker = {
+      group.variants.sticker = {
         id: product.product_id,
         price: product.price,
         stripeId: product.stripeId,
