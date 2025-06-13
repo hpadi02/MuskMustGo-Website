@@ -71,8 +71,8 @@ export async function POST(req: Request) {
 
       console.log("Order data for backend:", JSON.stringify(orderData, null, 2))
 
-      // POST to Ed's backend API
-      const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
+      // POST to Ed's backend API - UPDATED to use localhost as default
+      const backendUrl = process.env.API_BASE_URL || "http://localhost:5000"
 
       const backendResponse = await fetch(`${backendUrl}/orders`, {
         method: "POST",

@@ -56,7 +56,7 @@ async function processStripeOrder(sessionId: string) {
 
     console.log("Order data formatted for Ed's backend:", JSON.stringify(orderData, null, 2))
 
-    // Step 3: POST to Ed's backend (localhost)
+    // Step 3: POST to Ed's backend - UPDATED to use localhost as default
     const backendUrl = process.env.API_BASE_URL || "http://localhost:5000"
     console.log("Posting to Ed's backend at:", `${backendUrl}/orders`)
 

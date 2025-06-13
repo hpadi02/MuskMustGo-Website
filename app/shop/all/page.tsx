@@ -3,9 +3,16 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
 import { ShoppingBag } from "lucide-react"
-import { GROUPED_PRODUCTS } from "@/lib/product-data"
+import { getStripeProducts } from "@/lib/stripe-products"
+import { groupProducts } from "@/lib/product-data"
 
-export default function AllProductsPage() {
+export default async function AllProductsPage() {
+  // Fetch products from Stripe
+  const products = await getStripeProducts()
+
+  // Group products by base name
+  const groupedProducts = groupProducts(products)
+
   return (
     <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
       <div className="container mx-auto px-6 md:px-10">
@@ -20,7 +27,7 @@ export default function AllProductsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-8 max-w-4xl mx-auto">
-          {GROUPED_PRODUCTS.map((product) => {
+          {groupedProducts.map((product) => {
             // Special handling for square products to make them proportional
             const isSquareProduct = product.height === product.width
             const aspectRatio = product.width / product.height

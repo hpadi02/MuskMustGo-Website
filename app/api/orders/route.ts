@@ -73,8 +73,8 @@ export async function POST(req: Request) {
       tax: orderData.tax || 0,
     }
 
-    // Use Ed's actual backend URL
-    const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
+    // Use Ed's actual backend URL - UPDATED to use localhost as default
+    const backendUrl = process.env.API_BASE_URL || "http://localhost:5000"
 
     console.log("=== ORDER API DEBUG INFO ===")
     console.log("API_BASE_URL env var:", process.env.API_BASE_URL)
@@ -92,9 +92,6 @@ export async function POST(req: Request) {
     } catch (healthError) {
       console.error("Backend health check failed:", healthError)
     }
-
-    // POST to Ed's backend API
-    // const backendUrl = process.env.API_BASE_URL || "http://elonmustgo.com:5000"
 
     // Add timeout to backend request
     const controller = new AbortController()
@@ -167,6 +164,6 @@ export async function GET() {
     status: "healthy",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    backend_url: process.env.API_BASE_URL || "http://elonmustgo.com:5000",
+    backend_url: process.env.API_BASE_URL || "http://localhost:5000",
   })
 }
