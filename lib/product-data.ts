@@ -81,6 +81,11 @@ function getBaseName(productName: string): string {
     .join(" ")
 }
 
+// Function to extract base ID from product name (removes magnet/sticker suffix)
+function getBaseId(productName: string): string {
+  return productName.replace(/_magnet$|_sticker$/i, "")
+}
+
 // Add this function to the existing file
 export function groupProducts(products: any[]) {
   // Handle undefined or null products array
@@ -98,11 +103,13 @@ export function groupProducts(products: any[]) {
       return
     }
 
-    const baseId = product.product_name.replace(/_magnet$|_sticker$/i, "")
+    // Extract base ID by removing magnet/sticker suffix
+    const baseId = getBaseId(product.product_name)
     const baseName = product.baseName || getBaseName(product.product_name)
     const isMagnet = product.medium_name?.includes("magnet") || product.product_name?.includes("magnet")
     const isSticker = product.medium_name?.includes("sticker") || product.product_name?.includes("sticker")
 
+    // Create the grouped product if it doesn't exist
     if (!groupedMap.has(baseId)) {
       groupedMap.set(baseId, {
         baseId,
@@ -120,21 +127,38 @@ export function groupProducts(products: any[]) {
 
     const group = groupedMap.get(baseId)
 
+    // Add the product as either magnet or sticker variant
     if (isMagnet) {
       group.variants.magnet = {
-        id: product.product_id,
-        price: product.price || 0,
-        stripeId: product.stripeId,
+        product_id: product.product_id,
+        product_name: product.product_name,
+        image_name: product.image_name,
         height: product.height || 3,
         width: product.width || 11.5,
+        price: product.price || 0,
+        medium_id: product.medium_id || "",
+        medium_name: product.medium_name || "bumper magnet",
+        stripeId: product.stripeId,
+        productId: product.productId,
       }
+      // Update features to magnet features if this is a magnet
+      group.features = MAGNET_FEATURES
     } else if (isSticker) {
       group.variants.sticker = {
-        id: product.product_id,
-        price: product.price || 0,
-        stripeId: product.stripeId,
+        product_id: product.product_id,
+        product_name: product.product_name,
+        image_name: product.image_name,
         height: product.height || 3,
         width: product.width || 11.5,
+        price: product.price || 0,
+        medium_id: product.medium_id || "",
+        medium_name: product.medium_name || "bumper sticker",
+        stripeId: product.stripeId,
+        productId: product.productId,
+      }
+      // If we don't have magnet features yet, use sticker features
+      if (group.features === MAGNET_FEATURES && !group.variants.magnet) {
+        group.features = STICKER_FEATURES
       }
     }
   })

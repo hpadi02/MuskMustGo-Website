@@ -6,35 +6,8 @@ import { ShoppingBag, Minus, Plus, Check } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 import { useToast } from "@/hooks/use-toast"
 
-interface Product {
-  baseId: string
-  baseName: string
-  image: string
-  description: string
-  features: string[]
-  customizable: boolean
-  variants: {
-    magnet?: {
-      product_id: string
-      price: number
-      height: number
-      width: number
-      stripeId: string
-      productId: string
-    }
-    sticker?: {
-      product_id: string
-      price: number
-      height: number
-      width: number
-      stripeId: string
-      productId: string
-    }
-  }
-}
-
 interface AddToCartClientProps {
-  product: Product
+  product: any
   defaultVariant: "magnet" | "sticker"
 }
 
@@ -46,11 +19,7 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
   const [added, setAdded] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<"magnet" | "sticker">(defaultVariant)
 
-  const selectedProduct = product.variants[selectedVariant]
-
-  if (!selectedProduct) {
-    return <div>Product variant not available</div>
-  }
+  const selectedProduct = product?.variants?.[selectedVariant]
 
   const decreaseQuantity = () => {
     if (quantity > 1) {
@@ -63,9 +32,14 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
   }
 
   const handleAddToCart = () => {
-    const selectedProductData = product.variants[selectedVariant]
-
-    if (!selectedProductData) return
+    if (!selectedProduct) {
+      toast({
+        title: "Error",
+        description: "Selected variant is not available",
+        variant: "destructive",
+      })
+      return
+    }
 
     addItem({
       id: selectedProduct.product_id,
@@ -73,8 +47,8 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
       price: selectedProduct.price,
       image: product.image,
       quantity,
-      stripeId: selectedProductData.stripeId,
-      productId: selectedProductData.productId,
+      stripeId: selectedProduct.stripeId,
+      productId: selectedProduct.productId,
     })
 
     setAdded(true)
@@ -88,6 +62,14 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
     setTimeout(() => {
       setAdded(false)
     }, 2000)
+  }
+
+  if (!selectedProduct) {
+    return (
+      <div className="text-red-500">
+        <p>This product variant is not available.</p>
+      </div>
+    )
   }
 
   return (
@@ -106,7 +88,7 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
                 onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
                 className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
               />
-              <span className="text-white">Magnet (${product.variants.magnet?.price.toFixed(2)})</span>
+              <span className="text-white">Magnet (${product.variants.magnet.price.toFixed(2)})</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -117,12 +99,13 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
                 onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
                 className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
               />
-              <span className="text-white">Sticker (${product.variants.sticker?.price.toFixed(2)})</span>
+              <span className="text-white">Sticker (${product.variants.sticker.price.toFixed(2)})</span>
             </label>
           </div>
         </div>
       )}
 
+      {/* Quantity Selection */}
       <div>
         <p className="text-sm text-white/60 mb-2">Quantity</p>
         <div className="flex items-center">
@@ -146,6 +129,7 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
         </div>
       </div>
 
+      {/* Add to Cart Button */}
       <Button
         size="lg"
         className={`${
@@ -159,7 +143,7 @@ export default function AddToCartClient({ product, defaultVariant }: AddToCartCl
           </>
         ) : (
           <>
-            <ShoppingBag className="mr-2 h-5 w-5" /> ADD TO CART
+            <ShoppingBag className="mr-2 h-5 w-5" /> ADD TO CART - ${selectedProduct.price.toFixed(2)}
           </>
         )}
       </Button>
