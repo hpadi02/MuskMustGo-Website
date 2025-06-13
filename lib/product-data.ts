@@ -58,6 +58,8 @@ const PRODUCT_DESCRIPTIONS: Record<string, string> = {
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
   say_no_to_elon__bumper:
     'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
+  tesla_vs_elon_emoji:
+    "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
 }
 
 // Product features
@@ -75,15 +77,34 @@ const STICKER_FEATURES = ["Premium vinyl material", ...DEFAULT_FEATURES]
 // Function to get base name from product name
 function getBaseName(productName: string): string {
   return productName
-    .replace(/_magnet$|_sticker$/, "")
-    .split("_")
+    .replace(/_magnet$|_sticker$/i, "")
+    .replace(/-\s*(magnet|sticker)$/i, "")
+    .split(/[_\s]+/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
 }
 
 // Function to extract base ID from product name (removes magnet/sticker suffix)
 function getBaseId(productName: string): string {
-  return productName.replace(/_magnet$|_sticker$/i, "")
+  return productName
+    .toLowerCase()
+    .replace(/_magnet$|_sticker$/i, "")
+    .replace(/-\s*(magnet|sticker)$/i, "")
+    .replace(/\s+/g, "_")
+}
+
+// Function to determine if product is magnet or sticker
+function getProductType(product: any): "magnet" | "sticker" | "unknown" {
+  const name = (product.product_name || product.name || "").toLowerCase()
+  const medium = (product.medium_name || "").toLowerCase()
+
+  if (name.includes("magnet") || medium.includes("magnet")) {
+    return "magnet"
+  }
+  if (name.includes("sticker") || medium.includes("sticker")) {
+    return "sticker"
+  }
+  return "unknown"
 }
 
 // Add this function to the existing file
@@ -94,20 +115,26 @@ export function groupProducts(products: any[]) {
     return []
   }
 
+  console.log("Grouping products:", products.length)
+
   const groupedMap = new Map()
 
   // Group products by their base name
-  products.forEach((product) => {
-    if (!product || !product.product_name) {
-      console.warn("Invalid product found:", product)
+  products.forEach((product, index) => {
+    if (!product || (!product.product_name && !product.name)) {
+      console.warn("Invalid product found at index", index, ":", product)
       return
     }
 
+    // Use product_name if available, otherwise use name (for Stripe products)
+    const productName = product.product_name || product.name || ""
+
     // Extract base ID by removing magnet/sticker suffix
-    const baseId = getBaseId(product.product_name)
-    const baseName = product.baseName || getBaseName(product.product_name)
-    const isMagnet = product.medium_name?.includes("magnet") || product.product_name?.includes("magnet")
-    const isSticker = product.medium_name?.includes("sticker") || product.product_name?.includes("sticker")
+    const baseId = getBaseId(productName)
+    const baseName = product.baseName || getBaseName(productName)
+    const productType = getProductType(product)
+
+    console.log(`Processing product: ${productName} -> baseId: ${baseId}, type: ${productType}`)
 
     // Create the grouped product if it doesn't exist
     if (!groupedMap.has(baseId)) {
@@ -117,53 +144,55 @@ export function groupProducts(products: any[]) {
         variants: {},
         height: product.height || 3,
         width: product.width || 11.5,
-        image: product.images?.[0] || IMAGE_URLS[product.image_name] || `/images/${product.image_name}`,
+        image:
+          product.images?.[0] ||
+          IMAGE_URLS[product.image_name] ||
+          `/images/${product.image_name || "no-elon-musk.png"}`,
         description:
           PRODUCT_DESCRIPTIONS[baseId] || `${baseName} for Tesla owners who want to express their independence.`,
-        features: isMagnet ? MAGNET_FEATURES : STICKER_FEATURES,
-        customizable: baseId === "tesla_musk_emojis",
+        features: productType === "magnet" ? MAGNET_FEATURES : STICKER_FEATURES,
+        customizable: baseId.includes("tesla") && baseId.includes("emoji"),
       })
     }
 
     const group = groupedMap.get(baseId)
 
+    // Create the product variant object
+    const productVariant = {
+      product_id: product.product_id || product.id,
+      product_name: productName,
+      image_name: product.image_name || "unknown.png",
+      height: product.height || 3,
+      width: product.width || 11.5,
+      price: product.price || 0,
+      medium_id: product.medium_id || "",
+      medium_name: product.medium_name || (productType === "magnet" ? "bumper magnet" : "bumper sticker"),
+      stripeId: product.stripeId,
+      productId: product.productId,
+    }
+
     // Add the product as either magnet or sticker variant
-    if (isMagnet) {
-      group.variants.magnet = {
-        product_id: product.product_id,
-        product_name: product.product_name,
-        image_name: product.image_name,
-        height: product.height || 3,
-        width: product.width || 11.5,
-        price: product.price || 0,
-        medium_id: product.medium_id || "",
-        medium_name: product.medium_name || "bumper magnet",
-        stripeId: product.stripeId,
-        productId: product.productId,
-      }
-      // Update features to magnet features if this is a magnet
+    if (productType === "magnet") {
+      group.variants.magnet = productVariant
+      // Update features to magnet features
       group.features = MAGNET_FEATURES
-    } else if (isSticker) {
-      group.variants.sticker = {
-        product_id: product.product_id,
-        product_name: product.product_name,
-        image_name: product.image_name,
-        height: product.height || 3,
-        width: product.width || 11.5,
-        price: product.price || 0,
-        medium_id: product.medium_id || "",
-        medium_name: product.medium_name || "bumper sticker",
-        stripeId: product.stripeId,
-        productId: product.productId,
-      }
+    } else if (productType === "sticker") {
+      group.variants.sticker = productVariant
       // If we don't have magnet features yet, use sticker features
-      if (group.features === MAGNET_FEATURES && !group.variants.magnet) {
+      if (!group.variants.magnet) {
         group.features = STICKER_FEATURES
       }
+    } else {
+      // If we can't determine the type, add as both (fallback)
+      console.warn(`Could not determine product type for: ${productName}`)
+      group.variants.magnet = productVariant
     }
   })
 
-  return Array.from(groupedMap.values())
+  const result = Array.from(groupedMap.values())
+  console.log(`Grouped ${products.length} products into ${result.length} product groups`)
+
+  return result
 }
 
 // Raw product data from the API with Stripe integration
