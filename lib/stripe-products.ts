@@ -3,7 +3,10 @@ import Stripe from "stripe"
 
 // Initialize Stripe with the secret key
 const getStripe = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY
+  // Use provided environment variable or fallback to the test key
+  const secretKey =
+    process.env.STRIPE_SECRET_KEY ||
+    "sk_test_51RJKA6HXKGu0DvSUpndydQYuU7p3ZG4FyIB9XVrXtZ7jP8r9tX0eo2IUTTJMsLnSF18tonk0ys9T0qiyoeVAmoAP00wf1KQbQW"
 
   if (!secretKey) {
     console.warn("STRIPE_SECRET_KEY is not defined in environment variables")
@@ -31,17 +34,23 @@ export async function getStripeProducts() {
       return getFallbackProducts()
     }
 
+    console.log("Fetching products from Stripe...")
+
     // Fetch all products from Stripe
     const products = await stripe.products.list({
       active: true,
       expand: ["data.default_price"],
     })
 
+    console.log(`Found ${products.data.length} products in Stripe`)
+
     // Fetch all prices to ensure we have the most up-to-date pricing
     const prices = await stripe.prices.list({
       active: true,
       expand: ["data.product"],
     })
+
+    console.log(`Found ${prices.data.length} prices in Stripe`)
 
     // Create a map of product IDs to their prices
     const priceMap = new Map()
@@ -54,18 +63,18 @@ export async function getStripeProducts() {
     })
 
     // Map Stripe products to our format
-    return products.data.map((product) => {
+    const mappedProducts = products.data.map((product) => {
       const productPrices = priceMap.get(product.id) || []
       const defaultPrice = productPrices.find((p) => p.id === product.default_price) || productPrices[0]
 
       // Extract dimensions from metadata if available
-      const height = Number.parseFloat(product.metadata?.height || "0") || 0
-      const width = Number.parseFloat(product.metadata?.width || "0") || 0
+      const height = Number.parseFloat(product.metadata?.height || "0") || 3
+      const width = Number.parseFloat(product.metadata?.width || "0") || 11.5
 
       // Determine if it's a magnet or sticker from the name
       const isMagnet = product.name.toLowerCase().includes("magnet")
       const isSticker = product.name.toLowerCase().includes("sticker")
-      const medium_name = isMagnet ? "bumper magnet" : isSticker ? "bumper sticker" : "unknown"
+      const medium_name = isMagnet ? "bumper magnet" : isSticker ? "bumper sticker" : "product"
 
       // Extract base product name (without magnet/sticker suffix)
       const baseName = product.name.replace(/\s*-\s*(Magnet|Sticker)$/i, "").trim()
@@ -101,6 +110,9 @@ export async function getStripeProducts() {
         images: product.images || [],
       }
     })
+
+    console.log(`Mapped ${mappedProducts.length} products successfully`)
+    return mappedProducts
   } catch (error) {
     console.error("Error fetching products from Stripe:", error)
     return getFallbackProducts()
