@@ -4,14 +4,27 @@ import { ArrowLeft } from "lucide-react"
 import FallbackImage from "@/components/fallback-image"
 import { ShoppingBag } from "lucide-react"
 import { getStripeProducts } from "@/lib/stripe-products"
-import { groupProducts } from "@/lib/product-data"
+import { groupProducts, GROUPED_PRODUCTS } from "@/lib/product-data"
 
 export default async function AllProductsPage() {
-  // Fetch products from Stripe
-  const products = await getStripeProducts()
+  // Fetch products from Stripe with fallback to static data
+  let products = []
+  let groupedProducts = []
 
-  // Group products by base name
-  const groupedProducts = groupProducts(products)
+  try {
+    products = await getStripeProducts()
+    // Group products by base name
+    groupedProducts = groupProducts(products)
+  } catch (error) {
+    console.error("Error in AllProductsPage:", error)
+    // Fallback to static data if there's an error
+    groupedProducts = GROUPED_PRODUCTS
+  }
+
+  // If we still don't have products, use the static data
+  if (groupedProducts.length === 0) {
+    groupedProducts = GROUPED_PRODUCTS
+  }
 
   return (
     <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">

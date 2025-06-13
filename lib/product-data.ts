@@ -79,35 +79,43 @@ function getBaseName(productName: string): string {
     .join(" ")
 }
 
-// Function to group products by base name
-export function groupProducts(products: Product[]): GroupedProduct[] {
-  const groupedMap = new Map<string, GroupedProduct>()
+// Add this function to the existing file
+export function groupProducts(products: any[]) {
+  // Group products by base name (removing magnet/sticker suffix)
+  const groupedMap = new Map()
 
   products.forEach((product) => {
-    const baseProductName = product.product_name.replace(/_magnet$|_sticker$/, "")
-    const type = product.product_name.endsWith("_magnet") ? "magnet" : "sticker"
-    const baseName = getBaseName(baseProductName)
-    const imageUrl =
-      IMAGE_URLS[product.image_name] || `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(baseName)}`
+    const baseName = product.baseName || product.product_name.replace(/_magnet|_sticker/g, "")
+    const baseId = product.product_id.replace(/_magnet|_sticker/g, "")
 
-    if (!groupedMap.has(baseProductName)) {
-      groupedMap.set(baseProductName, {
-        baseId: baseProductName,
+    if (!groupedMap.has(baseId)) {
+      groupedMap.set(baseId, {
+        baseId,
         baseName,
-        image: imageUrl,
-        variants: {},
         height: product.height,
         width: product.width,
-        description:
-          PRODUCT_DESCRIPTIONS[baseProductName] ||
-          `${baseName} for Tesla owners who want to express their independence.`,
-        features: type === "magnet" ? MAGNET_FEATURES : STICKER_FEATURES,
-        customizable: baseProductName === "tesla_musk_emojis",
+        image: product.images?.[0] || `/images/${product.image_name}`,
+        variants: {},
       })
     }
 
-    const group = groupedMap.get(baseProductName)!
-    group.variants[type as "magnet" | "sticker"] = product
+    // Add as magnet or sticker variant
+    const isMagnet = product.medium_name?.includes("magnet") || product.product_id?.includes("magnet")
+    const isSticker = product.medium_name?.includes("sticker") || product.product_id?.includes("sticker")
+
+    if (isMagnet) {
+      groupedMap.get(baseId).variants.magnet = {
+        id: product.product_id,
+        price: product.price,
+        stripeId: product.stripeId,
+      }
+    } else if (isSticker) {
+      groupedMap.get(baseId).variants.sticker = {
+        id: product.product_id,
+        price: product.price,
+        stripeId: product.stripeId,
+      }
+    }
   })
 
   return Array.from(groupedMap.values())

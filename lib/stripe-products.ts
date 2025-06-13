@@ -2,13 +2,29 @@ import "server-only"
 import Stripe from "stripe"
 
 // Initialize Stripe with the secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-})
+const getStripe = () => {
+  const secretKey = process.env.STRIPE_SECRET_KEY
+
+  if (!secretKey) {
+    throw new Error("STRIPE_SECRET_KEY is not defined in environment variables")
+  }
+
+  if (secretKey.startsWith("pk_")) {
+    throw new Error(
+      "You're using a publishable key (pk_) instead of a secret key (sk_). Please check your environment variables.",
+    )
+  }
+
+  return new Stripe(secretKey, {
+    apiVersion: "2023-10-16",
+  })
+}
 
 // Map Stripe products to our product format
 export async function getStripeProducts() {
   try {
+    const stripe = getStripe()
+
     // Fetch all products from Stripe
     const products = await stripe.products.list({
       active: true,
@@ -81,6 +97,13 @@ export async function getStripeProducts() {
     })
   } catch (error) {
     console.error("Error fetching products from Stripe:", error)
+
+    // Provide fallback data for development/testing
+    if (process.env.NODE_ENV === "development") {
+      console.log("Using fallback product data for development")
+      return getFallbackProducts()
+    }
+
     return []
   }
 }
@@ -88,6 +111,8 @@ export async function getStripeProducts() {
 // Get a single product by ID
 export async function getStripeProduct(productId: string) {
   try {
+    const stripe = getStripe()
+
     const product = await stripe.products.retrieve(productId, {
       expand: ["default_price"],
     })
@@ -124,4 +149,38 @@ export async function getStripeProduct(productId: string) {
     console.error(`Error fetching product ${productId} from Stripe:`, error)
     return null
   }
+}
+
+// Fallback products for development/testing
+function getFallbackProducts() {
+  return [
+    {
+      product_id: "fallback_1",
+      product_name: "no_elon_musk_magnet",
+      image_name: "no-elon-musk.png",
+      height: 3,
+      width: 11.5,
+      price: 9.99,
+      medium_name: "bumper magnet",
+      stripeId: "price_fallback_1",
+      productId: "prod_fallback_1",
+      baseName: "No Elon Musk",
+      description: "Show your opposition to Elon Musk with this bumper magnet",
+      images: ["/images/no-elon-musk.png"],
+    },
+    {
+      product_id: "fallback_2",
+      product_name: "no_elon_musk_sticker",
+      image_name: "no-elon-musk.png",
+      height: 3,
+      width: 11.5,
+      price: 7.99,
+      medium_name: "bumper sticker",
+      stripeId: "price_fallback_2",
+      productId: "prod_fallback_2",
+      baseName: "No Elon Musk",
+      description: "Show your opposition to Elon Musk with this bumper sticker",
+      images: ["/images/no-elon-musk.png"],
+    },
+  ]
 }
