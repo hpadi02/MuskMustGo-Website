@@ -81,10 +81,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Add item to cart
   const addItem = (item: CartItem) => {
-    console.log("Adding item to cart:", item)
+    console.log("=== ADDING ITEM TO CART ===")
+    console.log("Item details:", {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      stripeId: item.stripeId,
+      productId: item.productId,
+      customOptions: item.customOptions,
+      customId: item.customId,
+    })
 
     // Generate a custom ID if the item has customOptions and doesn't already have a customId
     const customId = item.customId || (item.customOptions ? generateCustomId(item) : item.id)
+
+    console.log("Generated customId:", customId)
 
     setItems((prevItems) => {
       // Check if item with same customization already exists in cart

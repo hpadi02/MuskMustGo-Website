@@ -128,6 +128,19 @@ export function groupProducts(products: any[]) {
     const baseName = product.baseName || product.product_name || product.name || "Unknown Product"
     const productType = getProductType(product)
 
+    // Special logging for Tesla emoji products
+    if (baseId.includes("tesla") && baseId.includes("emoji")) {
+      console.log("🎯 TESLA EMOJI PRODUCT FOUND:", {
+        originalName: product.product_name || product.name,
+        baseId,
+        baseName,
+        productType,
+        stripeId: product.stripeId,
+        productId: product.productId,
+        price: product.price,
+      })
+    }
+
     console.log(
       `Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, type: ${productType}`,
     )
