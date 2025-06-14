@@ -60,6 +60,17 @@ const PRODUCT_DESCRIPTIONS: Record<string, string> = {
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
 }
 
+// Map baseId to proper display names
+const DISPLAY_NAMES: Record<string, string> = {
+  deport_elon: "Deport Elon",
+  did_not_invent: "Elon Did Not Invent Tesla",
+  hate_nazis: "I Hate Nazis",
+  not_ceo_wavy: "Elon Is Not My CEO",
+  no_elon_face: "No Elon Face",
+  tesla_vs_elon_emoji: "Tesla vs Elon Emoji",
+  tesla_musk_emojis: "Tesla Musk Emojis",
+}
+
 // Product features
 const DEFAULT_FEATURES = ["Weather and UV resistant", "Easy application", "Removable without residue", "Made in USA"]
 
@@ -125,7 +136,9 @@ export function groupProducts(products: any[]) {
 
     // Get the base ID for grouping
     const baseId = getBaseIdFromStripe(product)
-    const baseName = product.baseName || product.product_name || product.name || "Unknown Product"
+    // Use display name mapping instead of technical product name
+    const baseName =
+      DISPLAY_NAMES[baseId] || product.baseName || product.product_name || product.name || "Unknown Product"
     const productType = getProductType(product)
 
     // Special logging for Tesla emoji products
@@ -142,7 +155,7 @@ export function groupProducts(products: any[]) {
     }
 
     console.log(
-      `Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, type: ${productType}`,
+      `Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, baseName: ${baseName}, type: ${productType}`,
     )
 
     // Create the grouped product if it doesn't exist
