@@ -124,6 +124,24 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                 </Link>
               </div>
             </div>
+
+            {/* Client-side cart clearing script */}
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  // Clear cart after successful order
+                  if (typeof window !== 'undefined') {
+                    try {
+                      localStorage.removeItem('cart');
+                      localStorage.setItem('cart', '[]');
+                      console.log('Cart cleared after successful order');
+                    } catch (error) {
+                      console.error('Failed to clear cart:', error);
+                    }
+                  }
+                `,
+              }}
+            />
           </div>
         </div>
       </div>
