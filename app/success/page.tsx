@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
+import { CartClearer } from "@/components/cart-clearer"
 
 interface SuccessPageProps {
   searchParams: {
@@ -74,6 +75,9 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+        {/* Clear cart when success page loads */}
+        <CartClearer />
+
         <div className="container mx-auto px-6 md:px-10">
           <div className="max-w-2xl mx-auto text-center">
             <div className="mb-8">
@@ -124,24 +128,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                 </Link>
               </div>
             </div>
-
-            {/* Client-side cart clearing script */}
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-                  // Clear cart after successful order
-                  if (typeof window !== 'undefined') {
-                    try {
-                      localStorage.removeItem('cart');
-                      localStorage.setItem('cart', '[]');
-                      console.log('Cart cleared after successful order');
-                    } catch (error) {
-                      console.error('Failed to clear cart:', error);
-                    }
-                  }
-                `,
-              }}
-            />
           </div>
         </div>
       </div>
