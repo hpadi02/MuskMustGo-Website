@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
-import { CartClearer } from "@/components/cart-clearer"
+import { SimpleCartClearer } from "@/components/simple-cart-clearer"
 
 interface SuccessPageProps {
   searchParams: {
@@ -49,8 +49,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               { name: "Source", value: "Stripe Checkout" },
             ],
           })) || [],
-        shipping: 0, // You might want to calculate this
-        tax: 0, // You might want to calculate this
+        shipping: 0,
+        tax: 0,
         total: session.amount_total || 0,
       }
 
@@ -75,8 +75,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        {/* Clear cart when success page loads */}
-        <CartClearer />
+        {/* Clear cart when success page loads - using simple approach */}
+        <SimpleCartClearer />
 
         <div className="container mx-auto px-6 md:px-10">
           <div className="max-w-2xl mx-auto text-center">
