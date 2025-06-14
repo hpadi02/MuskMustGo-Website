@@ -214,7 +214,7 @@ export function groupProducts(products: any[]) {
   return result
 }
 
-// Keep the existing raw products as fallback
+// Updated raw products with correct Tesla emoji Stripe IDs
 export const RAW_PRODUCTS: Product[] = [
   {
     product_id: "99374b4a-c419-43b1-a878-d57f676b68f6",
@@ -222,7 +222,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "deport-elon.png",
     height: 2.5,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
@@ -234,7 +234,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "deport-elon.png",
     height: 2.5,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
@@ -246,7 +246,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "did-not-invent.png",
     height: 6.0,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
@@ -258,7 +258,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "did-not-invent.png",
     height: 6.0,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
@@ -270,7 +270,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "hate-nazis.png",
     height: 6.0,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
@@ -282,7 +282,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "hate-nazis.png",
     height: 6.0,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
@@ -294,7 +294,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "not-ceo-wavy.png",
     height: 2.5,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
@@ -306,7 +306,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "not-ceo-wavy.png",
     height: 2.5,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
@@ -330,35 +330,36 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "no-elon-musk.png",
     height: 8.0,
     width: 8.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
     productId: "prod_SMP5jwQujuz3Cl",
   },
+  // FIXED: Tesla emoji products with correct Stripe IDs
   {
     product_id: "57ff283a-4124-4c37-ba30-217ed73cb2a9",
-    product_name: "tesla_musk_emojis_magnet",
+    product_name: "tesla_vs_elon_emoji_magnet",
     image_name: "emoji-musk.png",
     height: 8.0,
     width: 12.0,
     price: 19.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
-    stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI",
-    productId: "prod_SMOn24zhjeCmXm",
+    stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI", // Tesla vs. Elon Emoji Magnet
+    productId: "prod_SMOn24zhjeCmXm", // Tesla vs. Elon Emoji Magnet
   },
   {
     product_id: "376de82f-fc72-4e9c-ac92-93e3055ccfc2",
-    product_name: "tesla_musk_emojis_sticker",
+    product_name: "tesla_vs_elon_emoji_sticker",
     image_name: "emoji-musk.png",
     height: 8.0,
     width: 12.0,
     price: 8.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
-    stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO",
-    productId: "prod_SMOquwq3mLZSDE",
+    stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO", // Tesla vs. Elon Emoji Bumper Sticker
+    productId: "prod_SMOquwq3mLZSDE", // Tesla vs. Elon Emoji Bumper Sticker
   },
 ]
 
