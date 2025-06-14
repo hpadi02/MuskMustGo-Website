@@ -1,18 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useCart } from "@/context/CartContext"
+import { useState } from "react"
 import Link from "next/link"
-import { formatCurrency } from "@/utils/currencyFormatter"
-import { toast } from "react-hot-toast"
+import { useCart } from "@/hooks/use-cart-simplified"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount)
+}
 
 const CartPage = () => {
   const { cart, removeFromCart, clearCart, updateQuantity } = useCart()
   const [isClient, setIsClient] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
 
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
+  useState(false)
 
   const calculateSubtotal = () => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0)
@@ -24,12 +31,16 @@ const CartPage = () => {
 
   const handleRemoveFromCart = (itemId: string) => {
     removeFromCart(itemId)
-    toast.success("Item removed from cart!")
+    toast({
+      title: "Item removed from cart.",
+    })
   }
 
   const handleClearCart = () => {
     clearCart()
-    toast.success("Cart cleared!")
+    toast({
+      title: "Cart cleared.",
+    })
   }
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
@@ -38,12 +49,10 @@ const CartPage = () => {
     } else {
       // Optionally remove the item if quantity is set to 0
       removeFromCart(itemId)
-      toast.success("Item removed from cart!")
+      toast({
+        title: "Item removed from cart.",
+      })
     }
-  }
-
-  if (!isClient) {
-    return <div>Loading...</div>
   }
 
   if (!cart || cart.length === 0) {
