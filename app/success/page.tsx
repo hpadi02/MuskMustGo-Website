@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
-import { SimpleCartClearer } from "@/components/simple-cart-clearer"
+import { CartClearer } from "@/components/cart-clearer"
 
 interface SuccessPageProps {
   searchParams: {
@@ -75,8 +75,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        {/* Clear cart when success page loads - using simple approach */}
-        <SimpleCartClearer />
+        {/* Clear cart when success page loads */}
+        <CartClearer />
 
         <div className="container mx-auto px-6 md:px-10">
           <div className="max-w-2xl mx-auto text-center">

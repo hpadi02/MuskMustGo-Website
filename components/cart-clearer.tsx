@@ -1,35 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useCart } from "@/hooks/use-cart-simplified"
 
 export function CartClearer() {
-  const [isMounted, setIsMounted] = useState(false)
-  const cart = useCart() // Move useCart outside the conditional
-
-  // Only access cart after component mounts to avoid hydration issues
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
+  const { clearCart, items } = useCart()
 
   useEffect(() => {
-    if (!isMounted) return
+    // Clear cart when component mounts (success page loads)
+    console.log("CartClearer mounted, clearing cart...")
+    console.log("Current cart items before clearing:", items)
 
-    try {
-      console.log("Success page loaded - clearing cart")
-      cart.clearCart()
-    } catch (error) {
-      console.error("Error clearing cart:", error)
-      // Fallback: clear localStorage directly
-      try {
-        localStorage.removeItem("cart")
-        localStorage.setItem("cart", "[]")
-        console.log("Cart cleared via localStorage fallback")
-      } catch (storageError) {
-        console.error("Failed to clear cart via localStorage:", storageError)
-      }
-    }
-  }, [isMounted, cart])
+    // Use a small delay to ensure the component is fully mounted
+    const timer = setTimeout(() => {
+      clearCart()
+      console.log("Cart cleared via clearCart function")
+    }, 100)
 
-  return null // This component doesn't render anything
+    return () => clearTimeout(timer)
+  }, [clearCart]) // Only depend on clearCart, not items to avoid infinite loops
+
+  return null
 }

@@ -56,6 +56,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Listen for storage events (when localStorage is changed from other tabs/components)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "cart") {
+        try {
+          const newCart = e.newValue ? JSON.parse(e.newValue) : []
+          console.log("Storage event detected, updating cart:", newCart)
+          setItems(newCart)
+        } catch (error) {
+          console.error("Failed to parse cart from storage event:", error)
+          setItems([])
+        }
+      }
+    }
+
+    // Listen for storage events from other windows/tabs
+    window.addEventListener("storage", handleStorageChange)
+
+    // Listen for custom cart-clear events
+    const handleCartClear = () => {
+      console.log("Cart clear event detected")
+      setItems([])
+    }
+
+    window.addEventListener("cart-cleared", handleCartClear)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("cart-cleared", handleCartClear)
+    }
+  }, [])
+
   // Save cart to localStorage whenever it changes (but only after initialization)
   useEffect(() => {
     if (!isInitialized) return
@@ -182,6 +214,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Double check it's cleared
       const check = localStorage.getItem("cart")
       console.log("Cart after clearing:", check)
+
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent("cart-cleared"))
     } catch (error) {
       console.error("Failed to clear cart from localStorage:", error)
     }
