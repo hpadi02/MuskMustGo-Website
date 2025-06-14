@@ -70,14 +70,41 @@ export default function CartPage() {
     setIsCheckingOut(true)
 
     try {
-      // Check if any items have Stripe IDs
-      const stripeItems = items.filter((item) => item.stripeId)
+      console.log("=== STARTING CHECKOUT ===")
+      console.log("All cart items:", items)
+
+      // Check each item for Stripe integration
+      items.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          name: item.name,
+          id: item.id,
+          customId: item.customId,
+          stripeId: item.stripeId,
+          productId: item.productId,
+          hasStripeId: !!item.stripeId,
+          hasProductId: !!item.productId,
+          customOptions: item.customOptions,
+        })
+      })
+
+      // Filter items to only include those with Stripe price IDs
+      const stripeItems = items.filter((item) => {
+        const hasStripeId = !!item.stripeId
+        console.log(`Filtering item "${item.name}": hasStripeId = ${hasStripeId}`)
+        return hasStripeId
+      })
+
+      console.log("Stripe items after filtering:", stripeItems)
+      console.log("Number of Stripe items:", stripeItems.length)
+      console.log("Number of total items:", items.length)
 
       if (stripeItems.length > 0) {
+        console.log("Proceeding with Stripe checkout...")
         // Use client-side Stripe checkout
         const result = await createCheckoutSession(stripeItems)
 
         if (!result.success) {
+          console.log("Stripe checkout failed:", result)
           // Check if it's a redirect blocking issue
           if (result.isRedirectBlocked) {
             // Show preview environment message
@@ -104,6 +131,7 @@ export default function CartPage() {
         }
         // Note: If successful, user will be redirected to Stripe
       } else {
+        console.log("No Stripe items found, using fallback checkout...")
         // Fallback for items without Stripe IDs (like custom emoji magnet)
         saveOrderToHistory()
 
@@ -237,6 +265,18 @@ export default function CartPage() {
                       <p className="text-xl font-medium">${(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                     <p className="text-white/60 mb-4">${item.price.toFixed(2)} each</p>
+
+                    {/* Debug info for Tesla emoji products */}
+                    {item.name.toLowerCase().includes("tesla") && item.name.toLowerCase().includes("emoji") && (
+                      <div className="mb-4 p-2 bg-yellow-600/20 border border-yellow-500/30 rounded text-xs">
+                        <p>
+                          <strong>Debug Info:</strong>
+                        </p>
+                        <p>Stripe ID: {item.stripeId || "MISSING"}</p>
+                        <p>Product ID: {item.productId || "MISSING"}</p>
+                        <p>Has Custom Options: {item.customOptions ? "Yes" : "No"}</p>
+                      </div>
+                    )}
 
                     {/* Show emoji images without text descriptions */}
                     {renderCustomOptions(item)}
