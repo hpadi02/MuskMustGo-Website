@@ -10,9 +10,9 @@ import { GROUPED_PRODUCTS } from "@/lib/product-data"
 export default function FeaturedProducts() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
 
-  // Get "No Elon Face" and "Tesla Musk Emojis" products
+  // Get "No Elon Face" and "Tesla vs Elon Emoji" products
   const featuredProducts = GROUPED_PRODUCTS.filter(
-    (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_musk_emojis",
+    (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_vs_elon_emoji",
   )
 
   return (
