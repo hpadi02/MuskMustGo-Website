@@ -1,61 +1,55 @@
 "use client"
 
-import { useContext } from "react"
-import { CartContext } from "@/context/CartContext"
-import { formatCurrency } from "@/utils/formatCurrency"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { useCart } from "@/hooks/use-cart-simplified"
+import { getStripe } from "@/lib/stripe"
 
-const CheckoutButton = () => {
-  const { items, total, shipping } = useContext(CartContext)
-  const { data: session } = useSession()
-  const router = useRouter()
+interface CheckoutButtonProps {
+  className?: string
+}
+
+export default function CheckoutButton({ className }: CheckoutButtonProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const { items, getTotalPrice } = useCart()
 
   const handleCheckout = async () => {
-    if (!session) {
-      router.push("/login")
-      return
-    }
+    if (items.length === 0) return
 
-    // Save order data to localStorage before checkout
-    const orderData = {
-      id: `MMG-${Date.now()}`,
-      date: new Date().toISOString(),
-      status: "pending",
-      total: total + shipping,
-      items: items,
-      shipping: shipping,
-    }
-    localStorage.setItem("lastOrder", JSON.stringify(orderData))
+    setIsLoading(true)
 
     try {
+      // Create checkout session
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ items, total, shipping }),
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            price_id: item.price_id,
+            quantity: item.quantity,
+          })),
+          successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/cart`,
+        }),
       })
 
-      if (response.ok) {
-        const { url } = await response.json()
-        router.push(url)
-      } else {
-        console.error("Checkout failed")
-      }
+      const { sessionId } = await response.json()
+
+      // Redirect to Stripe Checkout
+      const stripe = await getStripe()
+      await stripe?.redirectToCheckout({ sessionId })
     } catch (error) {
-      console.error("Error during checkout:", error)
+      console.error("Checkout error:", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <button
-      onClick={handleCheckout}
-      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-    >
-      Checkout - {formatCurrency(total + shipping)}
-    </button>
+    <Button onClick={handleCheckout} disabled={isLoading || items.length === 0} className={className}>
+      {isLoading ? "Processing..." : `Checkout - $${getTotalPrice().toFixed(2)}`}
+    </Button>
   )
 }
-
-export default CheckoutButton

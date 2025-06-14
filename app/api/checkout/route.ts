@@ -1,95 +1,33 @@
-import { NextResponse } from "next/server"
-import Stripe from "stripe"
+import { type NextRequest, NextResponse } from "next/server"
+import { stripe } from "@/lib/stripe"
 
-// Check if the Stripe secret key is available
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error("STRIPE_SECRET_KEY is not defined. Please add it to your environment variables.")
-}
-
-// Initialize Stripe with proper error handling
-const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" })
-  : null
-
-export async function POST(req: Request) {
-  // Check if Stripe is properly initialized
-  if (!stripe) {
-    console.error("Stripe client not initialized. Missing STRIPE_SECRET_KEY.")
-    return NextResponse.json({ error: "Stripe is not configured. Please check server logs." }, { status: 500 })
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const { items, returnUrl } = await req.json()
+    const { items, successUrl, cancelUrl } = await request.json()
 
-    // Create line items using existing price IDs from your products
-    const lineItems = items.map((item: any) => {
-      if (!item.stripeId) {
-        throw new Error(`Product ${item.name} does not have a Stripe price ID`)
-      }
-
-      return {
-        price: item.stripeId, // Use the existing price ID
-        quantity: item.quantity,
-      }
-    })
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "No items provided" }, { status: 400 })
+    }
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      line_items: lineItems,
+      line_items: items.map((item: any) => ({
+        price: item.price_id,
+        quantity: item.quantity,
+      })),
       mode: "payment",
-      success_url: `${returnUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${returnUrl}/cart`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       shipping_address_collection: {
-        allowed_countries: ["US", "CA", "GB", "AU"],
+        allowed_countries: ["US", "CA"],
       },
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: 500, // $5.00
-              currency: "usd",
-            },
-            display_name: "Standard Shipping",
-            delivery_estimate: {
-              minimum: {
-                unit: "business_day",
-                value: 3,
-              },
-              maximum: {
-                unit: "business_day",
-                value: 5,
-              },
-            },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: {
-              amount: 1500, // $15.00
-              currency: "usd",
-            },
-            display_name: "Express Shipping",
-            delivery_estimate: {
-              minimum: {
-                unit: "business_day",
-                value: 1,
-              },
-              maximum: {
-                unit: "business_day",
-                value: 2,
-              },
-            },
-          },
-        },
-      ],
+      billing_address_collection: "required",
     })
 
-    return NextResponse.json({ sessionId: session.id, url: session.url })
+    return NextResponse.json({ sessionId: session.id })
   } catch (error) {
     console.error("Stripe checkout error:", error)
-    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
   }
 }
