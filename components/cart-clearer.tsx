@@ -1,24 +1,23 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useCart } from "@/hooks/use-cart-simplified"
 
 export function CartClearer() {
-  const { clearCart, items } = useCart()
+  const { clearCart } = useCart()
+  const hasCleared = useRef(false)
 
   useEffect(() => {
-    // Clear cart when component mounts (success page loads)
-    console.log("CartClearer mounted, clearing cart...")
-    console.log("Current cart items before clearing:", items)
+    // Only clear once per page load
+    if (hasCleared.current) return
 
-    // Use a small delay to ensure the component is fully mounted
-    const timer = setTimeout(() => {
-      clearCart()
-      console.log("Cart cleared via clearCart function")
-    }, 100)
+    console.log("CartClearer mounted, clearing cart once...")
+    hasCleared.current = true
 
-    return () => clearTimeout(timer)
-  }, [clearCart]) // Only depend on clearCart, not items to avoid infinite loops
+    // Clear cart immediately without delay
+    clearCart()
+    console.log("Cart cleared via clearCart function")
+  }, [clearCart])
 
   return null
 }

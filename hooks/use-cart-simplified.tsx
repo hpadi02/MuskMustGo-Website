@@ -32,6 +32,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false)
   const { toast } = useToast()
   const toastRef = useRef(toast)
+  const clearingRef = useRef(false) // Prevent multiple clear operations
 
   // Update toast ref when toast changes
   useEffect(() => {
@@ -59,7 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Listen for storage events (when localStorage is changed from other tabs/components)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "cart") {
+      if (e.key === "cart" && !clearingRef.current) {
         try {
           const newCart = e.newValue ? JSON.parse(e.newValue) : []
           console.log("Storage event detected, updating cart:", newCart)
@@ -76,8 +77,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Listen for custom cart-clear events
     const handleCartClear = () => {
-      console.log("Cart clear event detected")
-      setItems([])
+      if (!clearingRef.current) {
+        console.log("Cart clear event detected")
+        setItems([])
+      }
     }
 
     window.addEventListener("cart-cleared", handleCartClear)
@@ -90,7 +93,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Save cart to localStorage whenever it changes (but only after initialization)
   useEffect(() => {
-    if (!isInitialized) return
+    if (!isInitialized || clearingRef.current) return
 
     try {
       localStorage.setItem("cart", JSON.stringify(items))
@@ -204,7 +207,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Clear cart
   const clearCart = () => {
+    // Prevent multiple clear operations
+    if (clearingRef.current) return
+
     console.log("Clearing cart completely")
+    clearingRef.current = true
+
     setItems([])
 
     // Force clear localStorage immediately and aggressively
@@ -221,11 +229,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       console.error("Failed to clear cart from localStorage:", error)
     }
 
+    // Show toast notification only once
     setTimeout(() => {
       toastRef.current({
         title: "Cart cleared",
         description: "All items have been removed from your cart",
       })
+
+      // Reset clearing flag after toast
+      setTimeout(() => {
+        clearingRef.current = false
+      }, 1000)
     }, 0)
   }
 
