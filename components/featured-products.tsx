@@ -15,6 +15,11 @@ export default function FeaturedProducts() {
     (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_vs_elon_emoji",
   )
 
+  console.log(
+    "Featured products found:",
+    featuredProducts.map((p) => ({ baseId: p.baseId, baseName: p.baseName })),
+  )
+
   return (
     <div className="w-full">
       <div className="text-center mb-10">
@@ -88,6 +93,19 @@ export default function FeaturedProducts() {
           </div>
         ))}
       </div>
+
+      {featuredProducts.length === 0 && (
+        <div className="text-center text-white/70">
+          <p>No featured products found. Available products:</p>
+          <pre className="text-xs mt-2">
+            {JSON.stringify(
+              GROUPED_PRODUCTS.map((p) => p.baseId),
+              null,
+              2,
+            )}
+          </pre>
+        </div>
+      )}
 
       <div className="text-center mt-10">
         <Link href="/shop/all">
