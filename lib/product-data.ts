@@ -66,7 +66,7 @@ const DISPLAY_NAMES: Record<string, string> = {
   did_not_invent: "Elon Did Not Invent Tesla",
   hate_nazis: "I Hate Nazis",
   not_ceo_wavy: "Elon Is Not My CEO",
-  no_elon_face: "No Elon Face",
+  no_elon_face: "Say No to Elon!", // FIXED: Use the correct display name
   tesla_vs_elon_emoji: "Tesla vs Elon Emoji",
   tesla_musk_emojis: "Tesla Musk Emojis",
 }
@@ -83,8 +83,13 @@ const MAGNET_FEATURES = [
 
 const STICKER_FEATURES = ["Premium vinyl material", ...DEFAULT_FEATURES]
 
-// Function to get base ID from Stripe product data
+// FIXED: Function to get base ID from Stripe product data
 function getBaseIdFromStripe(product: any): string {
+  // For Stripe products, we now have the baseId directly in the mapping
+  if (product.baseId) {
+    return product.baseId
+  }
+
   // If the product has a baseName from our mapping, use it to create baseId
   if (product.baseName) {
     return product.baseName
@@ -134,25 +139,12 @@ export function groupProducts(products: any[]) {
       return
     }
 
-    // Get the base ID for grouping
+    // Get the base ID for grouping - now uses the baseId from Stripe mapping
     const baseId = getBaseIdFromStripe(product)
-    // Use display name mapping instead of technical product name
+    // Use display name mapping
     const baseName =
       DISPLAY_NAMES[baseId] || product.baseName || product.product_name || product.name || "Unknown Product"
     const productType = getProductType(product)
-
-    // Special logging for Tesla emoji products
-    if (baseId.includes("tesla") && baseId.includes("emoji")) {
-      console.log("🎯 TESLA EMOJI PRODUCT FOUND:", {
-        originalName: product.product_name || product.name,
-        baseId,
-        baseName,
-        productType,
-        stripeId: product.stripeId,
-        productId: product.productId,
-        price: product.price,
-      })
-    }
 
     console.log(
       `Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, baseName: ${baseName}, type: ${productType}`,

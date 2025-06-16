@@ -19,7 +19,7 @@ export interface StripeProductData {
   images: string[]
 }
 
-// Mapping from Stripe product names to our internal structure
+// FIXED: Mapping from Stripe product names to our internal structure
 const STRIPE_PRODUCT_MAPPING: Record<
   string,
   {
@@ -32,14 +32,14 @@ const STRIPE_PRODUCT_MAPPING: Record<
   }
 > = {
   "Say No to Elon! - bumper sticker": {
-    baseId: "no_elon_face",
+    baseId: "no_elon_face", // FIXED: Use the correct baseId
     baseName: "Say No to Elon!",
     image_name: "no-elon-musk.png",
     height: 8.0,
     width: 8.0,
   },
   "Say No to Elon! - magnet": {
-    baseId: "no_elon_face",
+    baseId: "no_elon_face", // FIXED: Use the correct baseId
     baseName: "Say No to Elon!",
     image_name: "no-elon-musk.png",
     height: 8.0,
@@ -162,7 +162,7 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
         const isSticker = (product.name || "").toLowerCase().includes("sticker")
 
         const productInfo: StripeProductData = {
-          product_id: product.id,
+          product_id: mapping.baseId + (isMagnet ? "_magnet" : "_sticker"), // Use mapping baseId
           product_name: product.name || "",
           baseName: mapping.baseName,
           image_name: mapping.image_name,
@@ -177,7 +177,7 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
         }
 
         productData.push(productInfo)
-        console.log(`Added product: ${product.name} - $${productInfo.price}`)
+        console.log(`Added product: ${product.name} - $${productInfo.price} - baseId: ${mapping.baseId}`)
       } catch (error) {
         console.error(`Error processing product ${product.name}:`, error)
       }
