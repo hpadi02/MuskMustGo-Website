@@ -5,7 +5,6 @@ import Link from "next/link"
 import { ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import FallbackImage from "./fallback-image"
-import { getStripeProducts } from "@/lib/stripe-products"
 import { groupProducts } from "@/lib/product-data"
 
 export default function FeaturedProducts() {
@@ -16,9 +15,32 @@ export default function FeaturedProducts() {
   useEffect(() => {
     async function loadProducts() {
       try {
-        // Use the same data source as the product page
-        const products = await getStripeProducts()
-        const groupedProducts = groupProducts(products)
+        // Fetch products from the API endpoint instead of direct Stripe call
+        const response = await fetch("/api/products")
+        if (!response.ok) {
+          throw new Error("Failed to fetch products")
+        }
+
+        const data = await response.json()
+        const products = data.products || []
+
+        // Convert Stripe products to our format
+        const formattedProducts = products.map((product: any) => ({
+          product_id: product.id,
+          product_name: product.name,
+          baseName: product.name,
+          image_name: product.images?.[0] || "",
+          height: 8.0,
+          width: 8.0,
+          price: product.default_price?.unit_amount ? product.default_price.unit_amount / 100 : 0,
+          medium_id: product.name?.toLowerCase().includes("magnet") ? "magnet" : "sticker",
+          medium_name: product.name?.toLowerCase().includes("magnet") ? "bumper magnet" : "bumper sticker",
+          stripeId: product.default_price?.id || "",
+          productId: product.id,
+          images: product.images || [],
+        }))
+
+        const groupedProducts = groupProducts(formattedProducts)
 
         // Get "No Elon Face" and "Tesla vs Elon Emoji" products
         const featured = groupedProducts.filter(
@@ -26,13 +48,18 @@ export default function FeaturedProducts() {
         )
 
         console.log(
-          "Featured products loaded:",
+          "Featured products loaded from API:",
           featured.map((p) => ({ baseId: p.baseId, baseName: p.baseName })),
         )
         setFeaturedProducts(featured)
       } catch (error) {
         console.error("Error loading featured products:", error)
-        setFeaturedProducts([])
+        // Fallback to static data if API fails
+        const { GROUPED_PRODUCTS } = await import("@/lib/product-data")
+        const featured = GROUPED_PRODUCTS.filter(
+          (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_vs_elon_emoji",
+        )
+        setFeaturedProducts(featured)
       } finally {
         setLoading(false)
       }
