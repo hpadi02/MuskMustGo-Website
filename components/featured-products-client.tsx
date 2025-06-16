@@ -13,6 +13,12 @@ interface FeaturedProductsClientProps {
 export default function FeaturedProductsClient({ products }: FeaturedProductsClientProps) {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
 
+  console.log(
+    "Client received products:",
+    products.length,
+    products.map((p) => p.baseName),
+  )
+
   return (
     <div className="w-full">
       <div className="text-center mb-10">
@@ -66,9 +72,9 @@ export default function FeaturedProductsClient({ products }: FeaturedProductsCli
                         {product.baseName}
                       </h3>
                       <p className="text-sm text-white/70 mt-1">
-                        {product.variants.magnet && product.variants.sticker
+                        {product.variants?.magnet && product.variants?.sticker
                           ? "Available as magnet or sticker"
-                          : product.variants.magnet
+                          : product.variants?.magnet
                             ? "Magnet"
                             : "Sticker"}
                       </p>
@@ -76,10 +82,10 @@ export default function FeaturedProductsClient({ products }: FeaturedProductsCli
                     <p className="text-lg font-medium">
                       $
                       {Math.min(
-                        product.variants.magnet?.price || Number.POSITIVE_INFINITY,
-                        product.variants.sticker?.price || Number.POSITIVE_INFINITY,
+                        product.variants?.magnet?.price || Number.POSITIVE_INFINITY,
+                        product.variants?.sticker?.price || Number.POSITIVE_INFINITY,
                       ).toFixed(2)}
-                      {product.variants.magnet && product.variants.sticker && "+"}
+                      {product.variants?.magnet && product.variants?.sticker && "+"}
                     </p>
                   </div>
                 </div>
@@ -88,8 +94,9 @@ export default function FeaturedProductsClient({ products }: FeaturedProductsCli
           ))}
         </div>
       ) : (
-        <div className="text-center text-white/70 p-8">
-          <p>No featured products available at the moment.</p>
+        <div className="text-center text-white/70 p-8 border border-red-500 rounded">
+          <p className="text-red-400 mb-4">⚠️ No featured products found!</p>
+          <p className="text-sm">This should not happen. Check the console for debugging info.</p>
         </div>
       )}
 
