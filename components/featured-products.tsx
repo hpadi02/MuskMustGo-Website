@@ -1,24 +1,67 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import FallbackImage from "./fallback-image"
-import { GROUPED_PRODUCTS } from "@/lib/product-data"
+import { getStripeProducts } from "@/lib/stripe-products"
+import { groupProducts } from "@/lib/product-data"
 
 export default function FeaturedProducts() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
+  const [featuredProducts, setFeaturedProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Get "No Elon Face" and "Tesla vs Elon Emoji" products
-  const featuredProducts = GROUPED_PRODUCTS.filter(
-    (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_vs_elon_emoji",
-  )
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        // Use the same data source as the product page
+        const products = await getStripeProducts()
+        const groupedProducts = groupProducts(products)
 
-  console.log(
-    "Featured products found:",
-    featuredProducts.map((p) => ({ baseId: p.baseId, baseName: p.baseName })),
-  )
+        // Get "No Elon Face" and "Tesla vs Elon Emoji" products
+        const featured = groupedProducts.filter(
+          (product) => product.baseId === "no_elon_face" || product.baseId === "tesla_vs_elon_emoji",
+        )
+
+        console.log(
+          "Featured products loaded:",
+          featured.map((p) => ({ baseId: p.baseId, baseName: p.baseName })),
+        )
+        setFeaturedProducts(featured)
+      } catch (error) {
+        console.error("Error loading featured products:", error)
+        setFeaturedProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProducts()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="w-full">
+        <div className="text-center mb-10">
+          <p className="text-red-500 uppercase tracking-wider text-sm font-medium mb-3">FEATURED PRODUCTS</p>
+          <h2 className="text-3xl md:text-4xl font-display font-bold">Express Your Independence</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-dark-400 border border-gray-800 animate-pulse">
+              <div className="h-80 bg-gray-700"></div>
+              <div className="p-5">
+                <div className="h-6 bg-gray-700 rounded mb-2"></div>
+                <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full">
@@ -94,16 +137,9 @@ export default function FeaturedProducts() {
         ))}
       </div>
 
-      {featuredProducts.length === 0 && (
+      {featuredProducts.length === 0 && !loading && (
         <div className="text-center text-white/70">
-          <p>No featured products found. Available products:</p>
-          <pre className="text-xs mt-2">
-            {JSON.stringify(
-              GROUPED_PRODUCTS.map((p) => p.baseId),
-              null,
-              2,
-            )}
-          </pre>
+          <p>No featured products available at the moment.</p>
         </div>
       )}
 
