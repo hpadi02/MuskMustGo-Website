@@ -8,6 +8,7 @@ export interface StripeProductData {
   product_id: string
   product_name: string
   baseName: string
+  baseId: string // Add this field explicitly
   image_name: string
   height: number
   width: number
@@ -19,7 +20,7 @@ export interface StripeProductData {
   images: string[]
 }
 
-// FIXED: Mapping from Stripe product names to our internal structure
+// Mapping from Stripe product names to our internal structure
 const STRIPE_PRODUCT_MAPPING: Record<
   string,
   {
@@ -32,14 +33,14 @@ const STRIPE_PRODUCT_MAPPING: Record<
   }
 > = {
   "Say No to Elon! - bumper sticker": {
-    baseId: "no_elon_face", // FIXED: Use the correct baseId
+    baseId: "no_elon_face",
     baseName: "Say No to Elon!",
     image_name: "no-elon-musk.png",
     height: 8.0,
     width: 8.0,
   },
   "Say No to Elon! - magnet": {
-    baseId: "no_elon_face", // FIXED: Use the correct baseId
+    baseId: "no_elon_face",
     baseName: "Say No to Elon!",
     image_name: "no-elon-musk.png",
     height: 8.0,
@@ -121,7 +122,7 @@ const STRIPE_PRODUCT_MAPPING: Record<
 
 export async function getStripeProducts(): Promise<StripeProductData[]> {
   try {
-    console.log("Fetching products from Stripe...")
+    console.log("🔄 STRIPE: Fetching products from Stripe...")
 
     // Get all active products
     const products = await stripe.products.list({
@@ -129,12 +130,18 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
       limit: 100,
     })
 
-    console.log(`Found ${products.data.length} products in Stripe`)
+    console.log(`🔄 STRIPE: Found ${products.data.length} products in Stripe`)
+    console.log(
+      "🔄 STRIPE: Product names:",
+      products.data.map((p) => p.name),
+    )
 
     const productData: StripeProductData[] = []
 
     for (const product of products.data) {
       try {
+        console.log(`🔄 STRIPE: Processing product: ${product.name}`)
+
         // Get prices for this product
         const prices = await stripe.prices.list({
           product: product.id,
@@ -142,7 +149,7 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
         })
 
         if (prices.data.length === 0) {
-          console.warn(`No active prices found for product: ${product.name}`)
+          console.warn(`⚠️ STRIPE: No active prices found for product: ${product.name}`)
           continue
         }
 
@@ -153,7 +160,8 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
         const mapping = STRIPE_PRODUCT_MAPPING[product.name || ""]
 
         if (!mapping) {
-          console.warn(`No mapping found for Stripe product: ${product.name}`)
+          console.warn(`⚠️ STRIPE: No mapping found for Stripe product: ${product.name}`)
+          console.log("🔄 STRIPE: Available mappings:", Object.keys(STRIPE_PRODUCT_MAPPING))
           continue
         }
 
@@ -162,9 +170,10 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
         const isSticker = (product.name || "").toLowerCase().includes("sticker")
 
         const productInfo: StripeProductData = {
-          product_id: mapping.baseId + (isMagnet ? "_magnet" : "_sticker"), // Use mapping baseId
+          product_id: `${mapping.baseId}_${isMagnet ? "magnet" : "sticker"}`,
           product_name: product.name || "",
           baseName: mapping.baseName,
+          baseId: mapping.baseId, // Explicitly set baseId
           image_name: mapping.image_name,
           height: mapping.height,
           width: mapping.width,
@@ -177,16 +186,16 @@ export async function getStripeProducts(): Promise<StripeProductData[]> {
         }
 
         productData.push(productInfo)
-        console.log(`Added product: ${product.name} - $${productInfo.price} - baseId: ${mapping.baseId}`)
+        console.log(`✅ STRIPE: Added product: ${product.name} - $${productInfo.price} - baseId: ${mapping.baseId}`)
       } catch (error) {
-        console.error(`Error processing product ${product.name}:`, error)
+        console.error(`❌ STRIPE: Error processing product ${product.name}:`, error)
       }
     }
 
-    console.log(`Successfully processed ${productData.length} products`)
+    console.log(`✅ STRIPE: Successfully processed ${productData.length} products`)
     return productData
   } catch (error) {
-    console.error("Error fetching products from Stripe:", error)
+    console.error("❌ STRIPE: Error fetching products from Stripe:", error)
     return []
   }
 }

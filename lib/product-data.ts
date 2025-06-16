@@ -66,7 +66,7 @@ const DISPLAY_NAMES: Record<string, string> = {
   did_not_invent: "Elon Did Not Invent Tesla",
   hate_nazis: "I Hate Nazis",
   not_ceo_wavy: "Elon Is Not My CEO",
-  no_elon_face: "Say No to Elon!", // FIXED: Use the correct display name
+  no_elon_face: "Say No to Elon!",
   tesla_vs_elon_emoji: "Tesla vs Elon Emoji",
   tesla_musk_emojis: "Tesla Musk Emojis",
 }
@@ -83,27 +83,32 @@ const MAGNET_FEATURES = [
 
 const STICKER_FEATURES = ["Premium vinyl material", ...DEFAULT_FEATURES]
 
-// FIXED: Function to get base ID from Stripe product data
+// Function to get base ID from Stripe product data
 function getBaseIdFromStripe(product: any): string {
-  // For Stripe products, we now have the baseId directly in the mapping
+  // For Stripe products, use the baseId directly if available
   if (product.baseId) {
+    console.log(`🔄 GROUP: Using direct baseId: ${product.baseId}`)
     return product.baseId
   }
 
   // If the product has a baseName from our mapping, use it to create baseId
   if (product.baseName) {
-    return product.baseName
+    const baseId = product.baseName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "")
+    console.log(`🔄 GROUP: Generated baseId from baseName: ${product.baseName} -> ${baseId}`)
+    return baseId
   }
 
   // Fallback to product name processing
   const name = (product.product_name || product.name || "").toLowerCase()
-  return name
+  const baseId = name
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .replace(/_?(bumper_)?(sticker|magnet)_?/g, "")
+  console.log(`🔄 GROUP: Generated baseId from product name: ${name} -> ${baseId}`)
+  return baseId
 }
 
 // Function to determine if product is magnet or sticker
@@ -124,22 +129,22 @@ function getProductType(product: any): "magnet" | "sticker" | "unknown" {
 export function groupProducts(products: any[]) {
   // Handle undefined or null products array
   if (!products || !Array.isArray(products)) {
-    console.warn("groupProducts received invalid products array:", products)
+    console.warn("🔄 GROUP: groupProducts received invalid products array:", products)
     return []
   }
 
-  console.log("Grouping products:", products.length)
+  console.log(`🔄 GROUP: Grouping ${products.length} products`)
 
   const groupedMap = new Map()
 
   // Group products by their base name
   products.forEach((product, index) => {
     if (!product || (!product.product_name && !product.name)) {
-      console.warn("Invalid product found at index", index, ":", product)
+      console.warn(`🔄 GROUP: Invalid product found at index ${index}:`, product)
       return
     }
 
-    // Get the base ID for grouping - now uses the baseId from Stripe mapping
+    // Get the base ID for grouping
     const baseId = getBaseIdFromStripe(product)
     // Use display name mapping
     const baseName =
@@ -147,7 +152,7 @@ export function groupProducts(products: any[]) {
     const productType = getProductType(product)
 
     console.log(
-      `Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, baseName: ${baseName}, type: ${productType}`,
+      `🔄 GROUP: Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, baseName: ${baseName}, type: ${productType}`,
     )
 
     // Create the grouped product if it doesn't exist
@@ -198,16 +203,16 @@ export function groupProducts(products: any[]) {
       }
     } else {
       // If we can't determine the type, log warning but don't add
-      console.warn(`Could not determine product type for: ${product.product_name || product.name}`)
+      console.warn(`🔄 GROUP: Could not determine product type for: ${product.product_name || product.name}`)
     }
   })
 
   const result = Array.from(groupedMap.values())
-  console.log(`Grouped ${products.length} products into ${result.length} product groups`)
+  console.log(`🔄 GROUP: Grouped ${products.length} products into ${result.length} product groups`)
 
   // Log the final grouped products for debugging
   result.forEach((group) => {
-    console.log(`Group: ${group.baseName}`, {
+    console.log(`🔄 GROUP: Final group: ${group.baseName}`, {
       baseId: group.baseId,
       hasMagnet: !!group.variants.magnet,
       hasSticker: !!group.variants.sticker,
