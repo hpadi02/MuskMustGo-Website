@@ -33,25 +33,26 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           addr1: session.customer_details?.address?.line1 || "",
           addr2: session.customer_details?.address?.line2 || "",
           city: session.customer_details?.address?.city || "",
-          state: session.customer_details?.address?.state || "",
-          zip: session.customer_details?.address?.postal_code || "",
+          state_prov: session.customer_details?.address?.state || "", // FIXED: state_prov
+          postal_code: session.customer_details?.address?.postal_code || "", // FIXED: postal_code
           country: session.customer_details?.address?.country || "",
-          phone: session.customer_details?.phone || "",
         },
         payment_id: session.id,
         products:
           session.line_items?.data.map((item) => ({
             product_id: typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || "",
-            price_id: item.price?.id || "",
             quantity: item.quantity || 1,
-            attributes: [
-              { name: "Type", value: "Product" },
-              { name: "Source", value: "Stripe Checkout" },
-            ],
+            // Only add attributes for custom emoji products
+            ...(item.description?.includes("emoji") && {
+              attributes: [
+                { name: "Type", value: "Custom Emoji" },
+                { name: "Source", value: "Stripe Checkout" },
+              ],
+            }),
           })) || [],
         shipping: 0,
         tax: 0,
-        total: session.amount_total || 0,
+        // REMOVED: total field (Ed doesn't accept it)
       }
 
       // Send to backend
