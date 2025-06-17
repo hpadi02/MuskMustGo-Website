@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     // Here you would normally send to Ed's backend
     // For now, we'll just log and return success
 
-    const apiBaseUrl = process.env.API_BASE_URL || "http://localhost:5000"
+    const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
 
     try {
       // Try to send to Ed's backend

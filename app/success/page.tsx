@@ -55,8 +55,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       }
 
       // Send to backend
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || "http://localhost:3000"
-      const backendResponse = await fetch(`${apiBaseUrl}/api/orders`, {
+      const backendResponse = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
