@@ -7,14 +7,11 @@ export async function POST(request: NextRequest) {
     console.log("=== ORDER API RECEIVED ===")
     console.log("Order Data:", JSON.stringify(orderData, null, 2))
 
-    // Here you would normally send to Ed's backend
-    // For now, we'll just log and return success
-
     const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
 
     try {
-      // Try to send to Ed's backend
-      const backendResponse = await fetch(`${apiBaseUrl}/orders`, {
+      // Send to Ed's backend - NOTE: Using /orders/ with trailing slash
+      const backendResponse = await fetch(`${apiBaseUrl}/orders/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -32,6 +29,8 @@ export async function POST(request: NextRequest) {
         })
       } else {
         console.error("Backend responded with error:", backendResponse.status)
+        const errorText = await backendResponse.text()
+        console.error("Backend error details:", errorText)
         // Fall back to mock response
         return NextResponse.json({
           success: true,
