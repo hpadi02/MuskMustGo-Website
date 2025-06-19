@@ -33,8 +33,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           addr1: session.customer_details?.address?.line1 || "",
           addr2: session.customer_details?.address?.line2 || "",
           city: session.customer_details?.address?.city || "",
-          state_prov: session.customer_details?.address?.state || "", // FIXED: state_prov
-          postal_code: session.customer_details?.address?.postal_code || "", // FIXED: postal_code
+          state_prov: session.customer_details?.address?.state || "",
+          postal_code: session.customer_details?.address?.postal_code || "",
           country: session.customer_details?.address?.country || "",
         },
         payment_id: session.id,
@@ -52,11 +52,23 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           })) || [],
         shipping: 0,
         tax: 0,
-        // REMOVED: total field (Ed doesn't accept it)
       }
 
+      console.log("=== PROCESSING ORDER ON SUCCESS PAGE ===")
+      console.log("Order data:", JSON.stringify(orderData, null, 2))
+
+      // FIXED: Use full URL for server-side fetch
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NODE_ENV === "production"
+          ? "https://elonmustgo.com"
+          : "http://localhost:3000"
+
+      const apiUrl = `${baseUrl}/api/orders`
+      console.log("Calling API at:", apiUrl)
+
       // Send to backend
-      const backendResponse = await fetch("/api/orders", {
+      const backendResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -67,7 +79,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       if (!backendResponse.ok) {
         console.error("Failed to send order to backend:", await backendResponse.text())
       } else {
-        console.log("Order successfully sent to backend")
+        const result = await backendResponse.json()
+        console.log("Order successfully sent to backend:", result)
       }
     } catch (error) {
       console.error("Error processing order:", error)
