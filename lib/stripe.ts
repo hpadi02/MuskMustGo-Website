@@ -1,4 +1,5 @@
 import { loadStripe, type Stripe } from "@stripe/stripe-js"
+import StripeServer from "stripe"
 
 let stripePromise: Promise<Stripe | null>
 
@@ -8,3 +9,8 @@ export const getStripe = () => {
   }
   return stripePromise
 }
+
+// Server-side Stripe instance
+export const stripe = new StripeServer(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})

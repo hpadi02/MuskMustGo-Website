@@ -11,37 +11,6 @@ import { useToast } from "@/hooks/use-toast"
 import { createCheckoutSession } from "@/lib/stripe-checkout"
 import Image from "next/image"
 
-// Update the import for the new product data
-import { GROUPED_PRODUCTS, RAW_PRODUCTS } from "@/lib/product-data"
-
-// Add a helper function to find product details by ID
-const findProductById = (productId: string) => {
-  // First check in raw products
-  const rawProduct = RAW_PRODUCTS.find((p) => p.product_id === productId)
-  if (rawProduct) {
-    // Find the grouped product this belongs to
-    const groupedProduct = GROUPED_PRODUCTS.find(
-      (g) => g.variants.magnet?.product_id === productId || g.variants.sticker?.product_id === productId,
-    )
-
-    if (groupedProduct) {
-      return {
-        ...rawProduct,
-        baseName: groupedProduct.baseName,
-        image: groupedProduct.image,
-        description: groupedProduct.description,
-      }
-    }
-    return rawProduct
-  }
-  return null
-}
-
-// Add this helper function at the top of the component
-const hasStripeIntegration = (item: any) => {
-  return item.stripeId && item.stripeId.startsWith("price_")
-}
-
 export default function CartPage() {
   const { items, removeItem, updateItemQuantity, clearCart, getCartTotal } = useCart()
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -101,14 +70,41 @@ export default function CartPage() {
     setIsCheckingOut(true)
 
     try {
-      // Check if any items have Stripe IDs
-      const stripeItems = items.filter((item) => item.stripeId)
+      console.log("=== STARTING CHECKOUT ===")
+      console.log("All cart items:", items)
+
+      // Check each item for Stripe integration
+      items.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          name: item.name,
+          id: item.id,
+          customId: item.customId,
+          stripeId: item.stripeId,
+          productId: item.productId,
+          hasStripeId: !!item.stripeId,
+          hasProductId: !!item.productId,
+          customOptions: item.customOptions,
+        })
+      })
+
+      // Filter items to only include those with Stripe price IDs
+      const stripeItems = items.filter((item) => {
+        const hasStripeId = !!item.stripeId
+        console.log(`Filtering item "${item.name}": hasStripeId = ${hasStripeId}`)
+        return hasStripeId
+      })
+
+      console.log("Stripe items after filtering:", stripeItems)
+      console.log("Number of Stripe items:", stripeItems.length)
+      console.log("Number of total items:", items.length)
 
       if (stripeItems.length > 0) {
+        console.log("Proceeding with Stripe checkout...")
         // Use client-side Stripe checkout
         const result = await createCheckoutSession(stripeItems)
 
         if (!result.success) {
+          console.log("Stripe checkout failed:", result)
           // Check if it's a redirect blocking issue
           if (result.isRedirectBlocked) {
             // Show preview environment message
@@ -135,6 +131,7 @@ export default function CartPage() {
         }
         // Note: If successful, user will be redirected to Stripe
       } else {
+        console.log("No Stripe items found, using fallback checkout...")
         // Fallback for items without Stripe IDs (like custom emoji magnet)
         saveOrderToHistory()
 
@@ -162,7 +159,7 @@ export default function CartPage() {
     }
   }
 
-  // UPDATED: Helper function to display customization options (ONLY EMOJI IMAGES, NO TEXT)
+  // Helper function to display customization options (ONLY EMOJI IMAGES, NO TEXT)
   const renderCustomOptions = (item: any) => {
     if (!item.customOptions) return null
 
@@ -269,7 +266,7 @@ export default function CartPage() {
                     </div>
                     <p className="text-white/60 mb-4">${item.price.toFixed(2)} each</p>
 
-                    {/* Show emoji images without text descriptions */}
+                    {/* Show emoji images without text descriptions - NO DEBUG INFO */}
                     {renderCustomOptions(item)}
 
                     <div className="flex justify-between items-center">
@@ -359,9 +356,6 @@ export default function CartPage() {
               <div className="mt-6 text-center text-sm text-white/50">
                 <p>Secure checkout powered by Stripe</p>
                 <p className="mt-2 text-xs">Using Stripe Test Mode</p>
-                {items.some((item) => hasStripeIntegration(item)) && (
-                  <p className="mt-1 text-xs text-green-400">✓ Stripe integration active</p>
-                )}
               </div>
             </div>
           </div>

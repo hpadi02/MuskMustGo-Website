@@ -56,6 +56,19 @@ const PRODUCT_DESCRIPTIONS: Record<string, string> = {
     'Show your dislike of Elon Musk with this image of his face covered by the international symbol for "NO"!',
   tesla_musk_emojis:
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
+  tesla_vs_elon_emoji:
+    "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji design. Fully customizable with your choice of emojis.",
+}
+
+// Map baseId to proper display names
+const DISPLAY_NAMES: Record<string, string> = {
+  deport_elon: "Deport Elon",
+  did_not_invent: "Elon Did Not Invent Tesla",
+  hate_nazis: "I Hate Nazis",
+  not_ceo_wavy: "Elon Is Not My CEO",
+  no_elon_face: "Say No to Elon!",
+  tesla_vs_elon_emoji: "Tesla vs Elon Emoji",
+  tesla_musk_emojis: "Tesla Musk Emojis",
 }
 
 // Product features
@@ -70,51 +83,148 @@ const MAGNET_FEATURES = [
 
 const STICKER_FEATURES = ["Premium vinyl material", ...DEFAULT_FEATURES]
 
-// Function to get base name from product name
-function getBaseName(productName: string): string {
-  return productName
-    .replace(/_magnet$|_sticker$/, "")
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
+// Function to get base ID from Stripe product data
+function getBaseIdFromStripe(product: any): string {
+  // For Stripe products, use the baseId directly if available
+  if (product.baseId) {
+    console.log(`🔄 GROUP: Using direct baseId: ${product.baseId}`)
+    return product.baseId
+  }
+
+  // If the product has a baseName from our mapping, use it to create baseId
+  if (product.baseName) {
+    const baseId = product.baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+    console.log(`🔄 GROUP: Generated baseId from baseName: ${product.baseName} -> ${baseId}`)
+    return baseId
+  }
+
+  // Fallback to product name processing
+  const name = (product.product_name || product.name || "").toLowerCase()
+  const baseId = name
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_?(bumper_)?(sticker|magnet)_?/g, "")
+  console.log(`🔄 GROUP: Generated baseId from product name: ${name} -> ${baseId}`)
+  return baseId
 }
 
-// Function to group products by base name
-export function groupProducts(products: Product[]): GroupedProduct[] {
-  const groupedMap = new Map<string, GroupedProduct>()
+// Function to determine if product is magnet or sticker
+function getProductType(product: any): "magnet" | "sticker" | "unknown" {
+  const name = (product.product_name || product.name || "").toLowerCase()
+  const medium = (product.medium_name || product.medium_id || "").toLowerCase()
 
-  products.forEach((product) => {
-    const baseProductName = product.product_name.replace(/_magnet$|_sticker$/, "")
-    const type = product.product_name.endsWith("_magnet") ? "magnet" : "sticker"
-    const baseName = getBaseName(baseProductName)
-    const imageUrl =
-      IMAGE_URLS[product.image_name] || `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(baseName)}`
+  if (name.includes("magnet") || medium.includes("magnet")) {
+    return "magnet"
+  }
+  if (name.includes("sticker") || medium.includes("sticker")) {
+    return "sticker"
+  }
+  return "unknown"
+}
 
-    if (!groupedMap.has(baseProductName)) {
-      groupedMap.set(baseProductName, {
-        baseId: baseProductName,
+// Updated groupProducts function to handle Stripe data properly
+export function groupProducts(products: any[]) {
+  // Handle undefined or null products array
+  if (!products || !Array.isArray(products)) {
+    console.warn("🔄 GROUP: groupProducts received invalid products array:", products)
+    return []
+  }
+
+  console.log(`🔄 GROUP: Grouping ${products.length} products`)
+
+  const groupedMap = new Map()
+
+  // Group products by their base name
+  products.forEach((product, index) => {
+    if (!product || (!product.product_name && !product.name)) {
+      console.warn(`🔄 GROUP: Invalid product found at index ${index}:`, product)
+      return
+    }
+
+    // Get the base ID for grouping
+    const baseId = getBaseIdFromStripe(product)
+    // Use display name mapping
+    const baseName =
+      DISPLAY_NAMES[baseId] || product.baseName || product.product_name || product.name || "Unknown Product"
+    const productType = getProductType(product)
+
+    console.log(
+      `🔄 GROUP: Processing product: ${product.product_name || product.name} -> baseId: ${baseId}, baseName: ${baseName}, type: ${productType}`,
+    )
+
+    // Create the grouped product if it doesn't exist
+    if (!groupedMap.has(baseId)) {
+      groupedMap.set(baseId, {
+        baseId,
         baseName,
-        image: imageUrl,
         variants: {},
-        height: product.height,
-        width: product.width,
+        height: product.height || 3,
+        width: product.width || 11.5,
+        image:
+          product.images?.[0] ||
+          IMAGE_URLS[product.image_name] ||
+          `/images/${product.image_name || "no-elon-musk.png"}`,
         description:
-          PRODUCT_DESCRIPTIONS[baseProductName] ||
-          `${baseName} for Tesla owners who want to express their independence.`,
-        features: type === "magnet" ? MAGNET_FEATURES : STICKER_FEATURES,
-        customizable: baseProductName === "tesla_musk_emojis",
+          PRODUCT_DESCRIPTIONS[baseId] || `${baseName} for Tesla owners who want to express their independence.`,
+        features: productType === "magnet" ? MAGNET_FEATURES : STICKER_FEATURES,
+        customizable: baseId.includes("emoji") || baseId.includes("tesla_vs_elon_emoji"),
       })
     }
 
-    const group = groupedMap.get(baseProductName)!
-    group.variants[type as "magnet" | "sticker"] = product
+    const group = groupedMap.get(baseId)
+
+    // Create the product variant object
+    const productVariant = {
+      product_id: product.product_id || product.id,
+      product_name: product.product_name || product.name,
+      image_name: product.image_name || "unknown.png",
+      height: product.height || 3,
+      width: product.width || 11.5,
+      price: product.price || 0,
+      medium_id: product.medium_id || "",
+      medium_name: product.medium_name || (productType === "magnet" ? "bumper magnet" : "bumper sticker"),
+      stripeId: product.stripeId,
+      productId: product.productId,
+    }
+
+    // Add the product as either magnet or sticker variant
+    if (productType === "magnet") {
+      group.variants.magnet = productVariant
+      // Update features to magnet features
+      group.features = MAGNET_FEATURES
+    } else if (productType === "sticker") {
+      group.variants.sticker = productVariant
+      // If we don't have magnet features yet, use sticker features
+      if (!group.variants.magnet) {
+        group.features = STICKER_FEATURES
+      }
+    } else {
+      // If we can't determine the type, log warning but don't add
+      console.warn(`🔄 GROUP: Could not determine product type for: ${product.product_name || product.name}`)
+    }
   })
 
-  return Array.from(groupedMap.values())
+  const result = Array.from(groupedMap.values())
+  console.log(`🔄 GROUP: Grouped ${products.length} products into ${result.length} product groups`)
+
+  // Log the final grouped products for debugging
+  result.forEach((group) => {
+    console.log(`🔄 GROUP: Final group: ${group.baseName}`, {
+      baseId: group.baseId,
+      hasMagnet: !!group.variants.magnet,
+      hasSticker: !!group.variants.sticker,
+      magnetPrice: group.variants.magnet?.price,
+      stickerPrice: group.variants.sticker?.price,
+    })
+  })
+
+  return result
 }
 
-// Raw product data from the API with Stripe integration
-// UPDATED: Added metadata to help with Stripe product mapping
+// Updated raw products with correct Tesla emoji Stripe IDs
 export const RAW_PRODUCTS: Product[] = [
   {
     product_id: "99374b4a-c419-43b1-a878-d57f676b68f6",
@@ -122,7 +232,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "deport-elon.png",
     height: 2.5,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
@@ -134,7 +244,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "deport-elon.png",
     height: 2.5,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
@@ -146,7 +256,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "did-not-invent.png",
     height: 6.0,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
@@ -158,7 +268,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "did-not-invent.png",
     height: 6.0,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
@@ -170,7 +280,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "hate-nazis.png",
     height: 6.0,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
@@ -182,7 +292,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "hate-nazis.png",
     height: 6.0,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
@@ -194,7 +304,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "not-ceo-wavy.png",
     height: 2.5,
     width: 10.0,
-    price: 16.99, // Updated to match Stripe price
+    price: 16.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
     stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
@@ -206,7 +316,7 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "not-ceo-wavy.png",
     height: 2.5,
     width: 10.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
@@ -230,35 +340,36 @@ export const RAW_PRODUCTS: Product[] = [
     image_name: "no-elon-musk.png",
     height: 8.0,
     width: 8.0,
-    price: 12.99, // Updated to match Stripe price
+    price: 12.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
     stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
     productId: "prod_SMP5jwQujuz3Cl",
   },
+  // FIXED: Tesla emoji products with correct Stripe IDs
   {
     product_id: "57ff283a-4124-4c37-ba30-217ed73cb2a9",
-    product_name: "tesla_musk_emojis_magnet",
+    product_name: "tesla_vs_elon_emoji_magnet",
     image_name: "emoji-musk.png",
     height: 8.0,
     width: 12.0,
     price: 19.99,
     medium_id: "340401d7-936b-47a2-99bb-c7a665c52e5b",
     medium_name: "bumper magnet",
-    stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI",
-    productId: "prod_SMOn24zhjeCmXm",
+    stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI", // Tesla vs. Elon Emoji Magnet
+    productId: "prod_SMOn24zhjeCmXm", // Tesla vs. Elon Emoji Magnet
   },
   {
     product_id: "376de82f-fc72-4e9c-ac92-93e3055ccfc2",
-    product_name: "tesla_musk_emojis_sticker",
+    product_name: "tesla_vs_elon_emoji_sticker",
     image_name: "emoji-musk.png",
     height: 8.0,
     width: 12.0,
     price: 8.99,
     medium_id: "7a21e0d6-b223-42a4-a042-0e35a36c1802",
     medium_name: "bumper sticker",
-    stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO",
-    productId: "prod_SMOquwq3mLZSDE",
+    stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO", // Tesla vs. Elon Emoji Bumper Sticker
+    productId: "prod_SMOquwq3mLZSDE", // Tesla vs. Elon Emoji Bumper Sticker
   },
 ]
 

@@ -32,6 +32,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false)
   const { toast } = useToast()
   const toastRef = useRef(toast)
+  const clearingRef = useRef(false) // Prevent multiple clear operations
 
   // Update toast ref when toast changes
   useEffect(() => {
@@ -56,9 +57,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Listen for storage events (when localStorage is changed from other tabs/components)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "cart" && !clearingRef.current) {
+        try {
+          const newCart = e.newValue ? JSON.parse(e.newValue) : []
+          console.log("Storage event detected, updating cart:", newCart)
+          setItems(newCart)
+        } catch (error) {
+          console.error("Failed to parse cart from storage event:", error)
+          setItems([])
+        }
+      }
+    }
+
+    // Listen for storage events from other windows/tabs
+    window.addEventListener("storage", handleStorageChange)
+
+    // Listen for custom cart-clear events
+    const handleCartClear = () => {
+      if (!clearingRef.current) {
+        console.log("Cart clear event detected")
+        setItems([])
+      }
+    }
+
+    window.addEventListener("cart-cleared", handleCartClear)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("cart-cleared", handleCartClear)
+    }
+  }, [])
+
   // Save cart to localStorage whenever it changes (but only after initialization)
   useEffect(() => {
-    if (!isInitialized) return
+    if (!isInitialized || clearingRef.current) return
 
     try {
       localStorage.setItem("cart", JSON.stringify(items))
@@ -81,10 +116,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Add item to cart
   const addItem = (item: CartItem) => {
-    console.log("Adding item to cart:", item)
+    console.log("=== ADDING ITEM TO CART ===")
+    console.log("Item details:", {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      stripeId: item.stripeId,
+      productId: item.productId,
+      customOptions: item.customOptions,
+      customId: item.customId,
+    })
 
     // Generate a custom ID if the item has customOptions and doesn't already have a customId
     const customId = item.customId || (item.customOptions ? generateCustomId(item) : item.id)
+
+    console.log("Generated customId:", customId)
 
     setItems((prevItems) => {
       // Check if item with same customization already exists in cart
@@ -161,7 +207,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Clear cart
   const clearCart = () => {
+    // Prevent multiple clear operations
+    if (clearingRef.current) return
+
     console.log("Clearing cart completely")
+    clearingRef.current = true
+
     setItems([])
 
     // Force clear localStorage immediately and aggressively
@@ -171,15 +222,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Double check it's cleared
       const check = localStorage.getItem("cart")
       console.log("Cart after clearing:", check)
+
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent("cart-cleared"))
     } catch (error) {
       console.error("Failed to clear cart from localStorage:", error)
     }
 
+    // Show toast notification only once
     setTimeout(() => {
       toastRef.current({
         title: "Cart cleared",
         description: "All items have been removed from your cart",
       })
+
+      // Reset clearing flag after toast
+      setTimeout(() => {
+        clearingRef.current = false
+      }, 1000)
     }, 0)
   }
 

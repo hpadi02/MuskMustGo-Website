@@ -4,8 +4,8 @@ import { Inter, Montserrat } from "next/font/google"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
-import { CartProvider } from "@/hooks/use-cart-simplified" // Use the simplified version
-import { MockSessionProvider } from "@/components/mock-session-provider"
+import { CartProvider } from "@/hooks/use-cart-simplified"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,15 +38,14 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${montserrat.variable} font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
-          <MockSessionProvider>
-            <CartProvider>
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <main className="flex-grow">{children}</main>
-                <Footer />
-              </div>
-            </CartProvider>
-          </MockSessionProvider>
+          <CartProvider>
+            <div className="flex flex-col min-h-screen">
+              <Navbar />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+            </div>
+            <Toaster />
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>
