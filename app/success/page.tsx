@@ -56,16 +56,25 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
       console.log("=== PROCESSING ORDER ON SUCCESS PAGE ===")
       console.log("Order data:", JSON.stringify(orderData, null, 2))
+      console.log("NODE_ENV:", process.env.NODE_ENV)
+      console.log("VERCEL_URL:", process.env.VERCEL_URL)
 
-      // FIXED: Use full URL for server-side fetch
-      const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : process.env.NODE_ENV === "production"
-          ? "https://elonmustgo.com"
-          : "http://localhost:3000"
+      // CLEARER: Determine the base URL for the API call
+      let baseUrl: string
+
+      if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`
+        console.log("Using Vercel URL:", baseUrl)
+      } else if (process.env.NODE_ENV === "production") {
+        baseUrl = "https://elonmustgo.com"
+        console.log("Using production URL:", baseUrl)
+      } else {
+        baseUrl = "http://localhost:3000"
+        console.log("Using development URL:", baseUrl)
+      }
 
       const apiUrl = `${baseUrl}/api/orders`
-      console.log("Calling API at:", apiUrl)
+      console.log("Final API URL:", apiUrl)
 
       // Send to backend
       const backendResponse = await fetch(apiUrl, {
