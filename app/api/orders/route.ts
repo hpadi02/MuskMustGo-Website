@@ -4,52 +4,44 @@ export async function POST(request: NextRequest) {
   try {
     const orderData = await request.json()
 
-    console.log("=== ORDER API RECEIVED ===")
-    console.log("Order Data:", JSON.stringify(orderData, null, 2))
+    console.log("=== FORWARDING ORDER TO ED'S BACKEND ===")
+    console.log("Order data:", JSON.stringify(orderData, null, 2))
 
+    // Get the API base URL from environment
     const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
+    console.log("API Base URL:", apiBaseUrl)
 
-    try {
-      // Send to Ed's backend - NOTE: Using /orders/ with trailing slash
-      const backendResponse = await fetch(`${apiBaseUrl}/orders/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.BACKEND_API_KEY || ""}`,
-        },
-        body: JSON.stringify(orderData),
-      })
+    // Forward the order to Ed's backend
+    const response = await fetch(`${apiBaseUrl}/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Add API key if Ed requires it
+        ...(process.env.BACKEND_API_KEY && {
+          Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
+        }),
+      },
+      body: JSON.stringify(orderData),
+    })
 
-      if (backendResponse.ok) {
-        const backendData = await backendResponse.json()
-        return NextResponse.json({
-          success: true,
-          message: "Order sent to backend successfully",
-          backendResponse: backendData,
-        })
-      } else {
-        console.error("Backend responded with error:", backendResponse.status)
-        const errorText = await backendResponse.text()
-        console.error("Backend error details:", errorText)
-        // Fall back to mock response
-        return NextResponse.json({
-          success: true,
-          message: "Order received (backend unavailable)",
-          orderId: `mock_${Date.now()}`,
-        })
-      }
-    } catch (backendError) {
-      console.error("Failed to reach backend:", backendError)
-      // Return mock success response
-      return NextResponse.json({
-        success: true,
-        message: "Order received (backend unavailable)",
-        orderId: `mock_${Date.now()}`,
-      })
+    console.log("Backend response status:", response.status)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Backend error:", errorText)
+      return NextResponse.json({ error: "Failed to process order", details: errorText }, { status: response.status })
     }
+
+    const result = await response.json()
+    console.log("Backend success:", result)
+
+    return NextResponse.json(result)
   } catch (error) {
     console.error("Order processing error:", error)
-    return NextResponse.json({ success: false, error: "Failed to process order" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 },
+    )
   }
 }
 
