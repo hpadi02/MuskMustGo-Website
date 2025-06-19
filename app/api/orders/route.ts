@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     console.log("Order data:", JSON.stringify(orderData, null, 2))
 
     // FIXED: Use Ed's exact backend URL
-    const backendUrl = "http://localhost/orders" // No /api/, just /orders
+    const backendUrl = "http://localhost/orders" // 
     console.log("Calling Ed's backend at:", backendUrl)
 
     // Forward the order to Ed's backend
