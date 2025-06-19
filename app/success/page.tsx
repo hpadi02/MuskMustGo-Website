@@ -14,14 +14,22 @@ interface SuccessPageProps {
 
 async function SuccessContent({ sessionId }: { sessionId: string }) {
   try {
-    // Retrieve the Stripe session
+    // Retrieve the Stripe session with payment intent
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.data.price.product"],
+      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
     })
 
     if (!session) {
       redirect("/cart")
     }
+
+    // Get the payment intent ID (this is what Ed needs)
+    const paymentIntentId =
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
+
+    console.log("=== PAYMENT PROCESSING ===")
+    console.log("Session ID:", session.id)
+    console.log("Payment Intent ID:", paymentIntentId)
 
     // Process the order - send to backend
     try {
@@ -33,11 +41,11 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           addr1: session.customer_details?.address?.line1 || "",
           addr2: session.customer_details?.address?.line2 || "",
           city: session.customer_details?.address?.city || "",
-          state_prov: session.customer_details?.address?.state || "", // FIXED: state_prov
-          postal_code: session.customer_details?.address?.postal_code || "", // FIXED: postal_code
+          state_prov: session.customer_details?.address?.state || "",
+          postal_code: session.customer_details?.address?.postal_code || "",
           country: session.customer_details?.address?.country || "",
         },
-        payment_id: session.id,
+        payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
         products:
           session.line_items?.data.map((item) => ({
             product_id: typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || "",
@@ -52,11 +60,30 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           })) || [],
         shipping: 0,
         tax: 0,
-        // REMOVED: total field (Ed doesn't accept it)
       }
 
-      // Send to backend
-      const backendResponse = await fetch("/api/orders", {
+      console.log("=== SENDING ORDER TO ED'S BACKEND ===")
+      console.log("Order data:", JSON.stringify(orderData, null, 2))
+
+      // ✅ Correct URL determination
+      let baseUrl: string
+
+      if (process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`
+        console.log("Using Vercel URL:", baseUrl)
+      } else if (process.env.NODE_ENV === "production") {
+        baseUrl = "https://elonmustgo.com" // ✅ Production URL
+        console.log("Using production URL:", baseUrl)
+      } else {
+        baseUrl = "http://localhost:3000" // ✅ Development URL
+        console.log("Using development URL:", baseUrl)
+      }
+
+      const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
+      console.log("Calling API at:", apiUrl)
+
+      // Send to Ed's backend via your API route
+      const backendResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -65,12 +92,14 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       })
 
       if (!backendResponse.ok) {
-        console.error("Failed to send order to backend:", await backendResponse.text())
+        const errorText = await backendResponse.text()
+        console.error("Failed to send order to backend:", errorText)
       } else {
-        console.log("Order successfully sent to backend")
+        const result = await backendResponse.json()
+        console.log("✅ Order successfully sent to Ed's backend:", result)
       }
     } catch (error) {
-      console.error("Error processing order:", error)
+      console.error("❌ Error processing order:", error)
     }
 
     return (
@@ -95,10 +124,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="space-y-4 text-left">
-                <div className="flex justify-between">
-                  <span className="text-white/70">Order ID:</span>
-                  <span className="font-mono text-sm">{session.id}</span>
-                </div>
+                {/* ❌ Removed Order ID display */}
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
