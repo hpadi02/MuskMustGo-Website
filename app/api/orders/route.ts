@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     // FIXED: Use Ed's exact backend URL
     const backendUrl = "http://localhost/orders" // 
-    console.log("Calling Ed's backend at:", backendUrl)
+    console.log("Calling backend at:", backendUrl)
 
     // Forward the order to Ed's backend
     const response = await fetch(backendUrl, {
