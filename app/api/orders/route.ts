@@ -7,12 +7,15 @@ export async function POST(request: NextRequest) {
     console.log("=== FORWARDING ORDER TO ED'S BACKEND ===")
     console.log("Order data:", JSON.stringify(orderData, null, 2))
 
-    // Get the API base URL from environment
+    // Use environment variable as Ed specified
     const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
-    console.log("API Base URL:", apiBaseUrl)
+    const backendUrl = `${apiBaseUrl}/orders`
 
-    // Forward the order to Ed's backend (no trailing slash)
-    const response = await fetch(`${apiBaseUrl}/orders`, {
+    console.log("API_BASE_URL from env:", process.env.API_BASE_URL)
+    console.log("Calling Ed's backend at:", backendUrl)
+
+    // Forward the order to Ed's backend
+    const response = await fetch(backendUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -24,16 +27,16 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(orderData),
     })
 
-    console.log("Backend response status:", response.status)
+    console.log("Ed's backend response status:", response.status)
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error("Backend error:", errorText)
+      console.error("Ed's backend error:", errorText)
       return NextResponse.json({ error: "Failed to process order", details: errorText }, { status: response.status })
     }
 
     const result = await response.json()
-    console.log("Backend success:", result)
+    console.log("Ed's backend success:", result)
 
     return NextResponse.json(result)
   } catch (error) {
@@ -50,5 +53,6 @@ export async function GET() {
     message: "Orders API is running",
     timestamp: new Date().toISOString(),
     apiBaseUrl: process.env.API_BASE_URL,
+    backendUrl: `${process.env.API_BASE_URL || "http://localhost"}/orders`,
   })
 }
