@@ -7,9 +7,12 @@ export async function POST(request: NextRequest) {
     console.log("=== FORWARDING ORDER TO ED'S BACKEND ===")
     console.log("Order data:", JSON.stringify(orderData, null, 2))
 
-    // FIXED: Use Ed's exact backend URL
-    const backendUrl = "http://localhost/orders" // 
-    console.log("Calling backend at:", backendUrl)
+    // Use environment variable as Ed specified
+    const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
+    const backendUrl = `${apiBaseUrl}/orders`
+
+    console.log("API_BASE_URL from env:", process.env.API_BASE_URL)
+    console.log("Calling Ed's backend at:", backendUrl)
 
     // Forward the order to Ed's backend
     const response = await fetch(backendUrl, {
@@ -49,6 +52,7 @@ export async function GET() {
   return NextResponse.json({
     message: "Orders API is running",
     timestamp: new Date().toISOString(),
-    backendUrl: "http://localhost/orders",
+    apiBaseUrl: process.env.API_BASE_URL,
+    backendUrl: `${process.env.API_BASE_URL || "http://localhost"}/orders`,
   })
 }
