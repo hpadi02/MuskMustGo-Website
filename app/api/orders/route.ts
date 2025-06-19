@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
     console.log("API Base URL:", apiBaseUrl)
 
-    // Forward the order to Ed's backend
+    // Forward the order to Ed's backend (no trailing slash)
     const response = await fetch(`${apiBaseUrl}/orders`, {
       method: "POST",
       headers: {
@@ -49,5 +49,6 @@ export async function GET() {
   return NextResponse.json({
     message: "Orders API is running",
     timestamp: new Date().toISOString(),
+    apiBaseUrl: process.env.API_BASE_URL,
   })
 }
