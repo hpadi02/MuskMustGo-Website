@@ -27,7 +27,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    console.log("=== PAYMENT IDS ===")
+    console.log("=== PAYMENT PROCESSING ===")
     console.log("Session ID:", session.id)
     console.log("Payment Intent ID:", paymentIntentId)
 
@@ -45,7 +45,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           postal_code: session.customer_details?.address?.postal_code || "",
           country: session.customer_details?.address?.country || "",
         },
-        payment_id: paymentIntentId, // FIXED: Use payment intent ID instead of session ID
+        payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
         products:
           session.line_items?.data.map((item) => ({
             product_id: typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || "",
@@ -62,29 +62,27 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         tax: 0,
       }
 
-      console.log("=== PROCESSING ORDER ON SUCCESS PAGE ===")
+      console.log("=== SENDING ORDER TO ED'S BACKEND ===")
       console.log("Order data:", JSON.stringify(orderData, null, 2))
-      console.log("NODE_ENV:", process.env.NODE_ENV)
-      console.log("VERCEL_URL:", process.env.VERCEL_URL)
 
-      // Determine the base URL for the API call
+      // ✅ Correct URL determination
       let baseUrl: string
 
       if (process.env.VERCEL_URL) {
         baseUrl = `https://${process.env.VERCEL_URL}`
         console.log("Using Vercel URL:", baseUrl)
       } else if (process.env.NODE_ENV === "production") {
-        baseUrl = "https://elonmustgo.com"
+        baseUrl = "https://elonmustgo.com" // ✅ Production URL
         console.log("Using production URL:", baseUrl)
       } else {
-        baseUrl = "http://localhost:3000"
+        baseUrl = "http://localhost:3000" // ✅ Development URL
         console.log("Using development URL:", baseUrl)
       }
 
-      const apiUrl = `${baseUrl}/api/orders`
-      console.log("Final API URL:", apiUrl)
+      const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
+      console.log("Calling API at:", apiUrl)
 
-      // Send to backend
+      // Send to Ed's backend via your API route
       const backendResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -94,13 +92,14 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       })
 
       if (!backendResponse.ok) {
-        console.error("Failed to send order to backend:", await backendResponse.text())
+        const errorText = await backendResponse.text()
+        console.error("Failed to send order to backend:", errorText)
       } else {
         const result = await backendResponse.json()
-        console.log("Order successfully sent to backend:", result)
+        console.log("✅ Order successfully sent to Ed's backend:", result)
       }
     } catch (error) {
-      console.error("Error processing order:", error)
+      console.error("❌ Error processing order:", error)
     }
 
     return (
@@ -125,10 +124,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="space-y-4 text-left">
-                <div className="flex justify-between">
-                  <span className="text-white/70">Payment ID:</span>
-                  <span className="font-mono text-sm">{paymentIntentId}</span>
-                </div>
+                {/* ❌ Removed Order ID display */}
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
