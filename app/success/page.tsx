@@ -126,10 +126,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
               <div className="space-y-4 text-left">
                 <div className="flex justify-between">
-                  <span className="text-white/70">Order ID:</span>
-                  <span className="font-mono text-sm">{session.id}</span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-white/70">Payment ID:</span>
                   <span className="font-mono text-sm">{paymentIntentId}</span>
                 </div>
