@@ -14,14 +14,22 @@ interface SuccessPageProps {
 
 async function SuccessContent({ sessionId }: { sessionId: string }) {
   try {
-    // Retrieve the Stripe session
+    // Retrieve the Stripe session with payment intent
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.data.price.product"],
+      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
     })
 
     if (!session) {
       redirect("/cart")
     }
+
+    // Get the payment intent ID (this is what Ed needs)
+    const paymentIntentId =
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
+
+    console.log("=== PAYMENT IDS ===")
+    console.log("Session ID:", session.id)
+    console.log("Payment Intent ID:", paymentIntentId)
 
     // Process the order - send to backend
     try {
@@ -37,7 +45,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           postal_code: session.customer_details?.address?.postal_code || "",
           country: session.customer_details?.address?.country || "",
         },
-        payment_id: session.id,
+        payment_id: paymentIntentId, // FIXED: Use payment intent ID instead of session ID
         products:
           session.line_items?.data.map((item) => ({
             product_id: typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || "",
@@ -59,7 +67,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       console.log("NODE_ENV:", process.env.NODE_ENV)
       console.log("VERCEL_URL:", process.env.VERCEL_URL)
 
-      // CLEARER: Determine the base URL for the API call
+      // Determine the base URL for the API call
       let baseUrl: string
 
       if (process.env.VERCEL_URL) {
@@ -120,6 +128,10 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                 <div className="flex justify-between">
                   <span className="text-white/70">Order ID:</span>
                   <span className="font-mono text-sm">{session.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/70">Payment ID:</span>
+                  <span className="font-mono text-sm">{paymentIntentId}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
