@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ShoppingBag, ChevronDown, Menu, X } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ShoppingBag, Menu, X } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 
 export default function Navbar() {
@@ -43,6 +42,8 @@ export default function Navbar() {
               SHOP
             </Link>
 
+            {/* HIDDEN: Community dropdown with Forum - keeping code for later */}
+            {/* 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="text-white/90 hover:text-white flex items-center text-sm font-medium tracking-wide">
@@ -62,6 +63,12 @@ export default function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            */}
+
+            {/* Keep Stories link but remove Forum */}
+            <Link href="/stories" className="text-white/90 hover:text-white text-sm font-medium tracking-wide">
+              STORIES
+            </Link>
 
             <Link href="/about" className="text-white/90 hover:text-white text-sm font-medium tracking-wide">
               ABOUT
@@ -85,11 +92,14 @@ export default function Navbar() {
               </Button>
             </Link>
 
+            {/* HIDDEN: Login button - keeping code for later */}
+            {/* 
             <Link href="/login" className="hidden md:block">
               <Button variant="ghost" className="text-white hover:bg-white/10 text-sm font-medium tracking-wide">
                 LOG IN
               </Button>
             </Link>
+            */}
 
             <Link href="/shop/all" className="hidden md:block">
               <Button className="bg-white hover:bg-white/90 text-black text-sm font-medium tracking-wide">
@@ -121,6 +131,8 @@ export default function Navbar() {
               SHOP
             </Link>
 
+            {/* HIDDEN: Community section with Forum - keeping code for later */}
+            {/* 
             <div className="space-y-4">
               <h3 className="text-white/60 text-sm font-medium tracking-wide">COMMUNITY</h3>
               <div className="space-y-3 pl-2">
@@ -140,6 +152,16 @@ export default function Navbar() {
                 </Link>
               </div>
             </div>
+            */}
+
+            {/* Keep Stories link */}
+            <Link
+              href="/stories"
+              className="block text-white hover:text-red-500 text-sm font-medium tracking-wide"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              STORIES
+            </Link>
 
             <Link
               href="/about"
@@ -158,11 +180,14 @@ export default function Navbar() {
             </Link>
 
             <div className="pt-4 flex flex-col space-y-3">
+              {/* HIDDEN: Login button - keeping code for later */}
+              {/* 
               <Link href="/login">
                 <Button variant="outline" className="w-full border-white text-white hover:bg-white/10">
                   LOG IN
                 </Button>
               </Link>
+              */}
               <Link href="/shop/all">
                 <Button className="w-full bg-white hover:bg-white/90 text-black">SHOP NOW</Button>
               </Link>
