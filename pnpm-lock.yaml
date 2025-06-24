@@ -135,6 +135,9 @@ importers:
       '@types/eslint':
         specifier: ^9
         version: 9.6.0
+      '@types/nodemailer':
+        specifier: ^6.4.15
+        version: 6.4.15
       eslint:
         specifier: ^8
         version: 8.0.0
@@ -887,6 +890,9 @@ packages:
 
   '@types/node@20.0.0':
     resolution: {integrity: sha512-cD2uPTDnQQCVpmRefonO98/PPijuOnnEy5oytWJFPY1N9aJCz2wJ5kSGWO+zJoed2cY2JxQh6yBuUq4vIn61hw==}
+
+  '@types/nodemailer@6.4.15':
+    resolution: {integrity: sha512-0EBJxawVNjPkng1zm2vopRctuWVCxk34JcIlRuXSf54habUWdz1FB7wHDqOqvDa8Mtpt0Q3LTXQkAs2LNyK5jQ==}
 
   '@types/prop-types@15.7.15':
     resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
@@ -3309,6 +3315,10 @@ snapshots:
   '@types/json5@0.0.29': {}
 
   '@types/node@20.0.0': {}
+
+  '@types/nodemailer@6.4.15':
+    dependencies:
+      '@types/node': 20.0.0
 
   '@types/prop-types@15.7.15': {}
 
