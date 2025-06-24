@@ -10,17 +10,14 @@ export async function POST(request: NextRequest) {
     console.log("Subject:", subject)
     console.log("Message:", message)
 
-    // Create transporter using Ed's mail server
-    const transporter = nodemailer.createTransporter({
+    // Create transporter using Ed's mail server (no auth required)
+    const transporter = nodemailer.createTransport({
       host: "mail.leafe.com",
-      port: 587, // or 25, depending on Ed's server config
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER, // Ed will need to provide this
-        pass: process.env.SMTP_PASS, // Ed will need to provide this
-      },
-      // If Ed's server doesn't require auth, remove the auth section
-      // and add: requireTLS: false, ignoreTLS: true
+      port: 587, // Ed said it listens on both 587 and 25
+      secure: false, // false for port 587
+      requireTLS: false, // Ed's server doesn't require TLS
+      ignoreTLS: true, // Ignore TLS errors if any
+      // No auth section needed - Ed's server accepts from designated hosts
     })
 
     // Email content
