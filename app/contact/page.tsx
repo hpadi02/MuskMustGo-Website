@@ -2,156 +2,162 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft, Mail, Send, CheckCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Mail, Phone, MapPin } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 export default function ContactPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    subject: "",
-    message: "",
-  })
+  const [formSubmitted, setFormSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (error) {
+      setErrorMessage(decodeURIComponent(error))
+    }
+  }, [searchParams])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
+
+    const formData = new FormData(e.target as HTMLFormElement)
+    const contactData = {
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      subject: formData.get("subject") as string,
+      message: formData.get("message") as string,
+    }
 
     // Create mailto link with form data
-    const mailtoLink = `mailto:support@muskmustgo.com?subject=${encodeURIComponent(formData.subject)}&body=${encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`,
+    const mailtoLink = `mailto:support@muskmustgo.com?subject=${encodeURIComponent(contactData.subject)}&body=${encodeURIComponent(
+      `Name: ${contactData.name}\nEmail: ${contactData.email}\n\nMessage:\n${contactData.message}`,
     )}`
 
     // Open user's email client
     window.location.href = mailtoLink
-  }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
+    // Simulate form submission for UI
+    setTimeout(() => {
+      setIsSubmitting(false)
+      setFormSubmitted(true)
+    }, 1000)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-blue-50 py-12">
-      <div className="container mx-auto px-4">
+    <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+      <div className="container mx-auto px-6 md:px-10">
+        <Link href="/" className="inline-flex items-center text-white/70 hover:text-white mb-12">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to home
+        </Link>
+
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
-            <p className="text-xl text-gray-600">
-              Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
-            </p>
+            <p className="text-red-500 uppercase tracking-wider text-sm font-medium mb-3">GET IN TOUCH</p>
+            <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-6">Contact Us</h1>
+            <p className="text-xl text-white/70">Have questions or suggestions? We'd love to hear from you.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Contact Form */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Send us a message</CardTitle>
-                <CardDescription>Fill out the form below and we'll get back to you shortly.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Name</Label>
-                      <Input id="name" name="name" value={formData.name} onChange={handleChange} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
+          <div className="flex justify-center mb-16">
+            <div className="text-center">
+              <div className="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-medium mb-2">Email Support</h3>
+              <p className="text-white/70">support@muskmustgo.com</p>
+            </div>
+          </div>
+
+          <div className="bg-dark-300 p-8 rounded-lg">
+            {formSubmitted ? (
+              <div className="text-center py-12">
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
+                <h2 className="text-2xl font-bold mb-4">Message Sent!</h2>
+                <p className="text-white/70 mb-8">
+                  Your email client should have opened with the message. Send it to reach us directly.
+                </p>
+                <Button onClick={() => setFormSubmitted(false)} className="bg-white text-black hover:bg-white/90">
+                  Send Another Message
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input id="subject" name="subject" value={formData.subject} onChange={handleChange} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="message">Message</Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      rows={5}
-                      value={formData.message}
-                      onChange={handleChange}
+                    <label htmlFor="name" className="block text-white/70 mb-2">
+                      Name
+                    </label>
+                    <Input
+                      name="name"
+                      id="name"
+                      type="text"
                       required
+                      className="bg-dark-400 border-white/20 text-white"
                     />
                   </div>
-                  <Button type="submit" className="w-full">
-                    Send Message
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
 
-            {/* Contact Information */}
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Get in touch</CardTitle>
-                  <CardDescription>Reach out to us directly through any of these channels.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Mail className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium">Email</p>
-                      <a href="mailto:support@muskmustgo.com" className="text-blue-600 hover:underline">
-                        support@muskmustgo.com
-                      </a>
-                    </div>
+                  <div>
+                    <label htmlFor="email" className="block text-white/70 mb-2">
+                      Email
+                    </label>
+                    <Input
+                      name="email"
+                      id="email"
+                      type="email"
+                      required
+                      className="bg-dark-400 border-white/20 text-white"
+                    />
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Phone className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium">Phone</p>
-                      <p className="text-gray-600">Coming soon</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium">Address</p>
-                      <p className="text-gray-600">Online business</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Business Hours</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Monday - Friday</span>
-                      <span>9:00 AM - 6:00 PM EST</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Saturday</span>
-                      <span>10:00 AM - 4:00 PM EST</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Sunday</span>
-                      <span>Closed</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <div>
+                  <label htmlFor="subject" className="block text-white/70 mb-2">
+                    Subject
+                  </label>
+                  <Input
+                    name="subject"
+                    id="subject"
+                    type="text"
+                    required
+                    className="bg-dark-400 border-white/20 text-white"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="block text-white/70 mb-2">
+                    Message
+                  </label>
+                  <Textarea
+                    name="message"
+                    id="message"
+                    required
+                    rows={6}
+                    className="bg-dark-400 border-white/20 text-white resize-none"
+                    defaultValue={errorMessage ? `Order Processing Error Details:\n\n${errorMessage}\n\n` : ""}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-red-600 hover:bg-red-700 text-white w-full md:w-auto"
+                >
+                  {isSubmitting ? (
+                    <>Opening Email Client...</>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" /> Send Message
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </div>
