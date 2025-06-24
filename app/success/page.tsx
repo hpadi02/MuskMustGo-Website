@@ -95,7 +95,7 @@ export default function SuccessPage() {
                   { name: "emoji_bad", value: elonEmojiName },
                 )
 
-                console.log(`Added emoji attributes for ${item.name}:`, {
+                console.log(`✅ Added emoji attributes for ${item.name}:`, {
                   emoji_good: teslaEmojiName,
                   emoji_bad: elonEmojiName,
                 })
