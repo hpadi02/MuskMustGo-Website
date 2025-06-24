@@ -10,10 +10,16 @@ export async function POST(request: NextRequest) {
     console.log("Subject:", subject)
     console.log("Message:", message)
 
+    // Get mail server host from environment (defaults to Ed's server)
+    const mailHost = process.env.MAIL_HOST || "mail.leafe.com"
+    const mailPort = Number.parseInt(process.env.MAIL_PORT || "587")
+
+    console.log("Using mail server:", mailHost, "port:", mailPort)
+
     // Create transporter using Ed's mail server (no auth required)
-    const transporter = nodemailer.createTransport({
-      host: "mail.leafe.com",
-      port: 587, // Ed said it listens on both 587 and 25
+    const transporter = nodemailer.createTransporter({
+      host: mailHost,
+      port: mailPort,
       secure: false, // false for port 587
       requireTLS: false, // Ed's server doesn't require TLS
       ignoreTLS: true, // Ignore TLS errors if any
@@ -74,6 +80,7 @@ export async function GET() {
   return NextResponse.json({
     message: "Contact API is running",
     timestamp: new Date().toISOString(),
-    smtpServer: "mail.leafe.com",
+    mailHost: process.env.MAIL_HOST || "mail.leafe.com",
+    mailPort: process.env.MAIL_PORT || "587",
   })
 }

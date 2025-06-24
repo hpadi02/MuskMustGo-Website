@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mail, Send, CheckCircle } from "lucide-react"
+import { ArrowLeft, Mail, Send, CheckCircle, AlertCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useSearchParams } from "next/navigation"
@@ -14,6 +14,7 @@ export default function ContactPage() {
   const [formSubmitted, setFormSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [submitError, setSubmitError] = useState("")
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -23,9 +24,10 @@ export default function ContactPage() {
     }
   }, [searchParams])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitError("")
 
     const formData = new FormData(e.target as HTMLFormElement)
     const contactData = {
@@ -35,19 +37,31 @@ export default function ContactPage() {
       message: formData.get("message") as string,
     }
 
-    // Create mailto link with form data
-    const mailtoLink = `mailto:support@muskmustgo.com?subject=${encodeURIComponent(contactData.subject)}&body=${encodeURIComponent(
-      `Name: ${contactData.name}\nEmail: ${contactData.email}\n\nMessage:\n${contactData.message}`,
-    )}`
+    try {
+      console.log("Sending contact form:", contactData)
 
-    // Open user's email client
-    window.location.href = mailtoLink
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contactData),
+      })
 
-    // Simulate form submission for UI
-    setTimeout(() => {
+      const result = await response.json()
+      console.log("Contact form response:", result)
+
+      if (result.success) {
+        setFormSubmitted(true)
+      } else {
+        setSubmitError(result.details || result.error || "Failed to send message")
+      }
+    } catch (error) {
+      console.error("Contact form error:", error)
+      setSubmitError("Network error. Please try again.")
+    } finally {
       setIsSubmitting(false)
-      setFormSubmitted(true)
-    }, 1000)
+    }
   }
 
   return (
@@ -80,7 +94,7 @@ export default function ContactPage() {
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
                 <h2 className="text-2xl font-bold mb-4">Message Sent!</h2>
                 <p className="text-white/70 mb-8">
-                  Your email client should have opened with the message. Send it to reach us directly.
+                  Thank you for reaching out. We'll get back to you as soon as possible.
                 </p>
                 <Button onClick={() => setFormSubmitted(false)} className="bg-white text-black hover:bg-white/90">
                   Send Another Message
@@ -88,6 +102,18 @@ export default function ContactPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
+                {submitError && (
+                  <div className="bg-red-600/20 border border-red-500/30 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-5 w-5 text-red-400 mr-3 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h3 className="text-red-400 font-medium mb-1">Error sending message</h3>
+                        <p className="text-white/80 text-sm">{submitError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="name" className="block text-white/70 mb-2">
@@ -149,7 +175,7 @@ export default function ContactPage() {
                   className="bg-red-600 hover:bg-red-700 text-white w-full md:w-auto"
                 >
                   {isSubmitting ? (
-                    <>Opening Email Client...</>
+                    <>Sending...</>
                   ) : (
                     <>
                       <Send className="mr-2 h-4 w-4" /> Send Message
