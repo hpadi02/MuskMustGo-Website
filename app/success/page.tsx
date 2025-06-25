@@ -12,6 +12,7 @@ function SuccessContent() {
   const sessionId = searchParams.get("session_id")
   const [orderStatus, setOrderStatus] = useState<"processing" | "success" | "error">("processing")
   const [orderDetails, setOrderDetails] = useState<any>(null)
+  const [debugInfo, setDebugInfo] = useState<string>("")
   const { clearCart } = useCart()
   const hasProcessed = useRef(false)
 
@@ -20,15 +21,17 @@ function SuccessContent() {
     hasProcessed.current = true
 
     if (!sessionId) {
-      console.error("No session ID found")
+      console.error("❌ No session ID found in URL")
+      setDebugInfo("No session ID found in URL")
       setOrderStatus("error")
       return
     }
 
     const processOrder = async () => {
       try {
-        console.log("=== PROCESSING ORDER ===")
-        console.log("Session ID:", sessionId)
+        console.log("=== SUCCESS PAGE DEBUG ===")
+        console.log("1. Session ID from URL:", sessionId)
+        console.log("2. Current URL:", window.location.href)
 
         // Clear cart once
         clearCart()
@@ -37,32 +40,50 @@ function SuccessContent() {
         try {
           localStorage.removeItem("cart")
           localStorage.removeItem("cart-storage")
-          console.log("✅ Cart cleared")
+          console.log("3. ✅ Cart cleared")
         } catch (e) {
-          console.log("Note: Could not clear localStorage")
+          console.log("3. ⚠️ Could not clear localStorage")
         }
 
-        // Try to get session details
+        // Try to get session details with detailed logging
         let sessionData = null
         try {
-          console.log("Fetching session details from API...")
-          const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
+          const apiUrl = `/api/stripe/session/${sessionId}`
+          console.log("4. Fetching from API URL:", apiUrl)
+
+          const sessionResponse = await fetch(apiUrl)
+          console.log("5. API Response status:", sessionResponse.status)
+          console.log("6. API Response ok:", sessionResponse.ok)
 
           if (sessionResponse.ok) {
             sessionData = await sessionResponse.json()
-            console.log("✅ Session data retrieved successfully:", sessionData)
+            console.log("7. ✅ Session data retrieved successfully!")
+            console.log("8. Session data:", sessionData)
+
+            // Validate the data we got
+            const email = sessionData.customer_details?.email
+            const amountTotal = sessionData.amount_total
+
+            console.log("9. Extracted email:", email)
+            console.log("10. Extracted amount_total:", amountTotal)
+            console.log("11. Formatted total:", amountTotal ? (amountTotal / 100).toFixed(2) : "N/A")
 
             // Set order details with actual data
             setOrderDetails({
-              email: sessionData.customer_details?.email || "No email provided",
-              total: sessionData.amount_total ? (sessionData.amount_total / 100).toFixed(2) : "0.00",
+              email: email || "No email provided",
+              total: amountTotal ? (amountTotal / 100).toFixed(2) : "0.00",
               customerName: sessionData.customer_details?.name || null,
               paymentStatus: sessionData.payment_status || "unknown",
               sessionData,
             })
+
+            setDebugInfo(
+              `✅ Success! Email: ${email}, Total: $${amountTotal ? (amountTotal / 100).toFixed(2) : "0.00"}`,
+            )
           } else {
             const errorData = await sessionResponse.json()
             console.error("❌ Session API error:", errorData)
+            setDebugInfo(`❌ API Error: ${errorData.message || "Unknown error"}`)
 
             // Set fallback order details
             setOrderDetails({
@@ -75,6 +96,7 @@ function SuccessContent() {
           }
         } catch (sessionError) {
           console.error("❌ Session fetch failed:", sessionError)
+          setDebugInfo(`❌ Fetch Error: ${sessionError.message}`)
 
           // Set fallback order details
           setOrderDetails({
@@ -88,7 +110,7 @@ function SuccessContent() {
 
         setOrderStatus("success")
 
-        // Background order processing
+        // Background order processing (same as before)
         setTimeout(async () => {
           try {
             console.log("=== BACKGROUND ORDER PROCESSING ===")
@@ -180,6 +202,7 @@ function SuccessContent() {
         }, 1000)
       } catch (criticalError) {
         console.error("Critical error:", criticalError)
+        setDebugInfo(`❌ Critical Error: ${criticalError.message}`)
         setOrderDetails({
           email: "Order confirmed",
           total: "Payment processed",
@@ -201,6 +224,7 @@ function SuccessContent() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <h2 className="text-xl font-medium">Processing your order...</h2>
           <p className="text-white/70 mt-2">Please wait while we confirm your payment</p>
+          {debugInfo && <p className="text-xs text-white/50 mt-4 max-w-md mx-auto break-words">{debugInfo}</p>}
         </div>
       </div>
     )
@@ -273,6 +297,13 @@ function SuccessContent() {
               </div>
             </div>
           </div>
+
+          {/* Debug Info (temporary) */}
+          {debugInfo && (
+            <div className="mb-8 p-4 bg-gray-800 rounded text-xs text-left">
+              <strong>Debug Info:</strong> {debugInfo}
+            </div>
+          )}
 
           {/* Email Confirmation Text */}
           <p className="text-white/70 mb-12 text-lg leading-relaxed">

@@ -1,39 +1,48 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-})
-
 export async function GET(req: Request, { params }: { params: { sessionId: string } }) {
   try {
     const { sessionId } = params
 
+    console.log("=== STRIPE SESSION API DEBUG ===")
+    console.log("1. Session ID received:", sessionId)
+    console.log("2. STRIPE_SECRET_KEY exists:", !!process.env.STRIPE_SECRET_KEY)
+    console.log("3. STRIPE_SECRET_KEY starts with:", process.env.STRIPE_SECRET_KEY?.substring(0, 7))
+
     if (!sessionId) {
-      console.error("No session ID provided")
+      console.error("❌ No session ID provided")
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
-    console.log("Fetching Stripe session:", sessionId)
-
-    // Check if we have Stripe secret key
     if (!process.env.STRIPE_SECRET_KEY) {
-      console.error("STRIPE_SECRET_KEY not configured")
+      console.error("❌ STRIPE_SECRET_KEY not configured")
       return NextResponse.json({ error: "Stripe not configured" }, { status: 500 })
     }
 
-    // Retrieve the checkout session from Stripe with expanded data
+    // Initialize Stripe with proper API version
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: "2024-06-20", // Use the same version as in lib/stripe.ts
+    })
+
+    console.log("4. Stripe client initialized successfully")
+    console.log("5. Attempting to retrieve session:", sessionId)
+
+    // Retrieve the checkout session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "line_items.price.product", "payment_intent", "customer"],
     })
 
-    console.log("Retrieved session details:", {
+    console.log("6. ✅ Session retrieved successfully!")
+    console.log("7. Session details:", {
       id: session.id,
       payment_status: session.payment_status,
       amount_total: session.amount_total,
       customer_email: session.customer_details?.email,
       customer_name: session.customer_details?.name,
-      payment_intent: session.payment_intent,
+      payment_intent_type: typeof session.payment_intent,
+      payment_intent_id:
+        typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
     })
 
     // Extract payment intent ID properly
@@ -44,7 +53,7 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
       paymentIntentId = session.payment_intent.id
     }
 
-    // Return comprehensive session data
+    // Build comprehensive response
     const responseData = {
       id: session.id,
       payment_status: session.payment_status,
@@ -75,29 +84,34 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
         })) || [],
     }
 
-    console.log("Returning session data:", responseData)
+    console.log("8. ✅ Returning response data:", responseData)
     return NextResponse.json(responseData)
   } catch (error) {
-    console.error("Error fetching Stripe session:", error)
+    console.error("❌ STRIPE SESSION API ERROR:")
+    console.error("Error type:", error?.constructor?.name)
+    console.error("Error message:", error?.message)
 
-    // Return more specific error information
     if (error instanceof Stripe.errors.StripeError) {
       console.error("Stripe error details:", {
         type: error.type,
         code: error.code,
         message: error.message,
+        statusCode: error.statusCode,
       })
+
       return NextResponse.json(
         {
-          error: "Stripe error",
+          error: "Stripe API error",
           message: error.message,
           type: error.type,
           code: error.code,
+          statusCode: error.statusCode,
         },
-        { status: 500 },
+        { status: error.statusCode || 500 },
       )
     }
 
+    console.error("Full error object:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch session details",
