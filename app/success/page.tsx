@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, ArrowRight } from "lucide-react"
+import { CheckCircle, Package, ArrowRight } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 
 function SuccessContent() {
@@ -196,7 +196,7 @@ function SuccessContent() {
 
   if (orderStatus === "processing") {
     return (
-      <div className="bg-dark-400 text-white min-h-screen flex items-center justify-center">
+      <div className="bg-black text-white min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
           <h2 className="text-xl font-medium">Processing your order...</h2>
@@ -207,54 +207,94 @@ function SuccessContent() {
   }
 
   return (
-    <div className="bg-dark-400 text-white min-h-screen">
-      <div className="container mx-auto px-6 py-32">
+    <div className="bg-black text-white min-h-screen">
+      {/* Navigation */}
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+        <div className="flex items-center space-x-8">
+          <Link href="/" className="text-xl font-bold">
+            <span className="text-red-500">Musk</span>MustGo
+          </Link>
+          <div className="hidden md:flex space-x-6">
+            <Link href="/shop/all" className="text-white/80 hover:text-white">
+              SHOP
+            </Link>
+            <Link href="/stories" className="text-white/80 hover:text-white">
+              STORIES
+            </Link>
+            <Link href="/about" className="text-white/80 hover:text-white">
+              ABOUT
+            </Link>
+            <Link href="/contact" className="text-white/80 hover:text-white">
+              CONTACT
+            </Link>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="w-6 h-6 border border-white/30 rounded"></div>
+          <Link href="/shop/all">
+            <Button className="bg-white text-black hover:bg-white/90 font-medium px-6">SHOP NOW</Button>
+          </Link>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-6 py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="text-green-500 mb-6">
-            <CheckCircle className="h-16 w-16 mx-auto" />
+          {/* Success Icon */}
+          <div className="mb-8">
+            <div className="w-20 h-20 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+              <CheckCircle className="h-12 w-12 text-white" />
+            </div>
           </div>
 
-          <h1 className="text-4xl font-bold mb-4">Order Confirmed!</h1>
-          <p className="text-xl text-white/70 mb-8">
-            Thank you for your purchase. Your payment has been processed successfully.
+          {/* Main Heading */}
+          <h1 className="text-5xl font-bold mb-6">Order Confirmed!</h1>
+
+          {/* Subtitle */}
+          <p className="text-xl text-white/70 mb-16">
+            Thank you for your purchase. Your order has been successfully processed.
           </p>
 
-          <div className="bg-dark-300 rounded-lg p-6 mb-8 text-left">
-            <h3 className="text-lg font-medium mb-4">Order Details</h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="text-white/60">Email:</span> {orderDetails?.email || "Processing..."}
-              </p>
-              <p>
-                <span className="text-white/60">Total:</span> ${orderDetails?.total || "Processing..."}
-              </p>
-              {orderDetails?.customerName && (
-                <p>
-                  <span className="text-white/60">Name:</span> {orderDetails.customerName}
-                </p>
-              )}
+          {/* Order Details Section */}
+          <div className="mb-16">
+            <div className="flex items-center justify-center mb-8">
+              <Package className="h-6 w-6 mr-3 text-white/70" />
+              <h2 className="text-2xl font-semibold">Order Details</h2>
+            </div>
+
+            <div className="space-y-6 text-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-white/70">Email:</span>
+                <span className="font-medium">{orderDetails?.email || "Processing..."}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/70">Total:</span>
+                <span className="font-medium">${orderDetails?.total || "Processing..."}</span>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <p className="text-white/70">
-              You will receive an email confirmation shortly. Your order will be processed and shipped within 3-5
-              business days.
-            </p>
+          {/* Email Confirmation Text */}
+          <p className="text-white/70 mb-12 text-lg leading-relaxed">
+            You'll receive an email confirmation shortly with your order details and tracking information.
+          </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/shop/all">
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                  Continue Shopping
-                </Button>
-              </Link>
-              <Link href="/">
-                <Button className="bg-red-600 hover:bg-red-700">
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Back to Home
-                </Button>
-              </Link>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/account/orders">
+              <Button
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 px-8 py-3 text-base font-medium"
+              >
+                View Orders
+              </Button>
+            </Link>
+            <Link href="/shop/all">
+              <Button className="bg-red-600 hover:bg-red-700 px-8 py-3 text-base font-medium">
+                Continue Shopping
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -266,7 +306,7 @@ export default function SuccessPage() {
   return (
     <Suspense
       fallback={
-        <div className="bg-dark-400 text-white min-h-screen flex items-center justify-center">
+        <div className="bg-black text-white min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
         </div>
       }
