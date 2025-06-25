@@ -186,7 +186,7 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
     <div className="bg-dark-400 text-white min-h-screen">
       <div className="container mx-auto px-6 md:px-10 py-32">
         <Link
-          href={`/product/tesla-vs-elon-emoji`}
+          href={`/product/tesla_vs_elon_emoji`}
           className="inline-flex items-center text-white/70 hover:text-white mb-12"
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to product

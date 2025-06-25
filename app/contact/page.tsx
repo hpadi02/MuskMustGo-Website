@@ -89,13 +89,13 @@ export default function ContactPage() {
           </div>
 
           <div className="bg-dark-300 p-8 rounded-lg">
-            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4 mb-6">
+            <div className="bg-green-600/20 border border-green-500/30 rounded-lg p-4 mb-6">
               <div className="flex items-start">
-                <Info className="h-5 w-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+                <Info className="h-5 w-5 text-green-400 mr-3 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="text-blue-400 font-medium mb-1">Contact Form Status</h3>
+                  <h3 className="text-green-400 font-medium mb-1">Contact Form</h3>
                   <p className="text-white/80 text-sm">
-                    Messages are currently logged to our server. Ed will be notified of your submission.
+                    Messages are sent directly to Ed via email. You'll receive a confirmation once sent.
                   </p>
                 </div>
               </div>
