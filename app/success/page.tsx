@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -13,8 +13,13 @@ function SuccessContent() {
   const [orderStatus, setOrderStatus] = useState<"processing" | "success" | "error">("processing")
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const { clearCart } = useCart()
+  const hasProcessed = useRef(false) // Prevent multiple processing
 
   useEffect(() => {
+    // Prevent multiple executions
+    if (hasProcessed.current) return
+    hasProcessed.current = true
+
     if (!sessionId) {
       console.error("No session ID found")
       setOrderStatus("error")
@@ -26,10 +31,10 @@ function SuccessContent() {
         console.log("=== PROCESSING ORDER ===")
         console.log("Session ID:", sessionId)
 
-        // Clear cart immediately - don't wait for API calls
+        // Clear cart once
         clearCart()
 
-        // Clear localStorage
+        // Clear localStorage once
         try {
           localStorage.removeItem("cart")
           localStorage.removeItem("cart-storage")
@@ -169,7 +174,7 @@ function SuccessContent() {
     }
 
     processOrder()
-  }, [sessionId, clearCart])
+  }, [sessionId]) // Removed clearCart from dependencies to prevent re-runs
 
   if (orderStatus === "processing") {
     return (
