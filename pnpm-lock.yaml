@@ -98,9 +98,6 @@ importers:
       '@stripe/stripe-js':
         specifier: latest
         version: 7.4.0
-      '@types/nodemailer':
-        specifier: ^6.4.14
-        version: 6.4.14
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.0)
@@ -198,6 +195,9 @@ importers:
       '@types/node':
         specifier: ^22
         version: 22.0.0
+      '@types/nodemailer':
+        specifier: ^6.4.14
+        version: 6.4.14
       '@types/react':
         specifier: ^18
         version: 18.0.0
