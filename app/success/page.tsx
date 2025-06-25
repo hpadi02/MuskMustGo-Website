@@ -35,34 +35,60 @@ function SuccessContent() {
         const sessionData = await sessionResponse.json()
         console.log("Session data:", sessionData)
 
-        // Prepare order data with emoji customizations
+        // Prepare order data in Ed's expected format
         const orderData = {
-          sessionId,
-          paymentIntentId: sessionData.payment_intent,
-          customerEmail: sessionData.customer_details?.email,
-          customerName: sessionData.customer_details?.name,
-          shippingAddress: sessionData.shipping_details?.address,
-          items: items.map((item) => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            stripeId: item.stripeId,
-            productId: item.productId,
-            // ✅ INCLUDE EMOJI CUSTOMIZATIONS
-            customOptions: item.customOptions,
-            customId: item.customId,
-            // ✅ EXTRACT EMOJI DETAILS FOR ED
-            ...(item.customOptions && {
-              teslaEmoji: item.customOptions.tesla?.name,
-              teslaEmojiPath: item.customOptions.tesla?.path,
-              elonEmoji: item.customOptions.elon?.name,
-              elonEmojiPath: item.customOptions.elon?.path,
-            }),
-          })),
-          totalAmount: sessionData.amount_total / 100, // Convert from cents
-          currency: sessionData.currency,
-          timestamp: new Date().toISOString(),
+          customer: {
+            email: sessionData.customer_details?.email || "",
+            firstname: sessionData.customer_details?.name?.split(" ")[0] || "",
+            lastname: sessionData.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+            addr1: sessionData.shipping_details?.address?.line1 || sessionData.customer_details?.address?.line1 || "",
+            addr2: sessionData.shipping_details?.address?.line2 || sessionData.customer_details?.address?.line2 || "",
+            city: sessionData.shipping_details?.address?.city || sessionData.customer_details?.address?.city || "",
+            state_prov:
+              sessionData.shipping_details?.address?.state || sessionData.customer_details?.address?.state || "",
+            postal_code:
+              sessionData.shipping_details?.address?.postal_code ||
+              sessionData.customer_details?.address?.postal_code ||
+              "",
+            country:
+              sessionData.shipping_details?.address?.country || sessionData.customer_details?.address?.country || "",
+          },
+          payment_id: sessionData.payment_intent,
+          products: items.map((item) => {
+            const product = {
+              product_id: item.stripeId || item.productId,
+              quantity: item.quantity || 1,
+            }
+
+            // Add emoji attributes for customized products
+            if (item.customOptions?.tesla && item.customOptions?.elon) {
+              // Extract filename without extension for emoji_good (Tesla)
+              const teslaEmojiName =
+                item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
+                item.customOptions.tesla.name ||
+                "unknown"
+
+              // Extract filename without extension for emoji_bad (Elon)
+              const elonEmojiName =
+                item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
+                item.customOptions.elon.name ||
+                "unknown"
+
+              product.attributes = [
+                { name: "emoji_good", value: teslaEmojiName },
+                { name: "emoji_bad", value: elonEmojiName },
+              ]
+
+              console.log(`✅ Added emoji attributes for ${item.name}:`, {
+                emoji_good: teslaEmojiName,
+                emoji_bad: elonEmojiName,
+              })
+            }
+
+            return product
+          }),
+          shipping: 0,
+          tax: 0,
         }
 
         console.log("=== ORDER DATA BEING SENT TO ED ===")
@@ -149,36 +175,43 @@ function SuccessContent() {
               <h3 className="text-lg font-medium mb-4">Order Details</h3>
               <div className="space-y-2 text-sm">
                 <p>
-                  <span className="text-white/60">Order ID:</span> {orderDetails.sessionId}
+                  <span className="text-white/60">Order ID:</span> {orderDetails.payment_id}
                 </p>
-                {orderDetails.customerEmail && (
+                {orderDetails.customer?.email && (
                   <p>
-                    <span className="text-white/60">Email:</span> {orderDetails.customerEmail}
+                    <span className="text-white/60">Email:</span> {orderDetails.customer?.email}
                   </p>
                 )}
-                <p>
+                {/* Assuming totalAmount is calculated on the backend now */}
+                {/* <p>
                   <span className="text-white/60">Total:</span> ${orderDetails.totalAmount?.toFixed(2)}
-                </p>
+                </p> */}
               </div>
 
               <div className="mt-4">
                 <h4 className="font-medium mb-2">Items Ordered:</h4>
-                {orderDetails.items.map((item: any, index: number) => (
+                {orderDetails.products.map((item: any, index: number) => (
                   <div key={index} className="bg-dark-400 rounded p-3 mb-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        {/* Assuming product details are not directly available in orderDetails.products */}
+                        {/* <p className="font-medium">{item.name}</p> */}
                         <p className="text-sm text-white/60">Quantity: {item.quantity}</p>
                         {/* ✅ SHOW EMOJI CUSTOMIZATIONS */}
-                        {item.teslaEmoji && item.elonEmoji && (
+                        {item.attributes && (
                           <div className="mt-2 text-sm">
                             <p className="text-green-400">✅ Custom Emoji Selection:</p>
-                            <p className="text-white/70">Tesla: {item.teslaEmoji}</p>
-                            <p className="text-white/70">Elon: {item.elonEmoji}</p>
+                            <p className="text-white/70">
+                              Tesla: {item.attributes.find((attr) => attr.name === "emoji_good")?.value}
+                            </p>
+                            <p className="text-white/70">
+                              Elon: {item.attributes.find((attr) => attr.name === "emoji_bad")?.value}
+                            </p>
                           </div>
                         )}
                       </div>
-                      <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                      {/* Assuming price is not directly available in orderDetails.products */}
+                      {/* <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p> */}
                     </div>
                   </div>
                 ))}
