@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // Create SMTP transporter using Ed's mail server
     const transporter = nodemailer.createTransport({
       host: "mail.leafe.com",
-      port: 587, // Ed said it listens on both 587 and 25
+      port: 587, 
       secure: false, // Use STARTTLS
       auth: false, // No authentication needed - server accepts from designated hosts
       tls: {
