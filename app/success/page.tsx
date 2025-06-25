@@ -29,13 +29,14 @@ function SuccessContent() {
         // Get session details from Stripe
         const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
         if (!sessionResponse.ok) {
+          console.error("Failed to fetch session details:", sessionResponse.status)
           throw new Error("Failed to fetch session details")
         }
 
         const sessionData = await sessionResponse.json()
         console.log("Session data:", sessionData)
 
-        // Prepare order data in Ed's expected format
+        // Prepare order data for backend
         const orderData = {
           customer: {
             email: sessionData.customer_details?.email || "",
@@ -62,13 +63,11 @@ function SuccessContent() {
 
             // Add emoji attributes for customized products
             if (item.customOptions?.tesla && item.customOptions?.elon) {
-              // Extract filename without extension for emoji_good (Tesla)
               const teslaEmojiName =
                 item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
                 item.customOptions.tesla.name ||
                 "unknown"
 
-              // Extract filename without extension for emoji_bad (Elon)
               const elonEmojiName =
                 item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
                 item.customOptions.elon.name ||
@@ -91,34 +90,41 @@ function SuccessContent() {
           tax: 0,
         }
 
-        console.log("=== ORDER DATA BEING SENT TO ED ===")
+        console.log("=== ORDER DATA BEING SENT ===")
         console.log("Full order data:", JSON.stringify(orderData, null, 2))
 
-        // Send order to Ed's backend
-        const orderResponse = await fetch("/api/orders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(orderData),
-        })
+        // Send order to backend
+        try {
+          const orderResponse = await fetch("/api/orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(orderData),
+          })
 
-        if (!orderResponse.ok) {
-          const errorData = await orderResponse.json()
-          console.error("Order API error:", errorData)
-          throw new Error(`Order processing failed: ${errorData.error}`)
+          if (orderResponse.ok) {
+            const orderResult = await orderResponse.json()
+            console.log("Order sent successfully:", orderResult)
+          } else {
+            console.error("Order API error:", orderResponse.status)
+            // Don't throw error - still show success to user
+          }
+        } catch (orderError) {
+          console.error("Order processing error:", orderError)
+          // Don't throw error - still show success to user
         }
 
-        const orderResult = await orderResponse.json()
-        console.log("Order sent to Ed successfully:", orderResult)
-
-        setOrderDetails(orderData)
+        setOrderDetails({
+          ...orderData,
+          sessionData,
+        })
         setOrderStatus("success")
 
         // Clear cart after successful order
         clearCart()
       } catch (error) {
-        console.error("Order processing error:", error)
+        console.error("Critical order processing error:", error)
         setOrderStatus("error")
       }
     }
@@ -182,10 +188,12 @@ function SuccessContent() {
                     <span className="text-white/60">Email:</span> {orderDetails.customer?.email}
                   </p>
                 )}
-                {/* Assuming totalAmount is calculated on the backend now */}
-                {/* <p>
-                  <span className="text-white/60">Total:</span> ${orderDetails.totalAmount?.toFixed(2)}
-                </p> */}
+                {orderDetails.sessionData?.amount_total && (
+                  <p>
+                    <span className="text-white/60">Total:</span> $
+                    {(orderDetails.sessionData.amount_total / 100).toFixed(2)}
+                  </p>
+                )}
               </div>
 
               <div className="mt-4">
@@ -194,24 +202,19 @@ function SuccessContent() {
                   <div key={index} className="bg-dark-400 rounded p-3 mb-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        {/* Assuming product details are not directly available in orderDetails.products */}
-                        {/* <p className="font-medium">{item.name}</p> */}
                         <p className="text-sm text-white/60">Quantity: {item.quantity}</p>
-                        {/* ✅ SHOW EMOJI CUSTOMIZATIONS */}
                         {item.attributes && (
                           <div className="mt-2 text-sm">
                             <p className="text-green-400">✅ Custom Emoji Selection:</p>
                             <p className="text-white/70">
-                              Tesla: {item.attributes.find((attr) => attr.name === "emoji_good")?.value}
+                              Tesla: {item.attributes.find((attr: any) => attr.name === "emoji_good")?.value}
                             </p>
                             <p className="text-white/70">
-                              Elon: {item.attributes.find((attr) => attr.name === "emoji_bad")?.value}
+                              Elon: {item.attributes.find((attr: any) => attr.name === "emoji_bad")?.value}
                             </p>
                           </div>
                         )}
                       </div>
-                      {/* Assuming price is not directly available in orderDetails.products */}
-                      {/* <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p> */}
                     </div>
                   </div>
                 ))}
