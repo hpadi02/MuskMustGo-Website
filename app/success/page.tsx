@@ -5,12 +5,14 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Package, ArrowRight } from "lucide-react"
+import { useCart } from "@/hooks/use-cart-simplified"
 
 function SuccessContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
   const [orderStatus, setOrderStatus] = useState<"processing" | "success" | "error">("processing")
   const [orderDetails, setOrderDetails] = useState<any>(null)
+  const { clearCart } = useCart()
 
   useEffect(() => {
     if (!sessionId) {
@@ -24,16 +26,38 @@ function SuccessContent() {
         console.log("=== PROCESSING ORDER ===")
         console.log("Session ID:", sessionId)
 
-        // Always show success for now - we'll handle backend processing separately
+        // Get session details from Stripe first
+        const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
+        if (!sessionResponse.ok) {
+          throw new Error("Failed to fetch session details")
+        }
+
+        const sessionData = await sessionResponse.json()
+        console.log("Session data retrieved:", sessionData)
+
+        // Set success status with session data
         setOrderDetails({
-          sessionId: sessionId,
-          timestamp: new Date().toISOString(),
+          email: sessionData.customer_details?.email || "",
+          total: sessionData.amount_total ? (sessionData.amount_total / 100).toFixed(2) : "0.00",
+          sessionData,
         })
         setOrderStatus("success")
 
-        // Try to process order in background (don't let it fail the success page)
+        // Clear cart immediately after setting success
+        clearCart()
+
+        // Also clear localStorage cart data
         try {
-          // Get cart items from localStorage
+          localStorage.removeItem("cart")
+          localStorage.removeItem("cart-storage")
+          console.log("✅ Cart cleared from localStorage")
+        } catch (e) {
+          console.log("Note: Could not clear localStorage (normal in some browsers)")
+        }
+
+        // Background order processing (don't let this fail the success page)
+        try {
+          // Get cart items from localStorage before we cleared it
           const cartStorage = localStorage.getItem("cart-storage")
           let cartItems = []
 
@@ -42,102 +66,76 @@ function SuccessContent() {
             cartItems = parsedCart.state?.items || []
           }
 
-          console.log("Cart items from localStorage:", cartItems)
+          console.log("Cart items for backend:", cartItems)
 
-          // Get session details from Stripe
-          const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
-          if (sessionResponse.ok) {
-            const sessionData = await sessionResponse.json()
-            console.log("Session data retrieved:", sessionData)
+          // Prepare order data
+          const orderData = {
+            customer: {
+              email: sessionData.customer_details?.email || "",
+              firstname: sessionData.customer_details?.name?.split(" ")[0] || "",
+              lastname: sessionData.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+              addr1: sessionData.shipping_details?.address?.line1 || sessionData.customer_details?.address?.line1 || "",
+              addr2: sessionData.shipping_details?.address?.line2 || sessionData.customer_details?.address?.line2 || "",
+              city: sessionData.shipping_details?.address?.city || sessionData.customer_details?.address?.city || "",
+              state_prov:
+                sessionData.shipping_details?.address?.state || sessionData.customer_details?.address?.state || "",
+              postal_code:
+                sessionData.shipping_details?.address?.postal_code ||
+                sessionData.customer_details?.address?.postal_code ||
+                "",
+              country:
+                sessionData.shipping_details?.address?.country || sessionData.customer_details?.address?.country || "",
+            },
+            payment_id: sessionData.payment_intent,
+            products: cartItems.map((item: any) => {
+              const product = {
+                product_id: item.stripeId || item.productId || item.id,
+                quantity: item.quantity || 1,
+              }
 
-            // Prepare order data
-            const orderData = {
-              customer: {
-                email: sessionData.customer_details?.email || "",
-                firstname: sessionData.customer_details?.name?.split(" ")[0] || "",
-                lastname: sessionData.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-                addr1:
-                  sessionData.shipping_details?.address?.line1 || sessionData.customer_details?.address?.line1 || "",
-                addr2:
-                  sessionData.shipping_details?.address?.line2 || sessionData.customer_details?.address?.line2 || "",
-                city: sessionData.shipping_details?.address?.city || sessionData.customer_details?.address?.city || "",
-                state_prov:
-                  sessionData.shipping_details?.address?.state || sessionData.customer_details?.address?.state || "",
-                postal_code:
-                  sessionData.shipping_details?.address?.postal_code ||
-                  sessionData.customer_details?.address?.postal_code ||
-                  "",
-                country:
-                  sessionData.shipping_details?.address?.country ||
-                  sessionData.customer_details?.address?.country ||
-                  "",
-              },
-              payment_id: sessionData.payment_intent,
-              products: cartItems.map((item: any) => {
-                const product = {
-                  product_id: item.stripeId || item.productId || item.id,
-                  quantity: item.quantity || 1,
-                }
+              // Add emoji attributes for customized products
+              if (item.customOptions?.tesla && item.customOptions?.elon) {
+                const teslaEmojiName =
+                  item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
+                  item.customOptions.tesla.name ||
+                  "unknown"
+                const elonEmojiName =
+                  item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
+                  item.customOptions.elon.name ||
+                  "unknown"
 
-                // Add emoji attributes for customized products
-                if (item.customOptions?.tesla && item.customOptions?.elon) {
-                  const teslaEmojiName =
-                    item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
-                    item.customOptions.tesla.name ||
-                    "unknown"
-                  const elonEmojiName =
-                    item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
-                    item.customOptions.elon.name ||
-                    "unknown"
+                product.attributes = [
+                  { name: "emoji_good", value: teslaEmojiName },
+                  { name: "emoji_bad", value: elonEmojiName },
+                ]
 
-                  product.attributes = [
-                    { name: "emoji_good", value: teslaEmojiName },
-                    { name: "emoji_bad", value: elonEmojiName },
-                  ]
+                console.log(`✅ Added emoji attributes:`, { emoji_good: teslaEmojiName, emoji_bad: elonEmojiName })
+              }
 
-                  console.log(`✅ Added emoji attributes:`, { emoji_good: teslaEmojiName, emoji_bad: elonEmojiName })
-                }
-
-                return product
-              }),
-              shipping: 0,
-              tax: 0,
-            }
-
-            console.log("=== SENDING ORDER TO BACKEND ===")
-            console.log("Order data:", JSON.stringify(orderData, null, 2))
-
-            // Send to backend (don't let this fail the success page)
-            const orderResponse = await fetch("/api/orders", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(orderData),
-            })
-
-            if (orderResponse.ok) {
-              const result = await orderResponse.json()
-              console.log("✅ Order sent to backend successfully:", result)
-            } else {
-              console.error("❌ Backend order failed:", orderResponse.status)
-            }
-
-            // Update order details with more info
-            setOrderDetails({
-              ...orderDetails,
-              sessionData,
-              orderData,
-              cartItems,
-            })
-          } else {
-            console.error("Failed to fetch session details:", sessionResponse.status)
+              return product
+            }),
+            shipping: 0,
+            tax: 0,
           }
 
-          // Clear cart after processing
-          localStorage.removeItem("cart-storage")
-          console.log("✅ Cart cleared")
+          console.log("=== SENDING ORDER TO BACKEND ===")
+          console.log("Order data:", JSON.stringify(orderData, null, 2))
+
+          // Send to backend
+          const orderResponse = await fetch("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderData),
+          })
+
+          if (orderResponse.ok) {
+            const result = await orderResponse.json()
+            console.log("✅ Order sent to backend successfully:", result)
+          } else {
+            console.error("❌ Backend order failed:", orderResponse.status)
+          }
         } catch (backgroundError) {
           console.error("Background processing error (not critical):", backgroundError)
-          // Don't fail the success page for background errors
         }
       } catch (criticalError) {
         console.error("Critical error:", criticalError)
@@ -146,7 +144,7 @@ function SuccessContent() {
     }
 
     processOrder()
-  }, [sessionId])
+  }, [sessionId, clearCart])
 
   if (orderStatus === "processing") {
     return (
@@ -195,42 +193,15 @@ function SuccessContent() {
           <div className="bg-dark-300 rounded-lg p-6 mb-8 text-left">
             <h3 className="text-lg font-medium mb-4">Order Details</h3>
             <div className="space-y-2 text-sm">
+              {orderDetails?.email && (
+                <p>
+                  <span className="text-white/60">Email:</span> {orderDetails.email}
+                </p>
+              )}
               <p>
-                <span className="text-white/60">Session ID:</span> {orderDetails?.sessionId}
+                <span className="text-white/60">Total:</span> ${orderDetails?.total || "0.00"}
               </p>
-              {orderDetails?.sessionData?.customer_details?.email && (
-                <p>
-                  <span className="text-white/60">Email:</span> {orderDetails.sessionData.customer_details.email}
-                </p>
-              )}
-              {orderDetails?.sessionData?.amount_total && (
-                <p>
-                  <span className="text-white/60">Total:</span> $
-                  {(orderDetails.sessionData.amount_total / 100).toFixed(2)}
-                </p>
-              )}
             </div>
-
-            {orderDetails?.cartItems && orderDetails.cartItems.length > 0 && (
-              <div className="mt-4">
-                <h4 className="font-medium mb-2">Items Ordered:</h4>
-                {orderDetails.cartItems.map((item: any, index: number) => (
-                  <div key={index} className="bg-dark-400 rounded p-3 mb-2">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-white/60">Quantity: {item.quantity}</p>
-                      {item.customOptions?.tesla && item.customOptions?.elon && (
-                        <div className="mt-2 text-sm">
-                          <p className="text-green-400">✅ Custom Emoji Selection:</p>
-                          <p className="text-white/70">Tesla: {item.customOptions.tesla.name}</p>
-                          <p className="text-white/70">Elon: {item.customOptions.elon.name}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="space-y-4">
