@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import nodemailer from "nodemailer"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,76 +10,73 @@ export async function POST(request: NextRequest) {
     console.log("Subject:", subject)
     console.log("Message:", message)
 
-    // Determine the correct mail server URL based on domain
-    const host = request.headers.get("host") || ""
-    let mailServerUrl = "http://127.0.0.1/contact" // Default fallback
+    // Create SMTP transporter using Ed's mail server
+    const transporter = nodemailer.createTransport({
+      host: "mail.leafe.com",
+      port: 587, // Ed said it listens on both 587 and 25
+      secure: false, // Use STARTTLS
+      auth: false, // No authentication needed - server accepts from designated hosts
+      tls: {
+        rejectUnauthorized: false, // Allow self-signed certificates if needed
+      },
+    })
 
-    if (host.includes("elonmustgo.com") || host.includes("muskmustgo.com")) {
-      // Production domains - use Ed's mail server
-      mailServerUrl = `${process.env.API_BASE_URL || "http://127.0.0.1"}/contact`
+    // Prepare email content exactly as Ed specified
+    const mailOptions = {
+      from: `${name} <${email}>`,
+      to: "support@muskmustgo.com",
+      cc: "ed@leafe.com", // Also send to Ed directly
+      subject: subject,
+      text: message,
+      // Add some additional context
+      headers: {
+        "X-Mailer": "MuskMustGo Website",
+        "X-Source": "Contact Form",
+        "X-Timestamp": new Date().toISOString(),
+      },
     }
 
-    console.log("Sending contact form to:", mailServerUrl)
-    console.log("Host header:", host)
+    console.log("Sending email via mail.leafe.com...")
+    console.log("Mail options:", {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      cc: mailOptions.cc,
+      subject: mailOptions.subject,
+    })
 
-    const contactData = {
-      name,
-      email,
-      subject,
-      message,
-      timestamp: new Date().toISOString(),
-      source: "muskmustgo-website",
-      domain: host,
-    }
-
-    // Send to Ed's mail server
     try {
-      const response = await fetch(mailServerUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Add API key if Ed requires it
-          ...(process.env.BACKEND_API_KEY && {
-            Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
-          }),
-        },
-        body: JSON.stringify(contactData),
-      })
+      // Send the email
+      const info = await transporter.sendMail(mailOptions)
 
-      console.log("Mail server response status:", response.status)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Mail server error:", errorText)
-
-        // Log the contact form data as fallback
-        console.log("FALLBACK - CONTACT FORM DATA:", JSON.stringify(contactData, null, 2))
-
-        return NextResponse.json({
-          success: true,
-          message: "Message received and logged. Ed will be notified.",
-          note: "Mail server unavailable, message logged to console",
-        })
-      }
-
-      const result = await response.json()
-      console.log("Mail server success:", result)
+      console.log("Email sent successfully!")
+      console.log("Message ID:", info.messageId)
+      console.log("Response:", info.response)
 
       return NextResponse.json({
         success: true,
-        message: "Message sent successfully!",
-        timestamp: contactData.timestamp,
+        message: "Message sent successfully! Ed will receive your email shortly.",
+        messageId: info.messageId,
+        timestamp: new Date().toISOString(),
       })
-    } catch (fetchError) {
-      console.error("Failed to reach mail server:", fetchError)
+    } catch (emailError) {
+      console.error("SMTP Error:", emailError)
 
       // Log the contact form data as fallback
+      const contactData = {
+        timestamp: new Date().toISOString(),
+        from: { name, email },
+        subject,
+        message,
+        error: emailError instanceof Error ? emailError.message : "Unknown SMTP error",
+      }
+
       console.log("FALLBACK - CONTACT FORM DATA:", JSON.stringify(contactData, null, 2))
 
       return NextResponse.json({
         success: true,
         message: "Message received and logged. Ed will be notified.",
-        note: "Mail server unavailable, message logged to console",
+        note: "Email server temporarily unavailable, message logged for manual processing",
+        timestamp: contactData.timestamp,
       })
     }
   } catch (error) {
@@ -97,9 +95,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: "Contact API is running",
+    message: "Contact API is running with SMTP integration",
     timestamp: new Date().toISOString(),
-    mailServerUrl: `${process.env.API_BASE_URL || "http://127.0.0.1"}/contact`,
-    note: "Contact form submissions are sent to Ed's mail server with console logging as fallback",
+    mailServer: "mail.leafe.com:587",
+    recipients: ["support@muskmustgo.com", "ed@leafe.com"],
+    note: "Contact form submissions are sent via SMTP with console logging as fallback",
   })
 }
