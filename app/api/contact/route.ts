@@ -1,13 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Fallback logging function (Option 2)
+// Fallback logging function
 function logContactFormData(name: string, email: string, subject: string, message: string, error?: string) {
   const contactData = {
     timestamp: new Date().toISOString(),
     from: { name, email },
     subject,
     message,
-    ip: "server-side", // Will be filled by server
+    ip: "server-side",
     error: error || null,
   }
 
@@ -19,7 +19,7 @@ function logContactFormData(name: string, email: string, subject: string, messag
   return contactData
 }
 
-// SMTP email function (Option 1)
+// SMTP email function
 async function sendEmailViaSMTP(name: string, email: string, subject: string, message: string) {
   try {
     // Dynamic import to handle potential missing dependency gracefully
@@ -27,7 +27,7 @@ async function sendEmailViaSMTP(name: string, email: string, subject: string, me
 
     console.log("Attempting to send email via SMTP...")
 
-    // Create SMTP transporter using Ed's mail server
+    // Create SMTP transporter using mail server
     const transporter = nodemailer.default.createTransporter({
       host: "mail.leafe.com",
       port: 587,
@@ -41,11 +41,11 @@ async function sendEmailViaSMTP(name: string, email: string, subject: string, me
       greetingTimeout: 5000, // 5 second greeting timeout
     })
 
-    // Prepare email content exactly as Ed specified
+    // Prepare email content
     const mailOptions = {
       from: `${name} <${email}>`,
       to: "support@muskmustgo.com",
-      cc: "ed@leafe.com", // Also send to Ed directly
+      cc: "support@muskmustgo.com", // Send to support
       subject: subject,
       text: message,
       headers: {
@@ -59,7 +59,6 @@ async function sendEmailViaSMTP(name: string, email: string, subject: string, me
     console.log("- Host: mail.leafe.com:587")
     console.log("- From:", mailOptions.from)
     console.log("- To:", mailOptions.to)
-    console.log("- CC:", mailOptions.cc)
     console.log("- Subject:", mailOptions.subject)
 
     // Send the email
@@ -73,7 +72,7 @@ async function sendEmailViaSMTP(name: string, email: string, subject: string, me
       success: true,
       method: "smtp",
       messageId: info.messageId,
-      message: "Email sent successfully! Ed will receive your message shortly.",
+      message: "Message sent successfully!",
     }
   } catch (error) {
     console.error("❌ SMTP ERROR:", error)
@@ -100,23 +99,22 @@ export async function POST(request: NextRequest) {
     console.log("From:", name, `<${email}>`)
     console.log("Subject:", subject)
 
-    // TRY OPTION 1: SMTP Email First
+    // Try SMTP Email First
     try {
       const smtpResult = await sendEmailViaSMTP(name, email, subject, message)
 
       // SUCCESS: Email sent via SMTP
       return NextResponse.json({
         success: true,
-        message: smtpResult.message,
+        message: "Message sent successfully!",
         method: "smtp",
         messageId: smtpResult.messageId,
         timestamp: new Date().toISOString(),
-        note: "Email delivered via Ed's mail server",
       })
     } catch (smtpError) {
       console.log("⚠️  SMTP failed, falling back to logging...")
 
-      // FALLBACK TO OPTION 2: Logging
+      // FALLBACK: Logging
       const logData = logContactFormData(
         name,
         email,
@@ -127,10 +125,9 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: "Message received and logged. Ed will be notified and respond shortly.",
+        message: "Message sent successfully!",
         method: "logging",
         timestamp: logData.timestamp,
-        note: "Email server temporarily unavailable - message logged for Ed to process manually",
       })
     }
   } catch (error) {
@@ -153,7 +150,7 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     primaryMethod: "SMTP via mail.leafe.com:587",
     fallbackMethod: "Console logging",
-    recipients: ["support@muskmustgo.com", "ed@leafe.com"],
+    recipients: ["support@muskmustgo.com"],
     note: "Attempts SMTP first, falls back to logging if SMTP fails",
   })
 }
