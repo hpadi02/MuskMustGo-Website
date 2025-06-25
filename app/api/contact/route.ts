@@ -1,9 +1,31 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Use dynamic import to avoid build issues with nodemailer
-async function sendEmail(name: string, email: string, subject: string, message: string) {
+// Fallback logging function (Option 2)
+function logContactFormData(name: string, email: string, subject: string, message: string, error?: string) {
+  const contactData = {
+    timestamp: new Date().toISOString(),
+    from: { name, email },
+    subject,
+    message,
+    ip: "server-side", // Will be filled by server
+    error: error || null,
+  }
+
+  console.log("=== CONTACT FORM SUBMISSION ===")
+  console.log("FALLBACK LOGGING - CONTACT FORM DATA:")
+  console.log(JSON.stringify(contactData, null, 2))
+  console.log("=== END CONTACT FORM ===")
+
+  return contactData
+}
+
+// SMTP email function (Option 1)
+async function sendEmailViaSMTP(name: string, email: string, subject: string, message: string) {
   try {
+    // Dynamic import to handle potential missing dependency gracefully
     const nodemailer = await import("nodemailer")
+
+    console.log("Attempting to send email via SMTP...")
 
     // Create SMTP transporter using Ed's mail server
     const transporter = nodemailer.default.createTransporter({
@@ -15,6 +37,8 @@ async function sendEmail(name: string, email: string, subject: string, message: 
       tls: {
         rejectUnauthorized: false, // Allow self-signed certificates if needed
       },
+      connectionTimeout: 10000, // 10 second timeout
+      greetingTimeout: 5000, // 5 second greeting timeout
     })
 
     // Prepare email content exactly as Ed specified
@@ -24,7 +48,6 @@ async function sendEmail(name: string, email: string, subject: string, message: 
       cc: "ed@leafe.com", // Also send to Ed directly
       subject: subject,
       text: message,
-      // Add some additional context
       headers: {
         "X-Mailer": "MuskMustGo Website",
         "X-Source": "Contact Form",
@@ -32,29 +55,29 @@ async function sendEmail(name: string, email: string, subject: string, message: 
       },
     }
 
-    console.log("Sending email via mail.leafe.com...")
-    console.log("Mail options:", {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      cc: mailOptions.cc,
-      subject: mailOptions.subject,
-    })
+    console.log("SMTP Configuration:")
+    console.log("- Host: mail.leafe.com:587")
+    console.log("- From:", mailOptions.from)
+    console.log("- To:", mailOptions.to)
+    console.log("- CC:", mailOptions.cc)
+    console.log("- Subject:", mailOptions.subject)
 
     // Send the email
     const info = await transporter.sendMail(mailOptions)
 
-    console.log("Email sent successfully!")
+    console.log("✅ EMAIL SENT SUCCESSFULLY!")
     console.log("Message ID:", info.messageId)
     console.log("Response:", info.response)
 
     return {
       success: true,
-      message: "Message sent successfully! Ed will receive your email shortly.",
+      method: "smtp",
       messageId: info.messageId,
+      message: "Email sent successfully! Ed will receive your message shortly.",
     }
-  } catch (emailError) {
-    console.error("SMTP Error:", emailError)
-    throw emailError
+  } catch (error) {
+    console.error("❌ SMTP ERROR:", error)
+    throw error
   }
 }
 
@@ -67,53 +90,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "All fields are required",
+          error: "All fields are required (name, email, subject, message)",
         },
         { status: 400 },
       )
     }
 
-    console.log("=== CONTACT FORM SUBMISSION ===")
-    console.log("From:", name, email)
+    console.log("📧 Processing contact form submission...")
+    console.log("From:", name, `<${email}>`)
     console.log("Subject:", subject)
-    console.log("Message:", message)
 
+    // TRY OPTION 1: SMTP Email First
     try {
-      // Try to send email via SMTP
-      const result = await sendEmail(name, email, subject, message)
+      const smtpResult = await sendEmailViaSMTP(name, email, subject, message)
 
+      // SUCCESS: Email sent via SMTP
       return NextResponse.json({
         success: true,
-        message: result.message,
-        messageId: result.messageId,
+        message: smtpResult.message,
+        method: "smtp",
+        messageId: smtpResult.messageId,
         timestamp: new Date().toISOString(),
+        note: "Email delivered via Ed's mail server",
       })
-    } catch (emailError) {
-      // Log the contact form data as fallback
-      const contactData = {
-        timestamp: new Date().toISOString(),
-        from: { name, email },
+    } catch (smtpError) {
+      console.log("⚠️  SMTP failed, falling back to logging...")
+
+      // FALLBACK TO OPTION 2: Logging
+      const logData = logContactFormData(
+        name,
+        email,
         subject,
         message,
-        error: emailError instanceof Error ? emailError.message : "Unknown SMTP error",
-      }
-
-      console.log("FALLBACK - CONTACT FORM DATA:", JSON.stringify(contactData, null, 2))
+        smtpError instanceof Error ? smtpError.message : "Unknown SMTP error",
+      )
 
       return NextResponse.json({
         success: true,
-        message: "Message received and logged. Ed will be notified.",
-        note: "Email server temporarily unavailable, message logged for manual processing",
-        timestamp: contactData.timestamp,
+        message: "Message received and logged. Ed will be notified and respond shortly.",
+        method: "logging",
+        timestamp: logData.timestamp,
+        note: "Email server temporarily unavailable - message logged for Ed to process manually",
       })
     }
   } catch (error) {
-    console.error("Contact form error:", error)
+    console.error("💥 Contact form processing error:", error)
 
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to process message",
+        error: "Failed to process contact form",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
@@ -123,10 +149,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: "Contact API is running with SMTP integration",
+    message: "Contact API is running with SMTP + Logging fallback",
     timestamp: new Date().toISOString(),
-    mailServer: "mail.leafe.com:587",
+    primaryMethod: "SMTP via mail.leafe.com:587",
+    fallbackMethod: "Console logging",
     recipients: ["support@muskmustgo.com", "ed@leafe.com"],
-    note: "Contact form submissions are sent via SMTP with console logging as fallback",
+    note: "Attempts SMTP first, falls back to logging if SMTP fails",
   })
 }
