@@ -1,20 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
-import nodemailer from "nodemailer"
 
-export async function POST(request: NextRequest) {
+// Use dynamic import to avoid build issues with nodemailer
+async function sendEmail(name: string, email: string, subject: string, message: string) {
   try {
-    const { name, email, subject, message } = await request.json()
-
-    console.log("=== CONTACT FORM SUBMISSION ===")
-    console.log("From:", name, email)
-    console.log("Subject:", subject)
-    console.log("Message:", message)
+    const nodemailer = await import("nodemailer")
 
     // Create SMTP transporter using Ed's mail server
-    const transporter = nodemailer.createTransport({
+    const transporter = nodemailer.default.createTransporter({
       host: "mail.leafe.com",
-      port: 587, 
+      port: 587,
       secure: false, // Use STARTTLS
+      requireTLS: true,
       auth: false, // No authentication needed - server accepts from designated hosts
       tls: {
         rejectUnauthorized: false, // Allow self-signed certificates if needed
@@ -44,23 +40,55 @@ export async function POST(request: NextRequest) {
       subject: mailOptions.subject,
     })
 
-    try {
-      // Send the email
-      const info = await transporter.sendMail(mailOptions)
+    // Send the email
+    const info = await transporter.sendMail(mailOptions)
 
-      console.log("Email sent successfully!")
-      console.log("Message ID:", info.messageId)
-      console.log("Response:", info.response)
+    console.log("Email sent successfully!")
+    console.log("Message ID:", info.messageId)
+    console.log("Response:", info.response)
+
+    return {
+      success: true,
+      message: "Message sent successfully! Ed will receive your email shortly.",
+      messageId: info.messageId,
+    }
+  } catch (emailError) {
+    console.error("SMTP Error:", emailError)
+    throw emailError
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { name, email, subject, message } = await request.json()
+
+    // Validate required fields
+    if (!name || !email || !subject || !message) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "All fields are required",
+        },
+        { status: 400 },
+      )
+    }
+
+    console.log("=== CONTACT FORM SUBMISSION ===")
+    console.log("From:", name, email)
+    console.log("Subject:", subject)
+    console.log("Message:", message)
+
+    try {
+      // Try to send email via SMTP
+      const result = await sendEmail(name, email, subject, message)
 
       return NextResponse.json({
         success: true,
-        message: "Message sent successfully! Ed will receive your email shortly.",
-        messageId: info.messageId,
+        message: result.message,
+        messageId: result.messageId,
         timestamp: new Date().toISOString(),
       })
     } catch (emailError) {
-      console.error("SMTP Error:", emailError)
-
       // Log the contact form data as fallback
       const contactData = {
         timestamp: new Date().toISOString(),
