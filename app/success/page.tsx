@@ -13,10 +13,9 @@ function SuccessContent() {
   const [orderStatus, setOrderStatus] = useState<"processing" | "success" | "error">("processing")
   const [orderDetails, setOrderDetails] = useState<any>(null)
   const { clearCart } = useCart()
-  const hasProcessed = useRef(false) // Prevent multiple processing
+  const hasProcessed = useRef(false)
 
   useEffect(() => {
-    // Prevent multiple executions
     if (hasProcessed.current) return
     hasProcessed.current = true
 
@@ -43,39 +42,57 @@ function SuccessContent() {
           console.log("Note: Could not clear localStorage")
         }
 
-        // Try to get session details, but don't fail if it doesn't work
+        // Try to get session details
         let sessionData = null
         try {
-          console.log("Fetching session details...")
+          console.log("Fetching session details from API...")
           const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
 
           if (sessionResponse.ok) {
             sessionData = await sessionResponse.json()
-            console.log("✅ Session data retrieved:", sessionData)
+            console.log("✅ Session data retrieved successfully:", sessionData)
+
+            // Set order details with actual data
+            setOrderDetails({
+              email: sessionData.customer_details?.email || "No email provided",
+              total: sessionData.amount_total ? (sessionData.amount_total / 100).toFixed(2) : "0.00",
+              customerName: sessionData.customer_details?.name || null,
+              paymentStatus: sessionData.payment_status || "unknown",
+              sessionData,
+            })
           } else {
             const errorData = await sessionResponse.json()
             console.error("❌ Session API error:", errorData)
-            // Don't fail - just proceed without session data
+
+            // Set fallback order details
+            setOrderDetails({
+              email: "Order confirmed",
+              total: "Payment processed",
+              customerName: null,
+              paymentStatus: "completed",
+              sessionData: null,
+            })
           }
         } catch (sessionError) {
           console.error("❌ Session fetch failed:", sessionError)
-          // Don't fail - just proceed without session data
+
+          // Set fallback order details
+          setOrderDetails({
+            email: "Order confirmed",
+            total: "Payment processed",
+            customerName: null,
+            paymentStatus: "completed",
+            sessionData: null,
+          })
         }
 
-        // Always show success - payment was completed if we got here
-        setOrderDetails({
-          email: sessionData?.customer_details?.email || "Order confirmed",
-          total: sessionData?.amount_total ? (sessionData.amount_total / 100).toFixed(2) : "Payment processed",
-          sessionData,
-        })
         setOrderStatus("success")
 
-        // Background order processing (completely separate from success display)
+        // Background order processing
         setTimeout(async () => {
           try {
             console.log("=== BACKGROUND ORDER PROCESSING ===")
 
-            // Try to get cart items for backend
             let cartItems = []
             try {
               const cartStorage = localStorage.getItem("cart-storage")
@@ -160,21 +177,22 @@ function SuccessContent() {
           } catch (backgroundError) {
             console.error("Background processing error:", backgroundError)
           }
-        }, 1000) // Delay background processing
+        }, 1000)
       } catch (criticalError) {
         console.error("Critical error:", criticalError)
-        // Even if there's an error, show success since payment was processed
         setOrderDetails({
           email: "Order confirmed",
           total: "Payment processed",
+          customerName: null,
+          paymentStatus: "completed",
+          sessionData: null,
         })
         setOrderStatus("success")
-        clearCart()
       }
     }
 
     processOrder()
-  }, [sessionId]) // Removed clearCart from dependencies to prevent re-runs
+  }, [sessionId])
 
   if (orderStatus === "processing") {
     return (
@@ -205,11 +223,16 @@ function SuccessContent() {
             <h3 className="text-lg font-medium mb-4">Order Details</h3>
             <div className="space-y-2 text-sm">
               <p>
-                <span className="text-white/60">Email:</span> {orderDetails?.email || "Order confirmed"}
+                <span className="text-white/60">Email:</span> {orderDetails?.email || "Processing..."}
               </p>
               <p>
-                <span className="text-white/60">Total:</span> ${orderDetails?.total || "Payment processed"}
+                <span className="text-white/60">Total:</span> ${orderDetails?.total || "Processing..."}
               </p>
+              {orderDetails?.customerName && (
+                <p>
+                  <span className="text-white/60">Name:</span> {orderDetails.customerName}
+                </p>
+              )}
             </div>
           </div>
 

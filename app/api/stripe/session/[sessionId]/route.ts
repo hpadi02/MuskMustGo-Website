@@ -22,26 +22,44 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
       return NextResponse.json({ error: "Stripe not configured" }, { status: 500 })
     }
 
-    // Retrieve the checkout session from Stripe
+    // Retrieve the checkout session from Stripe with expanded data
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.price.product", "payment_intent"],
+      expand: ["line_items", "line_items.price.product", "payment_intent", "customer"],
     })
 
-    console.log("Retrieved session:", {
+    console.log("Retrieved session details:", {
       id: session.id,
       payment_status: session.payment_status,
       amount_total: session.amount_total,
       customer_email: session.customer_details?.email,
+      customer_name: session.customer_details?.name,
+      payment_intent: session.payment_intent,
     })
 
-    // Return simplified session data
-    return NextResponse.json({
+    // Extract payment intent ID properly
+    let paymentIntentId = null
+    if (typeof session.payment_intent === "string") {
+      paymentIntentId = session.payment_intent
+    } else if (session.payment_intent && typeof session.payment_intent === "object") {
+      paymentIntentId = session.payment_intent.id
+    }
+
+    // Return comprehensive session data
+    const responseData = {
       id: session.id,
       payment_status: session.payment_status,
       amount_total: session.amount_total,
-      payment_intent: typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
-      customer_details: session.customer_details,
-      shipping_details: session.shipping_details,
+      payment_intent: paymentIntentId,
+      customer_details: {
+        email: session.customer_details?.email || null,
+        name: session.customer_details?.name || null,
+        phone: session.customer_details?.phone || null,
+        address: session.customer_details?.address || null,
+      },
+      shipping_details: {
+        address: session.shipping_details?.address || null,
+        name: session.shipping_details?.name || null,
+      },
       line_items:
         session.line_items?.data?.map((item) => ({
           quantity: item.quantity,
@@ -55,17 +73,26 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
             },
           },
         })) || [],
-    })
+    }
+
+    console.log("Returning session data:", responseData)
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error("Error fetching Stripe session:", error)
 
     // Return more specific error information
     if (error instanceof Stripe.errors.StripeError) {
+      console.error("Stripe error details:", {
+        type: error.type,
+        code: error.code,
+        message: error.message,
+      })
       return NextResponse.json(
         {
           error: "Stripe error",
           message: error.message,
           type: error.type,
+          code: error.code,
         },
         { status: 500 },
       )
