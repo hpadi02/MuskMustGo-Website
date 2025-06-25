@@ -144,6 +144,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         emoji_good: item.customOptions.tesla?.name || item.customOptions.good?.name,
         emoji_bad: item.customOptions.elon?.name || item.customOptions.bad?.name,
       }
+      console.log("=== EMOJI CHOICES DETECTED ===")
+      console.log("Tesla emoji (positive):", emojiChoices.emoji_good)
+      console.log("Elon emoji (negative):", emojiChoices.emoji_bad)
     }
 
     setItems((prevItems) => {
@@ -257,8 +260,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, 0)
   }
 
-  // Send order to backend with emoji attributes
+  // Send order to backend with emoji attributes - THIS IS THE KEY FUNCTION
   const sendOrderToBackend = async (customerEmail: string, sessionId: string) => {
+    console.log("=== SENDING ORDER TO BACKEND ===")
+    console.log("Customer email:", customerEmail)
+    console.log("Stripe session ID:", sessionId)
+    console.log("Cart items:", items)
+
     const orderData = {
       customer_email: customerEmail,
       items: items.map((item) => {
@@ -271,21 +279,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         // Add emoji attributes for Tesla vs Elon Emoji products
         if (item.emojiChoices && (item.emojiChoices.emoji_good || item.emojiChoices.emoji_bad)) {
+          console.log("=== ADDING EMOJI ATTRIBUTES ===")
+          console.log("Item:", item.name)
+          console.log("Emoji good:", item.emojiChoices.emoji_good)
+          console.log("Emoji bad:", item.emojiChoices.emoji_bad)
+
           baseItem.attributes = []
 
           if (item.emojiChoices.emoji_good) {
             baseItem.attributes.push({
               name: "emoji_good",
-              value: item.emojiChoices.emoji_good,
+              value: item.emojiChoices.emoji_good, // Already without .png extension
             })
           }
 
           if (item.emojiChoices.emoji_bad) {
             baseItem.attributes.push({
               name: "emoji_bad",
-              value: item.emojiChoices.emoji_bad,
+              value: item.emojiChoices.emoji_bad, // Already without .png extension
             })
           }
+
+          console.log("Final attributes:", baseItem.attributes)
         }
 
         return baseItem
@@ -294,6 +309,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       payment_status: "completed",
       stripe_session_id: sessionId,
     }
+
+    console.log("=== FINAL ORDER DATA TO BACKEND ===")
+    console.log(JSON.stringify(orderData, null, 2))
 
     try {
       const response = await fetch("/api/orders", {
