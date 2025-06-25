@@ -26,33 +26,32 @@ export async function POST(request: NextRequest) {
 From: ${name} <${email}>
 Subject: ${subject}
 
-Message:
 ${message}
 
 ---
-Sent from muskmustgo.com contact form
-    `.trim()
+This message was sent via the Musk Must Go contact form.
+Reply directly to: ${email}
+    `
 
-    // Send email
-    await transporter.sendMail({
-      from: `"${name}" <${email}>`,
+    // Send email to both addresses
+    const mailOptions = {
+      from: email,
       to: ["support@muskmustgo.com", "ed@leafe.com"],
       subject: `Contact Form: ${subject}`,
       text: emailContent,
       replyTo: email,
-    })
+    }
+
+    await transporter.sendMail(mailOptions)
 
     console.log("Contact form email sent successfully")
 
-    return NextResponse.json({
-      success: true,
-      message: "Message sent successfully!",
-    })
+    return NextResponse.json({ message: "Email sent successfully" }, { status: 200 })
   } catch (error) {
     console.error("Failed to send contact email:", error)
 
-    // Log the contact form submission as fallback
-    console.log("CONTACT FORM SUBMISSION:", {
+    // Log the contact form submission even if email fails
+    console.log("Contact form submission (email failed):", {
       name: request.body?.name,
       email: request.body?.email,
       subject: request.body?.subject,
@@ -60,6 +59,6 @@ Sent from muskmustgo.com contact form
       timestamp: new Date().toISOString(),
     })
 
-    return NextResponse.json({ error: "Failed to send message. Please try again." }, { status: 500 })
+    return NextResponse.json({ error: "Failed to send email. Please try again later." }, { status: 500 })
   }
 }

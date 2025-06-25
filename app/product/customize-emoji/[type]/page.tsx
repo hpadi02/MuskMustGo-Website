@@ -1,7 +1,5 @@
-"use client"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import type { Metadata } from "next"
+import Link from "next/link"
 
 interface Props {
   params: {
@@ -9,22 +7,22 @@ interface Props {
   }
 }
 
+export const metadata: Metadata = {
+  title: "Customize Emoji",
+  description: "Customize your emoji!",
+}
+
 const CustomizeEmojiPage = ({ params }: Props) => {
-  const router = useRouter()
   const { type } = params
 
   return (
     <div className="container mx-auto p-4">
-      <Button onClick={() => router.back()} variant="ghost">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back
-      </Button>
       <h1 className="text-2xl font-bold mb-4">Customize {type} Emoji</h1>
       <p className="mb-4">Customize your {type} emoji here. This is a placeholder page.</p>
 
-      <Button variant="link" onClick={() => router.push("/product/tesla_vs_elon_emoji")}>
+      <Link href="/product/tesla_vs_elon_emoji" className="text-blue-500 hover:underline">
         Back to product
-      </Button>
+      </Link>
     </div>
   )
 }
