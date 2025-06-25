@@ -10,6 +10,7 @@ export interface Product {
   medium_name: string
   stripeId?: string // Stripe price ID
   productId?: string // Stripe product ID
+  sortOrder?: number // For manual ordering
 }
 
 // Group products by their base name (without _magnet or _sticker suffix)
@@ -26,6 +27,7 @@ export interface GroupedProduct {
   description: string
   features: string[]
   customizable: boolean
+  sortOrder: number // For manual ordering
 }
 
 // Map image names to URLs
@@ -69,6 +71,16 @@ const DISPLAY_NAMES: Record<string, string> = {
   no_elon_face: "Say No to Elon!",
   tesla_vs_elon_emoji: "Tesla vs Elon Emoji",
   tesla_musk_emojis: "Tesla Musk Emojis",
+}
+
+// MANUAL PRODUCT ORDERING - Ed can change these numbers to reorder products
+const PRODUCT_SORT_ORDER: Record<string, number> = {
+  no_elon_face: 1, // Say No to Elon! - Ed's top choice
+  tesla_vs_elon_emoji: 2, // Tesla vs Elon Emoji - customizable, popular
+  hate_nazis: 3, // I Hate Nazis - strong message
+  not_ceo_wavy: 4, // Elon Is Not My CEO - clear statement
+  did_not_invent: 5, // Elon Did Not Invent Tesla - educational
+  deport_elon: 6, // Deport Elon - controversial, last
 }
 
 // Product features
@@ -125,7 +137,7 @@ function getProductType(product: any): "magnet" | "sticker" | "unknown" {
   return "unknown"
 }
 
-// Updated groupProducts function to handle Stripe data properly
+// Updated groupProducts function to handle Stripe data properly and add sorting
 export function groupProducts(products: any[]) {
   // Handle undefined or null products array
   if (!products || !Array.isArray(products)) {
@@ -171,6 +183,7 @@ export function groupProducts(products: any[]) {
           PRODUCT_DESCRIPTIONS[baseId] || `${baseName} for Tesla owners who want to express their independence.`,
         features: productType === "magnet" ? MAGNET_FEATURES : STICKER_FEATURES,
         customizable: baseId.includes("emoji") || baseId.includes("tesla_vs_elon_emoji"),
+        sortOrder: PRODUCT_SORT_ORDER[baseId] || 999, // Default to end if not specified
       })
     }
 
@@ -188,6 +201,7 @@ export function groupProducts(products: any[]) {
       medium_name: product.medium_name || (productType === "magnet" ? "bumper magnet" : "bumper sticker"),
       stripeId: product.stripeId,
       productId: product.productId,
+      sortOrder: PRODUCT_SORT_ORDER[baseId] || 999,
     }
 
     // Add the product as either magnet or sticker variant
@@ -208,11 +222,15 @@ export function groupProducts(products: any[]) {
   })
 
   const result = Array.from(groupedMap.values())
+
+  // SORT BY SORT ORDER
+  result.sort((a, b) => a.sortOrder - b.sortOrder)
+
   console.log(`🔄 GROUP: Grouped ${products.length} products into ${result.length} product groups`)
 
   // Log the final grouped products for debugging
   result.forEach((group) => {
-    console.log(`🔄 GROUP: Final group: ${group.baseName}`, {
+    console.log(`🔄 GROUP: Final group: ${group.baseName} (sortOrder: ${group.sortOrder})`, {
       baseId: group.baseId,
       hasMagnet: !!group.variants.magnet,
       hasSticker: !!group.variants.sticker,
@@ -224,7 +242,7 @@ export function groupProducts(products: any[]) {
   return result
 }
 
-// Updated raw products with correct Tesla emoji Stripe IDs
+// Updated raw products with correct Tesla emoji Stripe IDs and sortOrder
 export const RAW_PRODUCTS: Product[] = [
   {
     product_id: "99374b4a-c419-43b1-a878-d57f676b68f6",
@@ -237,6 +255,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
     productId: "prod_SMOvz7QTtXbzeO",
+    sortOrder: 6,
   },
   {
     product_id: "a6b2deb6-d6ee-4afe-9d9f-00f54f6dc123",
@@ -249,6 +268,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
     productId: "prod_SMOv2AdKsIZdCv",
+    sortOrder: 6,
   },
   {
     product_id: "25715ee1-0ce8-47a1-a815-c5a7fde888d3",
@@ -261,6 +281,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
     productId: "prod_SMOtIBBTRR6MWe",
+    sortOrder: 5,
   },
   {
     product_id: "996ef07f-0994-4127-9c57-eb14b3c1d88a",
@@ -273,6 +294,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
     productId: "prod_SMOtyyjmBf1DjJ",
+    sortOrder: 5,
   },
   {
     product_id: "500b3f79-e18b-4a4e-a61f-166934edfa61",
@@ -285,6 +307,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
     productId: "prod_SMOymK1lY8V7nB",
+    sortOrder: 3,
   },
   {
     product_id: "986c722c-823f-4004-95f2-fd027eb61c2f",
@@ -297,6 +320,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
     productId: "prod_SMOzL5UlT5wbsO",
+    sortOrder: 3,
   },
   {
     product_id: "d2617bd5-8387-40e5-bdf9-ade5717f1cec",
@@ -309,6 +333,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
     productId: "prod_SMP2rxDM8XwFoX",
+    sortOrder: 4,
   },
   {
     product_id: "3e982525-202d-4c18-a15d-e02c6d631b52",
@@ -321,6 +346,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
     productId: "prod_SMP21kBsg5qxRM",
+    sortOrder: 4,
   },
   {
     product_id: "9e445577-58a2-4615-b63f-8e0713e1f413",
@@ -333,6 +359,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa",
     productId: "prod_SMP47IhOUcO1kn",
+    sortOrder: 1,
   },
   {
     product_id: "adc3f2ae-9128-4352-8071-685ace54d19b",
@@ -345,6 +372,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
     productId: "prod_SMP5jwQujuz3Cl",
+    sortOrder: 1,
   },
   // FIXED: Tesla emoji products with correct Stripe IDs
   {
@@ -358,6 +386,7 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI", // Tesla vs. Elon Emoji Magnet
     productId: "prod_SMOn24zhjeCmXm", // Tesla vs. Elon Emoji Magnet
+    sortOrder: 2,
   },
   {
     product_id: "376de82f-fc72-4e9c-ac92-93e3055ccfc2",
@@ -370,10 +399,11 @@ export const RAW_PRODUCTS: Product[] = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO", // Tesla vs. Elon Emoji Bumper Sticker
     productId: "prod_SMOquwq3mLZSDE", // Tesla vs. Elon Emoji Bumper Sticker
+    sortOrder: 2,
   },
 ]
 
-// Grouped products for the UI
+// Grouped products for the UI - now sorted by sortOrder
 export const GROUPED_PRODUCTS = groupProducts(RAW_PRODUCTS)
 
 // Filter products by type

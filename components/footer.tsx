@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Youtube } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -18,6 +17,8 @@ export default function Footer() {
               Premium merchandise for Tesla owners who want to express their independence and separate the product from
               its CEO.
             </p>
+            {/* HIDDEN: Social media links - keeping code for later when Ed sets up accounts */}
+            {/* 
             <div className="flex space-x-5">
               <Link href="#" className="text-white/50 hover:text-white transition-colors">
                 <Facebook className="h-5 w-5" />
@@ -32,6 +33,7 @@ export default function Footer() {
                 <Youtube className="h-5 w-5" />
               </Link>
             </div>
+            */}
           </div>
 
           {/* Shop */}
@@ -60,11 +62,14 @@ export default function Footer() {
                   Tesla Stories
                 </Link>
               </li>
+              {/* HIDDEN: Forum link - keeping code for later */}
+              {/* 
               <li>
                 <Link href="/forum" className="text-white/80 hover:text-white text-sm">
                   Forum
                 </Link>
               </li>
+              */}
               <li>
                 <Link href="/contact" className="text-white/80 hover:text-white text-sm">
                   Contact

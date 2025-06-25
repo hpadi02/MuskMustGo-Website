@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Mail, Send, CheckCircle } from "lucide-react"
+import { ArrowLeft, Mail, Send, CheckCircle, AlertCircle, Info } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useSearchParams } from "next/navigation"
@@ -14,6 +14,7 @@ export default function ContactPage() {
   const [formSubmitted, setFormSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [submitError, setSubmitError] = useState("")
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -23,15 +24,44 @@ export default function ContactPage() {
     }
   }, [searchParams])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setSubmitError("")
 
-    // Simulate form submission
-    setTimeout(() => {
+    const formData = new FormData(e.target as HTMLFormElement)
+    const contactData = {
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      subject: formData.get("subject") as string,
+      message: formData.get("message") as string,
+    }
+
+    try {
+      console.log("Sending contact form:", contactData)
+
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contactData),
+      })
+
+      const result = await response.json()
+      console.log("Contact form response:", result)
+
+      if (result.success) {
+        setFormSubmitted(true)
+      } else {
+        setSubmitError(result.details || result.error || "Failed to send message")
+      }
+    } catch (error) {
+      console.error("Contact form error:", error)
+      setSubmitError("Network error. Please try again.")
+    } finally {
       setIsSubmitting(false)
-      setFormSubmitted(true)
-    }, 1500)
+    }
   }
 
   return (
@@ -59,12 +89,24 @@ export default function ContactPage() {
           </div>
 
           <div className="bg-dark-300 p-8 rounded-lg">
+            <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4 mb-6">
+              <div className="flex items-start">
+                <Info className="h-5 w-5 text-blue-400 mr-3 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="text-blue-400 font-medium mb-1">Contact Form Status</h3>
+                  <p className="text-white/80 text-sm">
+                    Messages are currently logged to our server. Ed will be notified of your submission.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {formSubmitted ? (
               <div className="text-center py-12">
                 <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-                <h2 className="text-2xl font-bold mb-4">Message Sent!</h2>
+                <h2 className="text-2xl font-bold mb-4">Message Received!</h2>
                 <p className="text-white/70 mb-8">
-                  Thank you for reaching out. We'll get back to you as soon as possible.
+                  Your message has been logged and Ed will be notified. We'll get back to you as soon as possible.
                 </p>
                 <Button onClick={() => setFormSubmitted(false)} className="bg-white text-black hover:bg-white/90">
                   Send Another Message
@@ -72,19 +114,43 @@ export default function ContactPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
+                {submitError && (
+                  <div className="bg-red-600/20 border border-red-500/30 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <AlertCircle className="h-5 w-5 text-red-400 mr-3 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h3 className="text-red-400 font-medium mb-1">Error sending message</h3>
+                        <p className="text-white/80 text-sm">{submitError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="name" className="block text-white/70 mb-2">
                       Name
                     </label>
-                    <Input id="name" type="text" required className="bg-dark-400 border-white/20 text-white" />
+                    <Input
+                      name="name"
+                      id="name"
+                      type="text"
+                      required
+                      className="bg-dark-400 border-white/20 text-white"
+                    />
                   </div>
 
                   <div>
                     <label htmlFor="email" className="block text-white/70 mb-2">
                       Email
                     </label>
-                    <Input id="email" type="email" required className="bg-dark-400 border-white/20 text-white" />
+                    <Input
+                      name="email"
+                      id="email"
+                      type="email"
+                      required
+                      className="bg-dark-400 border-white/20 text-white"
+                    />
                   </div>
                 </div>
 
@@ -92,7 +158,13 @@ export default function ContactPage() {
                   <label htmlFor="subject" className="block text-white/70 mb-2">
                     Subject
                   </label>
-                  <Input id="subject" type="text" required className="bg-dark-400 border-white/20 text-white" />
+                  <Input
+                    name="subject"
+                    id="subject"
+                    type="text"
+                    required
+                    className="bg-dark-400 border-white/20 text-white"
+                  />
                 </div>
 
                 <div>
@@ -100,6 +172,7 @@ export default function ContactPage() {
                     Message
                   </label>
                   <Textarea
+                    name="message"
                     id="message"
                     required
                     rows={6}

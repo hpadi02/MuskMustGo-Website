@@ -33,6 +33,10 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     // Process the order - send to backend
     try {
+      // Get cart items from localStorage to include emoji data
+      const cartItems = JSON.parse(localStorage.getItem("cart-storage") || '{"state":{"items":[]}}')
+      const items = cartItems.state?.items || []
+
       const orderData = {
         customer: {
           email: session.customer_details?.email || "",
@@ -46,18 +50,39 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           country: session.customer_details?.address?.country || "",
         },
         payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
-        products:
-          session.line_items?.data.map((item) => ({
-            product_id: typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || "",
+        products: items.map((item: any) => {
+          const product: any = {
+            product_id: item.productId || item.id,
             quantity: item.quantity || 1,
-            // Only add attributes for custom emoji products
-            ...(item.description?.includes("emoji") && {
-              attributes: [
-                { name: "Type", value: "Custom Emoji" },
-                { name: "Source", value: "Stripe Checkout" },
-              ],
-            }),
-          })) || [],
+          }
+
+          // ADD EMOJI ATTRIBUTES FOR CUSTOMIZED PRODUCTS
+          if (item.customOptions?.tesla && item.customOptions?.elon) {
+            // Extract filename without extension for emoji_good (Tesla)
+            const teslaEmojiName =
+              item.customOptions.tesla.name ||
+              item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
+              "unknown"
+
+            // Extract filename without extension for emoji_bad (Elon)
+            const elonEmojiName =
+              item.customOptions.elon.name ||
+              item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
+              "unknown"
+
+            product.attributes = [
+              { name: "emoji_good", value: teslaEmojiName },
+              { name: "emoji_bad", value: elonEmojiName },
+            ]
+
+            console.log(`✅ Added emoji attributes for ${item.name}:`, {
+              emoji_good: teslaEmojiName,
+              emoji_bad: elonEmojiName,
+            })
+          }
+
+          return product
+        }),
         shipping: 0,
         tax: 0,
       }
@@ -124,7 +149,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="space-y-4 text-left">
-                {/* ❌ Removed Order ID display */}
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
