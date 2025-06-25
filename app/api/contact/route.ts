@@ -39,6 +39,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
 
+    // Check if we're in test mode (not on production server)
+    const isTestMode =
+      process.env.NODE_ENV !== "production" ||
+      !process.env.HOSTNAME?.includes("muskmustgo") ||
+      request.headers.get("host")?.includes("localhost") ||
+      request.headers.get("host")?.includes("v0.dev")
+
+    if (isTestMode) {
+      console.log("=== TEST MODE: Simulating email send ===")
+      console.log("Would send email to: support@muskmustgo.com")
+      console.log("Email subject:", `[Musk Must Go Contact] ${subject}`)
+      console.log("Email content preview:")
+      console.log(`From: ${name} <${email}>`)
+      console.log(`Subject: ${subject}`)
+      console.log(`Message: ${message}`)
+      console.log("=== Email simulation complete ===")
+
+      return NextResponse.json({
+        success: true,
+        message: "Message received! (Test mode - email simulated)",
+        testMode: true,
+        logged: true,
+      })
+    }
+
+    // Production mode - try actual email sending
+    console.log("=== PRODUCTION MODE: Attempting real email send ===")
+
     // Create transporter for mail.leafe.com
     const transporter = nodemailer.createTransporter({
       host: "mail.leafe.com",
@@ -120,8 +148,14 @@ Reply directly to: <a href="mailto:${email}">${email}</a></small></p>
     console.error("Contact data:", contactData)
     console.error("=== END ERROR ===")
 
-    // Try alternative port 25 if 587 failed
-    if (error instanceof Error && error.message.includes("ECONNREFUSED")) {
+    // Try alternative port 25 if 587 failed (only in production)
+    const isTestMode =
+      process.env.NODE_ENV !== "production" ||
+      !process.env.HOSTNAME?.includes("muskmustgo") ||
+      request.headers.get("host")?.includes("localhost") ||
+      request.headers.get("host")?.includes("v0.dev")
+
+    if (!isTestMode && error instanceof Error && error.message.includes("ECONNREFUSED")) {
       try {
         console.log("Retrying with port 25...")
         const altTransporter = nodemailer.createTransporter({
@@ -160,7 +194,8 @@ Reply directly to: <a href="mailto:${email}">${email}</a></small></p>
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to send email, but your message has been logged.",
+        error:
+          "Unable to send email at this time, but your message has been received and logged. We'll get back to you soon.",
         details: error instanceof Error ? error.message : "Unknown error",
         logged: true,
         timestamp: contactData.timestamp,
@@ -171,11 +206,16 @@ Reply directly to: <a href="mailto:${email}">${email}</a></small></p>
 }
 
 export async function GET() {
+  const isTestMode = process.env.NODE_ENV !== "production" || !process.env.HOSTNAME?.includes("muskmustgo")
+
   return NextResponse.json({
     status: "Contact API is running",
+    mode: isTestMode ? "TEST MODE" : "PRODUCTION MODE",
     mailServer: "mail.leafe.com",
     ports: [587, 25],
     timestamp: new Date().toISOString(),
-    note: "All contact form submissions are logged to console as backup",
+    note: isTestMode
+      ? "In test mode - emails are simulated and logged"
+      : "In production mode - emails sent to mail server",
   })
 }
