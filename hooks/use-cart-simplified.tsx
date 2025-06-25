@@ -1,5 +1,6 @@
-import { useLocalStorage } from "./use-local-storage"
 import type { Product } from "../types"
+import useLocalStorage from "../hooks/useLocalStorage"
+import generateCustomId from "../utils/generateCustomId"
 
 interface CartItem extends Product {
   quantity: number
@@ -31,6 +32,18 @@ const useCartSimplified = (): UseCartSimplified => {
         return [...prevItems, { ...item, quantity: 1 }]
       }
     })
+
+    // Generate a custom ID if the item has customOptions and doesn't already have a customId
+    const customId = item.customId || (item.customOptions ? generateCustomId(item) : item.id)
+
+    // Store emoji choices for backend submission if this is a Tesla emoji product
+    if (item.customOptions && item.id.includes("tesla") && item.id.includes("emoji")) {
+      // Store the emoji choices in the item for later backend submission
+      item.emojiChoices = {
+        emoji_good: item.customOptions.tesla?.name || item.customOptions.good?.name,
+        emoji_bad: item.customOptions.elon?.name || item.customOptions.bad?.name,
+      }
+    }
   }
 
   const removeItem = (itemId: string) => {
