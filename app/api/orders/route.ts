@@ -8,11 +8,15 @@ export async function POST(request: NextRequest) {
     console.log("Order data:", JSON.stringify(orderData, null, 2))
 
     // Use environment variable as Ed specified
-    const apiBaseUrl = process.env.API_BASE_URL || "http://localhost"
+    const apiBaseUrl = process.env.API_BASE_URL || "http://127.0.0.1"
     const backendUrl = `${apiBaseUrl}/orders`
 
     console.log("API_BASE_URL from env:", process.env.API_BASE_URL)
-    console.log("Calling Ed's backend at:", backendUrl)
+    console.log("Final backend URL:", backendUrl)
+    console.log(
+      "All environment variables:",
+      Object.keys(process.env).filter((key) => key.includes("API")),
+    )
 
     // Forward the order to Ed's backend
     const response = await fetch(backendUrl, {
