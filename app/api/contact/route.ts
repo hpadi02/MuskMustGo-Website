@@ -9,27 +9,78 @@ export async function POST(request: NextRequest) {
     console.log("Subject:", subject)
     console.log("Message:", message)
 
-    // For now, we'll log the contact form data and return success
-    // Ed can check the server logs to see contact form submissions
-    // This avoids the nodemailer dependency issues
+    // Determine the correct mail server URL based on domain
+    const host = request.headers.get("host") || ""
+    let mailServerUrl = "http://127.0.0.1/contact" // Default fallback
 
-    const contactData = {
-      timestamp: new Date().toISOString(),
-      from: { name, email },
-      subject,
-      message,
-      ip: request.headers.get("x-forwarded-for") || "unknown",
-      userAgent: request.headers.get("user-agent") || "unknown",
+    if (host.includes("elonmustgo.com") || host.includes("muskmustgo.com")) {
+      // Production domains - use Ed's mail server
+      mailServerUrl = `${process.env.API_BASE_URL || "http://127.0.0.1"}/contact`
     }
 
-    // Log the complete contact form data for Ed to see
-    console.log("CONTACT FORM DATA:", JSON.stringify(contactData, null, 2))
+    console.log("Sending contact form to:", mailServerUrl)
+    console.log("Host header:", host)
 
-    return NextResponse.json({
-      success: true,
-      message: "Message received and logged. Ed will be notified.",
-      timestamp: contactData.timestamp,
-    })
+    const contactData = {
+      name,
+      email,
+      subject,
+      message,
+      timestamp: new Date().toISOString(),
+      source: "muskmustgo-website",
+      domain: host,
+    }
+
+    // Send to Ed's mail server
+    try {
+      const response = await fetch(mailServerUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Add API key if Ed requires it
+          ...(process.env.BACKEND_API_KEY && {
+            Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
+          }),
+        },
+        body: JSON.stringify(contactData),
+      })
+
+      console.log("Mail server response status:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Mail server error:", errorText)
+
+        // Log the contact form data as fallback
+        console.log("FALLBACK - CONTACT FORM DATA:", JSON.stringify(contactData, null, 2))
+
+        return NextResponse.json({
+          success: true,
+          message: "Message received and logged. Ed will be notified.",
+          note: "Mail server unavailable, message logged to console",
+        })
+      }
+
+      const result = await response.json()
+      console.log("Mail server success:", result)
+
+      return NextResponse.json({
+        success: true,
+        message: "Message sent successfully!",
+        timestamp: contactData.timestamp,
+      })
+    } catch (fetchError) {
+      console.error("Failed to reach mail server:", fetchError)
+
+      // Log the contact form data as fallback
+      console.log("FALLBACK - CONTACT FORM DATA:", JSON.stringify(contactData, null, 2))
+
+      return NextResponse.json({
+        success: true,
+        message: "Message received and logged. Ed will be notified.",
+        note: "Mail server unavailable, message logged to console",
+      })
+    }
   } catch (error) {
     console.error("Contact form error:", error)
 
@@ -46,8 +97,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    message: "Contact API is running (logging mode)",
+    message: "Contact API is running",
     timestamp: new Date().toISOString(),
-    note: "Contact form submissions are logged to server console",
+    mailServerUrl: `${process.env.API_BASE_URL || "http://127.0.0.1"}/contact`,
+    note: "Contact form submissions are sent to Ed's mail server with console logging as fallback",
   })
 }
