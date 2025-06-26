@@ -1,102 +1,86 @@
-"use client"
-
 import { loadStripe } from "@stripe/stripe-js"
-import type { CartItem } from "@/hooks/use-cart-simplified"
 
-// Your test publishable key
-const STRIPE_PUBLISHABLE_KEY =
-  "pk_test_51RJKA6HXKGu0DvSUCAmDKPO6FhWBOoaYP2GeyoYVO9JUM3kYWIlCV5w9TCAy5APL2xsxt5nLULXHpqZrmcBPwXUQ00RtQ3Yxdc"
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-// Initialize Stripe
-const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY)
-
-// Check if we're in an iframe (preview environment)
-const isInIframe = () => {
+export async function createCheckoutSession(items: any[]) {
   try {
-    return window.self !== window.top
-  } catch (e) {
-    return true
-  }
-}
+    console.log("Creating checkout session with items:", items)
 
-export async function createCheckoutSession(items: CartItem[]) {
-  try {
-    console.log("Starting Stripe checkout with items:", items)
+    // Prepare metadata for emoji products
+    const metadata: Record<string, string> = {}
 
-    // Check if we're in an iframe first
-    if (isInIframe()) {
-      console.log("Detected iframe environment, skipping Stripe redirect")
-      return {
-        success: false,
-        error:
-          "Stripe checkout is not available in preview mode. In production, this would redirect to Stripe's secure checkout page.",
-        isRedirectBlocked: true,
+    // Check if any items have custom emoji options
+    items.forEach((item, index) => {
+      if (
+        item.customOptions &&
+        (item.id?.includes("tesla_vs_elon_emoji") || item.customId?.includes("tesla_vs_elon_emoji"))
+      ) {
+        // Store emoji choices in metadata
+        metadata.emoji_choices = JSON.stringify(item.customOptions)
+        console.log("Adding emoji choices to session metadata:", item.customOptions)
       }
-    }
+    })
 
-    const stripe = await stripePromise
-
-    if (!stripe) {
-      return {
-        success: false,
-        error: "Stripe failed to initialize. Please check your connection.",
-      }
-    }
-
-    // Filter items to only include those with Stripe price IDs
-    const stripeItems = items.filter((item) => item.stripeId)
-
-    if (stripeItems.length === 0) {
-      return {
-        success: false,
-        error: "No valid Stripe products in cart. Please add products with Stripe integration.",
-      }
-    }
-
-    // Create line items for Stripe checkout
-    const lineItems = stripeItems.map((item) => ({
-      price: item.stripeId,
+    // Transform items to Stripe format
+    const lineItems = items.map((item) => ({
+      price: item.stripeId, // Use the Stripe price ID
       quantity: item.quantity,
     }))
 
-    console.log("Redirecting to Stripe checkout with line items:", lineItems)
+    console.log("Stripe line items:", lineItems)
+    console.log("Session metadata:", metadata)
 
-    // Redirect to Stripe Checkout
-    const { error } = await stripe.redirectToCheckout({
-      lineItems,
-      mode: "payment",
-      successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${window.location.origin}/cart`,
-      shippingAddressCollection: {
-        allowedCountries: ["US", "CA", "GB", "AU"],
+    // Create checkout session
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        items: lineItems,
+        metadata: metadata, // Include metadata with emoji choices
+        successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/cart`,
+      }),
     })
 
+    const { sessionId, error } = await response.json()
+
     if (error) {
-      console.error("Stripe redirect error:", error)
-      return {
-        success: false,
-        error: error.message || "Failed to redirect to Stripe checkout",
+      console.error("Checkout session creation failed:", error)
+      return { success: false, error }
+    }
+
+    console.log("Checkout session created:", sessionId)
+
+    // Redirect to Stripe Checkout
+    const stripe = await stripePromise
+    if (!stripe) {
+      return { success: false, error: "Stripe failed to load" }
+    }
+
+    const { error: redirectError } = await stripe.redirectToCheckout({
+      sessionId,
+    })
+
+    if (redirectError) {
+      console.error("Stripe redirect error:", redirectError)
+
+      // Check if it's a redirect blocking issue (common in preview environments)
+      if (redirectError.message?.includes("blocked") || redirectError.message?.includes("redirect")) {
+        return {
+          success: false,
+          error: "Redirect blocked in preview environment",
+          isRedirectBlocked: true,
+        }
       }
+
+      return { success: false, error: redirectError.message }
     }
 
     return { success: true }
   } catch (error) {
-    console.error("Error creating checkout session:", error)
-
-    // Check if it's a navigation/iframe error
-    if (error instanceof Error && error.message.includes("navigate the target frame")) {
-      return {
-        success: false,
-        error:
-          "Stripe checkout is not available in preview mode. In production, this would redirect to Stripe's secure checkout page.",
-        isRedirectBlocked: true,
-      }
-    }
-
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "An unknown error occurred",
-    }
+    console.error("Checkout error:", error)
+    return { success: false, error: "Failed to create checkout session" }
   }
 }
