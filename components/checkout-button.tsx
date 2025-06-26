@@ -61,19 +61,41 @@ export default function CheckoutButton({ className }: CheckoutButtonProps) {
         }),
       })
 
+      console.log("Checkout API response status:", response.status)
+
       const data = await response.json()
+      console.log("Checkout API response data:", data)
 
       if (!response.ok) {
+        console.error("Checkout API error:", data)
         throw new Error(data.message || data.error || "Checkout failed")
       }
 
       const { sessionId } = data
 
+      if (!sessionId) {
+        throw new Error("No session ID returned from checkout API")
+      }
+
+      console.log("Got session ID:", sessionId)
+
       // Redirect to Stripe Checkout
       const stripe = await getStripe()
-      await stripe?.redirectToCheckout({ sessionId })
+
+      if (!stripe) {
+        throw new Error("Failed to load Stripe")
+      }
+
+      console.log("Redirecting to Stripe checkout...")
+      const { error } = await stripe.redirectToCheckout({ sessionId })
+
+      if (error) {
+        console.error("Stripe redirect error:", error)
+        throw new Error(error.message || "Failed to redirect to checkout")
+      }
     } catch (error) {
       console.error("Checkout error:", error)
+      alert(`Checkout failed: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsLoading(false)
     }

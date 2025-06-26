@@ -10,6 +10,12 @@ export async function POST(request: NextRequest) {
     console.log("Success URL:", successUrl)
     console.log("Cancel URL:", cancelUrl)
     console.log("Stripe Secret Key exists:", !!process.env.STRIPE_SECRET_KEY)
+    console.log("Stripe Secret Key length:", process.env.STRIPE_SECRET_KEY?.length)
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("STRIPE_SECRET_KEY is not set")
+      return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
+    }
 
     if (!items || items.length === 0) {
       console.error("No items provided")
@@ -25,7 +31,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Creating Stripe checkout session...")
-    console.log("Stripe object:", typeof stripe)
+    console.log("Stripe object type:", typeof stripe)
+    console.log("Stripe object has checkout:", !!stripe.checkout)
+    console.log("Stripe object has sessions:", !!stripe.checkout?.sessions)
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -55,6 +63,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sessionId: session.id })
   } catch (error) {
     console.error("Stripe checkout error:", error)
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
 
     // Return more detailed error information
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
@@ -65,6 +74,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to create checkout session",
         message: errorMessage,
         details: errorDetails,
+        stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
       },
       { status: 500 },
     )
