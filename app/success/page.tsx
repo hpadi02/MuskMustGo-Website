@@ -1,95 +1,134 @@
-import { Suspense } from "react"
-import { redirect } from "next/navigation"
-import { stripe } from "@/lib/stripe"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, ArrowRight } from "lucide-react"
-import { CartClearer } from "@/components/cart-clearer"
+"use client"
 
-interface SuccessPageProps {
-  searchParams: {
-    session_id?: string
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, Package, CreditCard, User } from "lucide-react"
+import Link from "next/link"
+
+interface OrderData {
+  customer: {
+    email: string
+    firstname: string
+    lastname: string
+    addr1: string
+    addr2: string
+    city: string
+    state_prov: string
+    postal_code: string
+    country: string
   }
+  payment_id: string
+  products: Array<{
+    product_id: string
+    quantity: number
+    attributes?: Array<{
+      name: string
+      value: string
+    }>
+  }>
+  shipping: number
+  tax: number
 }
 
-async function SuccessContent({ sessionId }: { sessionId: string }) {
-  try {
-    // Retrieve the Stripe session with payment intent
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
-    })
+export default function SuccessPage() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get("session_id")
+  const [orderStatus, setOrderStatus] = useState<"processing" | "success" | "error">("processing")
+  const [orderData, setOrderData] = useState<OrderData | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string>("")
 
-    if (!session) {
-      redirect("/cart")
+  useEffect(() => {
+    if (!sessionId) {
+      setOrderStatus("error")
+      setErrorMessage("No session ID found")
+      return
     }
 
-    // Get the payment intent ID
-    const paymentIntentId =
-      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
+    processOrder()
+  }, [sessionId])
 
-    console.log("=== PAYMENT PROCESSING ===")
-    console.log("Session ID:", session.id)
-    console.log("Payment Intent ID:", paymentIntentId)
+  const processOrder = async () => {
+    try {
+      console.log("=== PROCESSING ORDER ===")
+      console.log("Session ID:", sessionId)
 
-    // Build order data from Stripe session line items
-    const orderData = {
-      customer: {
-        email: session.customer_details?.email || "",
-        firstname: session.customer_details?.name?.split(" ")[0] || "",
-        lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-        addr1: session.customer_details?.address?.line1 || "",
-        addr2: session.customer_details?.address?.line2 || "",
-        city: session.customer_details?.address?.city || "",
-        state_prov: session.customer_details?.address?.state || "",
-        postal_code: session.customer_details?.address?.postal_code || "",
-        country: session.customer_details?.address?.country || "",
-      },
-      payment_id: paymentIntentId,
-      products:
-        session.line_items?.data.map((item: any) => {
+      // Get Stripe session details
+      const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
+      if (!sessionResponse.ok) {
+        throw new Error("Failed to retrieve session")
+      }
+
+      const sessionData = await sessionResponse.json()
+      console.log("Session data:", sessionData)
+
+      const { session, lineItems } = sessionData
+
+      if (session.payment_status !== "paid") {
+        throw new Error("Payment not completed")
+      }
+
+      // Get cart items from localStorage (client-side only)
+      const cartItems = JSON.parse(localStorage.getItem("cart") || "[]")
+      console.log("Cart items from localStorage:", cartItems)
+
+      // Build order data for Ed's backend
+      const orderData: OrderData = {
+        customer: {
+          email: session.customer_details?.email || "",
+          firstname: session.customer_details?.name?.split(" ")[0] || "",
+          lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+          addr1: session.customer_details?.address?.line1 || "",
+          addr2: session.customer_details?.address?.line2 || "",
+          city: session.customer_details?.address?.city || "",
+          state_prov: session.customer_details?.address?.state || "",
+          postal_code: session.customer_details?.address?.postal_code || "",
+          country: session.customer_details?.address?.country || "",
+        },
+        payment_id: session.payment_intent,
+        products: lineItems.map((lineItem: any) => {
+          // Find matching cart item for emoji attributes
+          const cartItem = cartItems.find(
+            (item: any) => item.id === lineItem.price.product || item.productId === lineItem.price.product,
+          )
+
           const product: any = {
-            product_id: typeof item.price.product === "string" ? item.price.product : item.price.product.id,
-            quantity: item.quantity || 1,
+            product_id: lineItem.price.product,
+            quantity: lineItem.quantity,
           }
 
-          // For emoji products, we'll need to get the attributes from metadata
-          // Stripe should have stored the emoji choices in the line item metadata
-          if (item.price.product.metadata) {
-            const metadata = typeof item.price.product === "string" ? {} : item.price.product.metadata
+          // Add emoji attributes if this is a customized emoji product
+          if (cartItem?.customOptions?.tesla && cartItem?.customOptions?.elon) {
+            const teslaEmojiName =
+              cartItem.customOptions.tesla.name ||
+              cartItem.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
+              "unknown"
 
-            if (metadata.emoji_good || metadata.emoji_bad) {
-              product.attributes = []
+            const elonEmojiName =
+              cartItem.customOptions.elon.name ||
+              cartItem.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
+              "unknown"
 
-              if (metadata.emoji_good) {
-                product.attributes.push({
-                  name: "emoji_good",
-                  value: metadata.emoji_good,
-                })
-              }
-
-              if (metadata.emoji_bad) {
-                product.attributes.push({
-                  name: "emoji_bad",
-                  value: metadata.emoji_bad,
-                })
-              }
-
-              console.log(`✅ Added emoji attributes for product ${product.product_id}:`, product.attributes)
-            }
+            product.attributes = [
+              { name: "emoji_good", value: teslaEmojiName },
+              { name: "emoji_bad", value: elonEmojiName },
+            ]
           }
 
           return product
-        }) || [],
-      shipping: 0,
-      tax: 0,
-    }
+        }),
+        shipping: 0,
+        tax: 0,
+      }
 
-    console.log("=== SENDING ORDER TO ED'S BACKEND ===")
-    console.log("Order data:", JSON.stringify(orderData, null, 2))
+      console.log("=== SENDING ORDER TO BACKEND ===")
+      console.log("Order data:", JSON.stringify(orderData, null, 2))
 
-    // Send to Ed's backend via the API route
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:3000"}/api/orders`, {
+      setOrderData(orderData)
+
+      // Send order to Ed's backend via our API
+      const orderResponse = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,98 +136,166 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         body: JSON.stringify(orderData),
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Failed to send order to backend:", errorText)
-      } else {
-        const result = await response.json()
-        console.log("✅ Order successfully sent to Ed's backend:", result)
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json()
+        throw new Error(`Backend error: ${errorData.error || "Unknown error"}`)
       }
+
+      const result = await orderResponse.json()
+      console.log("=== BACKEND RESPONSE ===")
+      console.log("Result:", result)
+
+      // Clear cart after successful order
+      localStorage.removeItem("cart")
+
+      setOrderStatus("success")
     } catch (error) {
-      console.error("❌ Error processing order:", error)
+      console.error("Order processing error:", error)
+      setOrderStatus("error")
+      setErrorMessage(error instanceof Error ? error.message : "Unknown error occurred")
     }
+  }
 
+  if (orderStatus === "processing") {
     return (
-      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        <CartClearer />
-
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="mb-8">
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-              <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-6">Order Confirmed!</h1>
-              <p className="text-white/70 text-lg">
-                Thank you for your purchase. Your order has been successfully processed.
-              </p>
-            </div>
-
-            <div className="bg-dark-300 p-8 rounded-lg mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-medium">Order Details</h2>
-                <Package className="h-6 w-6 text-white/60" />
-              </div>
-
-              <div className="space-y-4 text-left">
-                <div className="flex justify-between">
-                  <span className="text-white/70">Email:</span>
-                  <span>{session.customer_details?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/70">Total:</span>
-                  <span className="font-medium">${((session.amount_total || 0) / 100).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-white/70">
-                You'll receive an email confirmation shortly with your order details and tracking information.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/account/orders">
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                    View Orders
-                  </Button>
-                </Link>
-                <Link href="/shop/all">
-                  <Button className="bg-red-600 hover:bg-red-700 text-white">
-                    Continue Shopping <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+            <p>Processing your order...</p>
+          </CardContent>
+        </Card>
       </div>
     )
-  } catch (error) {
-    console.error("Error retrieving session:", error)
-    redirect("/cart")
   }
-}
 
-export default function SuccessPage({ searchParams }: SuccessPageProps) {
-  const sessionId = searchParams.session_id
-
-  if (!sessionId) {
-    redirect("/cart")
+  if (orderStatus === "error") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Order Error</CardTitle>
+            <CardDescription>There was an issue processing your order</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">{errorMessage}</p>
+            <Button asChild>
+              <Link href="/contact">Contact Support</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-          <div className="container mx-auto px-6 md:px-10">
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
-              <p className="mt-4 text-white/70">Processing your order...</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
+          <h1 className="text-3xl font-bold text-gray-900">Order Confirmed!</h1>
+          <p className="text-lg text-gray-600 mt-2">
+            Thank you for your purchase. Your order has been successfully processed.
+          </p>
         </div>
-      }
-    >
-      <SuccessContent sessionId={sessionId} />
-    </Suspense>
+
+        {orderData && (
+          <div className="space-y-6">
+            {/* Customer Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="h-5 w-5 mr-2" />
+                  Customer Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-medium">
+                      {orderData.customer.firstname} {orderData.customer.lastname}
+                    </p>
+                    <p className="text-gray-600">{orderData.customer.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      {orderData.customer.addr1}
+                      {orderData.customer.addr2 && (
+                        <>
+                          <br />
+                          {orderData.customer.addr2}
+                        </>
+                      )}
+                      <br />
+                      {orderData.customer.city}, {orderData.customer.state_prov} {orderData.customer.postal_code}
+                      <br />
+                      {orderData.customer.country}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CreditCard className="h-5 w-5 mr-2" />
+                  Payment Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600">
+                  Payment ID: <span className="font-mono">{orderData.payment_id}</span>
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Products */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Order Items
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {orderData.products.map((product, index) => (
+                    <div key={index} className="border-b pb-4 last:border-b-0">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">Product ID: {product.product_id}</p>
+                          <p className="text-sm text-gray-600">Quantity: {product.quantity}</p>
+                          {product.attributes && product.attributes.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-sm font-medium text-gray-700">Customizations:</p>
+                              {product.attributes.map((attr, attrIndex) => (
+                                <p key={attrIndex} className="text-sm text-gray-600 ml-2">
+                                  {attr.name}: {attr.value}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="text-center mt-8">
+          <Button asChild className="mr-4">
+            <Link href="/account/orders">View Orders</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/">Continue Shopping</Link>
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
