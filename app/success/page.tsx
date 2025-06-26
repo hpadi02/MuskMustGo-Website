@@ -23,7 +23,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       redirect("/cart")
     }
 
-    // Get the payment intent ID (this is what Ed needs)
+    // Get the payment intent ID
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
@@ -31,84 +31,65 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     console.log("Session ID:", session.id)
     console.log("Payment Intent ID:", paymentIntentId)
 
-    // Process the order - send to backend
-    try {
-      // Get cart items from localStorage to include emoji data
-      const cartItems = JSON.parse(localStorage.getItem("cart-storage") || '{"state":{"items":[]}}')
-      const items = cartItems.state?.items || []
-
-      const orderData = {
-        customer: {
-          email: session.customer_details?.email || "",
-          firstname: session.customer_details?.name?.split(" ")[0] || "",
-          lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-          addr1: session.customer_details?.address?.line1 || "",
-          addr2: session.customer_details?.address?.line2 || "",
-          city: session.customer_details?.address?.city || "",
-          state_prov: session.customer_details?.address?.state || "",
-          postal_code: session.customer_details?.address?.postal_code || "",
-          country: session.customer_details?.address?.country || "",
-        },
-        payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
-        products: items.map((item: any) => {
+    // Build order data from Stripe session line items
+    const orderData = {
+      customer: {
+        email: session.customer_details?.email || "",
+        firstname: session.customer_details?.name?.split(" ")[0] || "",
+        lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+        addr1: session.customer_details?.address?.line1 || "",
+        addr2: session.customer_details?.address?.line2 || "",
+        city: session.customer_details?.address?.city || "",
+        state_prov: session.customer_details?.address?.state || "",
+        postal_code: session.customer_details?.address?.postal_code || "",
+        country: session.customer_details?.address?.country || "",
+      },
+      payment_id: paymentIntentId,
+      products:
+        session.line_items?.data.map((item: any) => {
           const product: any = {
-            product_id: item.productId || item.id,
+            product_id: typeof item.price.product === "string" ? item.price.product : item.price.product.id,
             quantity: item.quantity || 1,
           }
 
-          // ADD EMOJI ATTRIBUTES FOR CUSTOMIZED PRODUCTS
-          if (item.customOptions?.tesla && item.customOptions?.elon) {
-            // Extract filename without extension for emoji_good (Tesla)
-            const teslaEmojiName =
-              item.customOptions.tesla.name ||
-              item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
-              "unknown"
+          // For emoji products, we'll need to get the attributes from metadata
+          // Stripe should have stored the emoji choices in the line item metadata
+          if (item.price.product.metadata) {
+            const metadata = typeof item.price.product === "string" ? {} : item.price.product.metadata
 
-            // Extract filename without extension for emoji_bad (Elon)
-            const elonEmojiName =
-              item.customOptions.elon.name ||
-              item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
-              "unknown"
+            if (metadata.emoji_good || metadata.emoji_bad) {
+              product.attributes = []
 
-            product.attributes = [
-              { name: "emoji_good", value: teslaEmojiName },
-              { name: "emoji_bad", value: elonEmojiName },
-            ]
+              if (metadata.emoji_good) {
+                product.attributes.push({
+                  name: "emoji_good",
+                  value: metadata.emoji_good,
+                })
+              }
 
-            console.log(`✅ Added emoji attributes for ${item.name}:`, {
-              emoji_good: teslaEmojiName,
-              emoji_bad: elonEmojiName,
-            })
+              if (metadata.emoji_bad) {
+                product.attributes.push({
+                  name: "emoji_bad",
+                  value: metadata.emoji_bad,
+                })
+              }
+
+              console.log(`✅ Added emoji attributes for product ${product.product_id}:`, product.attributes)
+            }
           }
 
           return product
-        }),
-        shipping: 0,
-        tax: 0,
-      }
+        }) || [],
+      shipping: 0,
+      tax: 0,
+    }
 
-      console.log("=== SENDING ORDER TO ED'S BACKEND ===")
-      console.log("Order data:", JSON.stringify(orderData, null, 2))
+    console.log("=== SENDING ORDER TO ED'S BACKEND ===")
+    console.log("Order data:", JSON.stringify(orderData, null, 2))
 
-      // ✅ Correct URL determination
-      let baseUrl: string
-
-      if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`
-        console.log("Using Vercel URL:", baseUrl)
-      } else if (process.env.NODE_ENV === "production") {
-        baseUrl = "https://elonmustgo.com" // ✅ Production URL
-        console.log("Using production URL:", baseUrl)
-      } else {
-        baseUrl = "http://localhost:3000" // ✅ Development URL
-        console.log("Using development URL:", baseUrl)
-      }
-
-      const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
-      console.log("Calling API at:", apiUrl)
-
-      // Send to Ed's backend via your API route
-      const backendResponse = await fetch(apiUrl, {
+    // Send to Ed's backend via the API route
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:3000"}/api/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -116,11 +97,11 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         body: JSON.stringify(orderData),
       })
 
-      if (!backendResponse.ok) {
-        const errorText = await backendResponse.text()
+      if (!response.ok) {
+        const errorText = await response.text()
         console.error("Failed to send order to backend:", errorText)
       } else {
-        const result = await backendResponse.json()
+        const result = await response.json()
         console.log("✅ Order successfully sent to Ed's backend:", result)
       }
     } catch (error) {
@@ -129,7 +110,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        {/* Clear cart when success page loads */}
         <CartClearer />
 
         <div className="container mx-auto px-6 md:px-10">

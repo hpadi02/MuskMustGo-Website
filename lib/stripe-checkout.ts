@@ -1,7 +1,7 @@
 "use client"
 
 import { loadStripe } from "@stripe/stripe-js"
-import type { CartItem } from "@/hooks/use-cart-simplified"
+import type { CartItem } from "@/hooks/use-cart"
 
 // Your test publishable key
 const STRIPE_PUBLISHABLE_KEY =
@@ -19,7 +19,7 @@ const isInIframe = () => {
   }
 }
 
-export async function createCheckoutSession(items: CartItem[]) {
+export async function createCheckoutSession(items: CartItem[], successUrl: string, cancelUrl: string) {
   try {
     console.log("Starting Stripe checkout with items:", items)
 
@@ -54,33 +54,60 @@ export async function createCheckoutSession(items: CartItem[]) {
     }
 
     // Create line items for Stripe checkout
-    const lineItems = stripeItems.map((item) => ({
-      price: item.stripeId,
-      quantity: item.quantity,
-    }))
+    const lineItems = stripeItems.map((item) => {
+      const lineItem: any = {
+        price: item.stripeId,
+        quantity: item.quantity,
+      }
+
+      // Add emoji choices to line item metadata for emoji products
+      if (item.customOptions?.tesla && item.customOptions?.elon) {
+        const teslaEmojiName =
+          item.customOptions.tesla.name ||
+          item.customOptions.tesla.path?.split("/").pop()?.replace(".png", "") ||
+          "unknown"
+
+        const elonEmojiName =
+          item.customOptions.elon.name ||
+          item.customOptions.elon.path?.split("/").pop()?.replace(".png", "") ||
+          "unknown"
+
+        lineItem.price_data = {
+          currency: "usd",
+          product_data: {
+            name: item.name,
+            images: [item.image],
+            metadata: {
+              emoji_good: teslaEmojiName,
+              emoji_bad: elonEmojiName,
+            },
+          },
+          unit_amount: Math.round(item.price * 100),
+        }
+
+        // Remove the price field since we're using price_data
+        delete lineItem.price
+      }
+
+      return lineItem
+    })
 
     console.log("Redirecting to Stripe checkout with line items:", lineItems)
 
     // Redirect to Stripe Checkout
-    const { error } = await stripe.redirectToCheckout({
-      lineItems,
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
       mode: "payment",
-      successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${window.location.origin}/cart`,
-      shippingAddressCollection: {
-        allowedCountries: ["US", "CA", "GB", "AU"],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      billing_address_collection: "required",
+      shipping_address_collection: {
+        allowed_countries: ["US", "CA"],
       },
     })
 
-    if (error) {
-      console.error("Stripe redirect error:", error)
-      return {
-        success: false,
-        error: error.message || "Failed to redirect to Stripe checkout",
-      }
-    }
-
-    return { success: true }
+    return { sessionId: session.id, url: session.url }
   } catch (error) {
     console.error("Error creating checkout session:", error)
 
@@ -94,9 +121,6 @@ export async function createCheckoutSession(items: CartItem[]) {
       }
     }
 
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "An unknown error occurred",
-    }
+    throw error
   }
 }
