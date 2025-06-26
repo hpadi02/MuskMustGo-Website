@@ -1,16 +1,20 @@
-import { loadStripe, type Stripe } from "@stripe/stripe-js"
-import StripeServer from "stripe"
+import Stripe from "stripe"
 
-let stripePromise: Promise<Stripe | null>
-
-export const getStripe = () => {
-  if (!stripePromise) {
-    stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
-  }
-  return stripePromise
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error("STRIPE_SECRET_KEY is not set in environment variables")
 }
 
-// Server-side Stripe instance
-export const stripe = new StripeServer(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2024-12-18.acacia",
+  typescript: true,
 })
+
+export async function getStripe() {
+  const { loadStripe } = await import("@stripe/stripe-js")
+
+  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+    throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set")
+  }
+
+  return loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+}

@@ -1,11 +1,7 @@
-import { NextResponse } from "next/server"
-import Stripe from "stripe"
+import { type NextRequest, NextResponse } from "next/server"
+import { stripe } from "@/lib/stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-})
-
-export async function GET(req: Request, { params }: { params: { sessionId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { sessionId: string } }) {
   try {
     const { sessionId } = params
 
@@ -13,43 +9,38 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
-    console.log("Fetching Stripe session:", sessionId)
+    console.log("Retrieving Stripe session:", sessionId)
 
-    // Retrieve the checkout session from Stripe
+    // Retrieve the session with expanded line items
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.price.product"],
+      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
     })
 
-    console.log("Retrieved session:", {
-      id: session.id,
-      payment_status: session.payment_status,
-      amount_total: session.amount_total,
-      line_items_count: session.line_items?.data?.length || 0,
-    })
+    if (!session) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+    }
+
+    console.log("Session retrieved successfully")
 
     return NextResponse.json({
-      id: session.id,
-      payment_status: session.payment_status,
-      amount_total: session.amount_total,
-      shipping_cost: session.shipping_cost,
-      customer_details: session.customer_details,
-      shipping_details: session.shipping_details,
-      line_items:
-        session.line_items?.data?.map((item) => ({
-          quantity: item.quantity,
-          price: {
-            unit_amount: item.price?.unit_amount,
-            product: {
-              id: (item.price?.product as Stripe.Product)?.id,
-              name: (item.price?.product as Stripe.Product)?.name,
-              images: (item.price?.product as Stripe.Product)?.images,
-              metadata: (item.price?.product as Stripe.Product)?.metadata,
-            },
-          },
-        })) || [],
+      session: {
+        id: session.id,
+        payment_status: session.payment_status,
+        payment_intent:
+          typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id,
+        customer_details: session.customer_details,
+        amount_total: session.amount_total,
+      },
+      lineItems: session.line_items?.data || [],
     })
   } catch (error) {
-    console.error("Error fetching Stripe session:", error)
-    return NextResponse.json({ error: "Failed to fetch session details" }, { status: 500 })
+    console.error("Error retrieving session:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to retrieve session",
+        message: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
