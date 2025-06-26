@@ -1,38 +1,55 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { stripe } from "@/lib/stripe"
+import Stripe from "stripe"
 
-export async function POST(request: NextRequest) {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
+
+export async function POST(req: NextRequest) {
   try {
-    const { items, metadata, successUrl, cancelUrl } = await request.json()
+    const { items, successUrl, cancelUrl } = await req.json()
 
-    if (!items || items.length === 0) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "No items provided" }, { status: 400 })
     }
 
-    console.log("Creating Stripe session with metadata:", metadata)
+    // Prepare line items for Stripe
+    const lineItems = items.map((item: any) => ({
+      price: item.stripeId,
+      quantity: item.quantity,
+    }))
+
+    // Extract emoji metadata from Tesla vs Elon emoji products
+    const metadata: Record<string, string> = {}
+
+    items.forEach((item: any) => {
+      if (item.baseId === "tesla_vs_elon_emoji" && item.customOptions) {
+        if (item.customOptions.teslaEmoji) {
+          metadata.tesla_emoji = item.customOptions.teslaEmoji
+        }
+        if (item.customOptions.elonEmoji) {
+          metadata.elon_emoji = item.customOptions.elonEmoji
+        }
+      }
+    })
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
-      line_items: items.map((item: any) => ({
-        price: item.price_id || item.price, // Handle both formats
-        quantity: item.quantity,
-      })),
+      line_items: lineItems,
       mode: "payment",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      success_url: successUrl || `${req.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${req.nextUrl.origin}/cart`,
+      metadata, // Include emoji choices in session metadata
       shipping_address_collection: {
         allowed_countries: ["US", "CA"],
       },
       billing_address_collection: "required",
-      metadata: metadata || {}, // Include metadata in the session
     })
 
-    console.log("Stripe session created with ID:", session.id)
-
-    return NextResponse.json({ sessionId: session.id })
+    return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {
-    console.error("Stripe checkout error:", error)
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
+    console.error("Error creating checkout session:", error)
+    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
   }
 }

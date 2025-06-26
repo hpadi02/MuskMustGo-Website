@@ -1,148 +1,134 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
+import { headers } from "next/headers"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
+  apiVersion: "2024-06-20",
 })
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const body = await req.text()
-  const sig = req.headers.get("stripe-signature")!
+  const sig = headers().get("stripe-signature") as string
 
   let event: Stripe.Event
 
   try {
     event = stripe.webhooks.constructEvent(body, sig, endpointSecret)
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err)
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+  } catch (err: any) {
+    console.error(`❌ Webhook signature verification failed.`, err.message)
+    return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 })
   }
+
+  console.log(`✅ Webhook received: ${event.type}`)
 
   // Handle the checkout.session.completed event
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session
 
-    console.log("=== STRIPE WEBHOOK: CHECKOUT COMPLETED ===")
-    console.log("Session ID:", session.id)
-    console.log("Payment Status:", session.payment_status)
-    console.log("Customer Email:", session.customer_details?.email)
-
     try {
-      // Get line items from the session
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-        expand: ["data.price.product"],
+      // Get the session with line items
+      const sessionWithLineItems = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ["line_items", "line_items.data.price.product"],
       })
 
-      console.log("Line Items:", JSON.stringify(lineItems.data, null, 2))
+      console.log("📦 Processing completed checkout session:", session.id)
 
-      // Transform line items to our order format
-      const orderItems = lineItems.data.map((item) => {
-        const product = item.price?.product as Stripe.Product
-        const productId = product?.metadata?.product_id || product?.id || "unknown"
-
-        // Base product data
-        const orderItem: any = {
-          product_id: productId,
-          quantity: item.quantity || 1,
-        }
-
-        // Check if this is a Tesla vs Elon emoji product and add attributes
-        if (productId.includes("tesla_vs_elon_emoji")) {
-          // Try to get emoji choices from product metadata or session metadata
-          // Since we can't access the cart data directly in the webhook,
-          // we'll need to store this information in the Stripe session metadata
-          const sessionMetadata = session.metadata || {}
-
-          // Look for emoji data in session metadata
-          const emojiData = sessionMetadata.emoji_choices
-          if (emojiData) {
-            try {
-              const parsedEmojis = JSON.parse(emojiData)
-              const attributes = []
-
-              // Add Tesla emoji (positive/good)
-              if (parsedEmojis.tesla?.name) {
-                // Remove file extension and path prefix to get clean name
-                const cleanTeslaName = parsedEmojis.tesla.name.replace(/^\d+_/, "").replace(/\.png$/, "")
-                attributes.push({
-                  name: "emoji_good",
-                  value: cleanTeslaName,
-                })
-              }
-
-              // Add Elon emoji (negative/bad)
-              if (parsedEmojis.elon?.name) {
-                // Remove file extension and path prefix to get clean name
-                const cleanElonName = parsedEmojis.elon.name.replace(/^\d+_/, "").replace(/\.png$/, "")
-                attributes.push({
-                  name: "emoji_bad",
-                  value: cleanElonName,
-                })
-              }
-
-              if (attributes.length > 0) {
-                orderItem.attributes = attributes
-                console.log("Added emoji attributes:", attributes)
-              }
-            } catch (parseError) {
-              console.error("Failed to parse emoji data:", parseError)
-            }
-          } else {
-            console.log("No emoji choices found in session metadata for Tesla vs Elon product")
-          }
-        }
-
-        return orderItem
-      })
-
-      // Prepare order data for Ed's backend
-      const orderData = {
-        customer: {
-          email: session.customer_details?.email || "customer@example.com",
-          firstname: session.customer_details?.name?.split(" ")[0] || "Customer",
-          lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "User",
-          addr1: session.shipping_details?.address?.line1 || "",
-          addr2: session.shipping_details?.address?.line2 || "",
-          city: session.shipping_details?.address?.city || "",
-          state_prov: session.shipping_details?.address?.state || "",
-          postal_code: session.shipping_details?.address?.postal_code || "",
-          country: session.shipping_details?.address?.country || "US",
-        },
-        payment_id: session.id,
-        products: orderItems, // Now includes attributes for emoji products
-        shipping: (session.shipping_cost?.amount_total || 0) / 100, // Convert from cents
-        tax: (session.total_details?.amount_tax || 0) / 100, // Convert from cents
+      // Extract customer information
+      const customer = {
+        email: session.customer_details?.email || "",
+        firstname: session.customer_details?.name?.split(" ")[0] || "",
+        lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+        addr1: session.customer_details?.address?.line1 || "",
+        addr2: session.customer_details?.address?.line2 || "",
+        city: session.customer_details?.address?.city || "",
+        state_prov: session.customer_details?.address?.state || "",
+        postal_code: session.customer_details?.address?.postal_code || "",
+        country: session.customer_details?.address?.country || "",
       }
 
-      console.log("Order data for backend:", JSON.stringify(orderData, null, 2))
+      // Extract products with potential emoji attributes
+      const products =
+        sessionWithLineItems.line_items?.data.map((item) => {
+          const product = item.price?.product as Stripe.Product
+          const productData: any = {
+            product_id: product.id,
+            quantity: item.quantity || 1,
+          }
 
-      // POST to Ed's backend API - UPDATED to use localhost as default
-      const backendUrl = process.env.API_BASE_URL || "http://localhost:5000"
+          // Check if this is a Tesla vs Elon emoji product and extract emoji choices
+          const productName = product.name?.toLowerCase() || ""
+          if (productName.includes("tesla") && productName.includes("emoji")) {
+            // Extract emoji choices from session metadata
+            const metadata = session.metadata || {}
+            const teslaEmoji = metadata.tesla_emoji
+            const elonEmoji = metadata.elon_emoji
 
-      const backendResponse = await fetch(`${backendUrl}/orders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderData),
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      })
+            if (teslaEmoji || elonEmoji) {
+              productData.attributes = []
 
-      if (backendResponse.ok) {
-        const result = await backendResponse.text()
-        console.log("✅ Successfully posted order to Ed's backend:", result)
+              if (teslaEmoji) {
+                // Remove .png extension and path if present
+                const cleanTeslaEmoji = teslaEmoji.replace(/^.*\//, "").replace(/\.png$/, "")
+                productData.attributes.push({
+                  name: "emoji_good",
+                  value: cleanTeslaEmoji,
+                })
+              }
 
-        // Store successful order data for success page
-        // We'll use a different approach since we can't access localStorage from webhook
-        // The success page will fetch this data using the session ID
+              if (elonEmoji) {
+                // Remove .png extension and path if present
+                const cleanElonEmoji = elonEmoji.replace(/^.*\//, "").replace(/\.png$/, "")
+                productData.attributes.push({
+                  name: "emoji_bad",
+                  value: cleanElonEmoji,
+                })
+              }
+            }
+          }
+
+          return productData
+        }) || []
+
+      // Prepare order data for backend
+      const orderData = {
+        customer,
+        payment_id: session.payment_intent as string,
+        products,
+        shipping: session.shipping_cost?.amount_total || 0,
+        tax: session.total_details?.amount_tax || 0,
+      }
+
+      console.log("📋 Order data:", JSON.stringify(orderData, null, 2))
+
+      // Send to backend API
+      const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+      if (backendUrl) {
+        try {
+          const response = await fetch(`${backendUrl}/orders`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
+            },
+            body: JSON.stringify(orderData),
+          })
+
+          if (response.ok) {
+            console.log("✅ Order successfully sent to backend")
+          } else {
+            console.error("❌ Failed to send order to backend:", response.status, response.statusText)
+          }
+        } catch (error) {
+          console.error("❌ Error sending order to backend:", error)
+        }
       } else {
-        console.error("❌ Failed to post to Ed's backend:", backendResponse.status, await backendResponse.text())
+        console.warn("⚠️ No backend URL configured, order not sent")
       }
     } catch (error) {
-      console.error("Error processing webhook:", error)
-      // Don't return error - we don't want to cause Stripe to retry
+      console.error("❌ Error processing webhook:", error)
+      return NextResponse.json({ error: "Error processing webhook" }, { status: 500 })
     }
   }
 
