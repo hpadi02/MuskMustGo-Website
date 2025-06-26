@@ -19,35 +19,6 @@ export default function CheckoutButton({ className }: CheckoutButtonProps) {
     setIsLoading(true)
 
     try {
-      console.log("=== STARTING CHECKOUT ===")
-      console.log("All cart items:", items)
-
-      // Filter items that have Stripe IDs
-      const itemsWithStripeId = items.filter((item) => {
-        const hasStripeId = !!(item.stripeId || item.productId || item.id)
-        console.log(`Filtering item "${item.name}": hasStripeId = ${hasStripeId}`)
-        return hasStripeId
-      })
-
-      console.log("Stripe items after filtering:", itemsWithStripeId)
-      console.log("Number of Stripe items:", itemsWithStripeId.length)
-      console.log("Number of total items:", items.length)
-
-      if (itemsWithStripeId.length === 0) {
-        throw new Error("No items with valid Stripe price IDs found")
-      }
-
-      console.log("Proceeding with Stripe checkout...")
-
-      // Map to Stripe format
-      const stripeLineItems = itemsWithStripeId.map((item) => ({
-        price_id: item.stripeId || item.productId || item.id,
-        quantity: item.quantity || 1,
-      }))
-
-      console.log("Starting Stripe checkout with items:", stripeLineItems)
-      console.log("Redirecting to Stripe checkout with line items:", stripeLineItems)
-
       // Create checkout session
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -55,47 +26,22 @@ export default function CheckoutButton({ className }: CheckoutButtonProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          items: stripeLineItems,
+          items: items.map((item) => ({
+            price_id: item.price_id,
+            quantity: item.quantity,
+          })),
           successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/cart`,
         }),
       })
 
-      console.log("Checkout API response status:", response.status)
-
-      const data = await response.json()
-      console.log("Checkout API response data:", data)
-
-      if (!response.ok) {
-        console.error("Checkout API error:", data)
-        throw new Error(data.message || data.error || "Checkout failed")
-      }
-
-      const { sessionId } = data
-
-      if (!sessionId) {
-        throw new Error("No session ID returned from checkout API")
-      }
-
-      console.log("Got session ID:", sessionId)
+      const { sessionId } = await response.json()
 
       // Redirect to Stripe Checkout
       const stripe = await getStripe()
-
-      if (!stripe) {
-        throw new Error("Failed to load Stripe")
-      }
-
-      console.log("Redirecting to Stripe checkout...")
-      const { error } = await stripe.redirectToCheckout({ sessionId })
-
-      if (error) {
-        console.error("Stripe redirect error:", error)
-        throw new Error(error.message || "Failed to redirect to checkout")
-      }
+      await stripe?.redirectToCheckout({ sessionId })
     } catch (error) {
       console.error("Checkout error:", error)
-      alert(`Checkout failed: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsLoading(false)
     }
