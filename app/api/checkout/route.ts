@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     console.log("Items received:", items)
     console.log("Success URL:", successUrl)
     console.log("Cancel URL:", cancelUrl)
+    console.log("Stripe Secret Key exists:", !!process.env.STRIPE_SECRET_KEY)
 
     if (!items || items.length === 0) {
       console.error("No items provided")
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Creating Stripe checkout session...")
+    console.log("Stripe object:", typeof stripe)
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
