@@ -22,7 +22,7 @@ type CartContextType = {
   removeItem: (id: string) => void
   updateItemQuantity: (id: string, quantity: number) => void
   clearCart: () => void
-  total: number
+  getCartTotal: () => number
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -40,7 +40,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [toast])
 
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
-  const total = items.reduce((total, item) => total + item.price * item.quantity, 0)
+
+  // Calculate cart total
+  const getCartTotal = () => {
+    return items.reduce((total, item) => total + item.price * item.quantity, 0)
+  }
 
   // Load cart from localStorage on initial render
   useEffect(() => {
@@ -248,7 +252,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeItem,
         updateItemQuantity,
         clearCart,
-        total,
+        getCartTotal,
       }}
     >
       {children}

@@ -25,9 +25,9 @@ export function CheckoutButton() {
     setIsLoading(true)
 
     try {
-      console.log("Starting checkout with items:", items) // ✅ This should show customOptions
+      console.log("Starting checkout with items:", items)
 
-      const result = await createCheckoutSession(items) // ✅ Passing full items array
+      const result = await createCheckoutSession(items)
 
       if (result.success) {
         // Clear cart on successful checkout initiation
@@ -52,6 +52,8 @@ export function CheckoutButton() {
     }
   }
 
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+
   return (
     <Button onClick={handleCheckout} disabled={isLoading || items.length === 0} className="w-full" size="lg">
       {isLoading ? (
@@ -62,7 +64,7 @@ export function CheckoutButton() {
       ) : (
         <>
           <ShoppingCart className="mr-2 h-4 w-4" />
-          Checkout (${items.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)})
+          Checkout (${total.toFixed(2)})
         </>
       )}
     </Button>
