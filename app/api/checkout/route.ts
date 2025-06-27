@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
+import { groupProducts } from "@/lib/stripe-products"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2023-10-16",
@@ -7,89 +8,92 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    const { items, successUrl, cancelUrl } = await request.json()
+    console.log("=== STARTING CHECKOUT ===")
 
-    console.log("=== CHECKOUT API ===")
-    console.log("Received items:", JSON.stringify(items, null, 2))
+    const body = await request.json()
+    const { items } = body
+
+    console.log("All cart items:", items)
 
     if (!items || items.length === 0) {
-      console.error("No items provided")
       return NextResponse.json({ error: "No items provided" }, { status: 400 })
     }
 
-    // Extract emoji metadata from Tesla vs Elon emoji products
-    const metadata: Record<string, string> = {}
+    // Group products by their Stripe product ID
+    const groupedProducts = groupProducts(items)
+    console.log("Grouped products:", groupedProducts)
 
-    items.forEach((item: any, index: number) => {
-      console.log(`Processing item ${index}:`, item)
+    // Filter items that have Stripe IDs
+    const stripeItems = groupedProducts.filter((item) => item.hasStripeId)
+    console.log("Stripe items after filtering:", stripeItems)
+    console.log("Number of Stripe items:", stripeItems.length)
+    console.log("Number of total items:", groupedProducts.length)
 
-      // Check if this is a Tesla vs Elon emoji product
-      if (
-        item.baseId === "tesla_vs_elon_emoji" ||
-        item.product_name?.includes("tesla_vs_elon_emoji") ||
-        item.name?.includes("Tesla vs Elon Emoji")
-      ) {
-        console.log("Found Tesla vs Elon emoji product, checking for custom options...")
+    if (stripeItems.length === 0) {
+      return NextResponse.json({ error: "No valid Stripe products found" }, { status: 400 })
+    }
 
-        if (item.customOptions) {
-          console.log("Custom options found:", item.customOptions)
-
-          if (item.customOptions.teslaEmoji) {
-            metadata.tesla_emoji = item.customOptions.teslaEmoji
-            console.log("Added Tesla emoji to metadata:", item.customOptions.teslaEmoji)
-          }
-
-          if (item.customOptions.elonEmoji) {
-            metadata.elon_emoji = item.customOptions.elonEmoji
-            console.log("Added Elon emoji to metadata:", item.customOptions.elonEmoji)
-          }
-        }
-      }
-    })
-
-    console.log("Final metadata:", metadata)
+    console.log("Proceeding with Stripe checkout...")
 
     // Create line items for Stripe
-    const lineItems = items.map((item: any) => {
-      const lineItem = {
-        price: item.stripeId,
-        quantity: item.quantity || 1,
+    const lineItems = stripeItems.map((item) => {
+      console.log(`Processing item: ${item.name}`)
+      return {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: item.name,
+            images: item.image ? [item.image] : [],
+          },
+          unit_amount: Math.round(item.price * 100), // Convert to cents
+        },
+        quantity: item.quantity,
       }
-      console.log("Created line item:", lineItem)
-      return lineItem
     })
 
-    console.log("All line items:", lineItems)
+    console.log("Creating checkout session with items:", lineItems)
+
+    // Prepare session metadata
+    const sessionMetadata: Record<string, string> = {}
+
+    // Add emoji attributes to metadata if they exist
+    stripeItems.forEach((item, index) => {
+      if (item.customizations?.selectedEmoji) {
+        sessionMetadata[`item_${index}_emoji`] = item.customizations.selectedEmoji
+        console.log(`Added emoji metadata for item ${index}:`, item.customizations.selectedEmoji)
+      }
+      if (item.customizations?.emojiType) {
+        sessionMetadata[`item_${index}_emoji_type`] = item.customizations.emojiType
+        console.log(`Added emoji type metadata for item ${index}:`, item.customizations.emojiType)
+      }
+    })
+
+    console.log("Session metadata:", sessionMetadata)
 
     // Create Stripe checkout session
-    const sessionData = {
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: successUrl || `${request.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${request.nextUrl.origin}/cart`,
-      shipping_address_collection: {
-        allowed_countries: ["US", "CA", "GB", "AU"],
-      },
-      billing_address_collection: "required",
-      ...(Object.keys(metadata).length > 0 && { metadata }), // Only add metadata if it exists
-    }
+      success_url: `${request.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${request.nextUrl.origin}/cart`,
+      metadata: sessionMetadata,
+    })
 
-    console.log("Creating Stripe session with data:", JSON.stringify(sessionData, null, 2))
-
-    const session = await stripe.checkout.sessions.create(sessionData)
-
-    console.log("Stripe session created successfully:", session.id)
+    console.log("Checkout session created successfully:", session.id)
 
     return NextResponse.json({
       sessionId: session.id,
       url: session.url,
     })
   } catch (error) {
-    console.error("=== CHECKOUT API ERROR ===")
-    console.error("Error details:", error)
-    console.error("Error message:", error instanceof Error ? error.message : "Unknown error")
-    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
+    console.error("Checkout error:", error)
+
+    // More detailed error logging
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
+    }
 
     return NextResponse.json(
       {
