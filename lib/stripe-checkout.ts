@@ -41,11 +41,11 @@ export async function createCheckoutSession(items: CartItem[]) {
         customOptions: item.customOptions,
       })
 
-      // Check if this is the Tesla vs Elon emoji product
+      // ✅ FIXED: Check if this is the Tesla vs Elon emoji product using the product ID
       if (item.id?.includes("tesla_vs_elon_emoji") && item.customOptions) {
         console.log("Found Tesla vs Elon emoji product with customOptions:", item.customOptions)
 
-        // Extract Tesla and Elon emoji choices
+        // ✅ FIXED: Extract Tesla and Elon emoji choices with correct property names
         if (item.customOptions.teslaEmoji) {
           metadata.tesla_emoji = JSON.stringify(item.customOptions.teslaEmoji)
           console.log("Added Tesla emoji to metadata:", item.customOptions.teslaEmoji)
@@ -54,6 +54,12 @@ export async function createCheckoutSession(items: CartItem[]) {
         if (item.customOptions.elonEmoji) {
           metadata.elon_emoji = JSON.stringify(item.customOptions.elonEmoji)
           console.log("Added Elon emoji to metadata:", item.customOptions.elonEmoji)
+        }
+
+        // Also add the variant info
+        if (item.customOptions.variant) {
+          metadata.variant = item.customOptions.variant
+          console.log("Added variant to metadata:", item.customOptions.variant)
         }
       }
     })
@@ -71,7 +77,7 @@ export async function createCheckoutSession(items: CartItem[]) {
           price: item.stripeId,
           quantity: item.quantity,
         })),
-        metadata: metadata, // Include emoji choices in session metadata
+        metadata: metadata, // ✅ Include emoji choices in session metadata
         success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${window.location.origin}/cart`,
       }),

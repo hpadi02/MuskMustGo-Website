@@ -128,16 +128,23 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
     // Create a unique name that includes the variant
     const customName = `${teslaEmojiProduct.baseName} (${selectedVariant})`
 
-    console.log("Adding customized product to cart with Stripe IDs:", {
+    // ✅ FIXED: Create proper customOptions structure that matches what stripe-checkout.ts expects
+    const customOptions = {
+      teslaEmoji: selectedEmojis.tesla, // ✅ This matches the stripe-checkout.ts logic
+      elonEmoji: selectedEmojis.elon, // ✅ This matches the stripe-checkout.ts logic
+      variant: selectedVariant,
+    }
+
+    console.log("Adding customized product to cart with emoji choices:", {
       id: selectedProductVariant.product_id,
       customId,
       name: customName,
       price: selectedProductVariant.price,
       image: teslaEmojiProduct.image,
       quantity,
-      customOptions: selectedEmojis,
-      stripeId: selectedProductVariant.stripeId, // ✅ NOW HAS STRIPE ID
-      productId: selectedProductVariant.productId, // ✅ NOW HAS PRODUCT ID
+      customOptions, // ✅ Now properly structured
+      stripeId: selectedProductVariant.stripeId,
+      productId: selectedProductVariant.productId,
     })
 
     addItem({
@@ -147,7 +154,7 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
       price: selectedProductVariant.price,
       image: teslaEmojiProduct.image,
       quantity,
-      customOptions: selectedEmojis,
+      customOptions, // ✅ FIXED: Proper structure for emoji choices
       stripeId: selectedProductVariant.stripeId, // ✅ STRIPE PRICE ID
       productId: selectedProductVariant.productId, // ✅ STRIPE PRODUCT ID
     })
