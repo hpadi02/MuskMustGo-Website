@@ -1,15 +1,14 @@
 module.exports = {
   apps: [
     {
-      name: "muskmustgo-app",
+      name: "musk-must-go-app",
       script: "server.js",
-      instances: 1,
+      instances: "max", // Use all available CPU cores
       exec_mode: "cluster",
-      autorestart: true,
-      watch: false,
       env: {
-        NODE_ENV: "production",
+        NODE_ENV: "development",
         PORT: 3000,
+        HOSTNAME: "localhost",
       },
       env_production: {
         NODE_ENV: "production",
