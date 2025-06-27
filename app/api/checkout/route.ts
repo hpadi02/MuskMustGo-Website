@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { stripe } from "@/lib/stripe"
-import Stripe from "stripe"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,11 +8,6 @@ export async function POST(request: NextRequest) {
     // Validate environment variables
     if (!process.env.STRIPE_SECRET_KEY) {
       console.error("STRIPE_SECRET_KEY is not set")
-      return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
-    }
-
-    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-      console.error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set")
       return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
     }
 
@@ -27,11 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid items provided" }, { status: 400 })
     }
 
-    // Create line items for Stripe
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
-    const sessionMetadata: Record<string, string> = {}
-
     console.log("Processing items for Stripe...")
+
+    // Create line items for Stripe
+    const lineItems = []
+    const sessionMetadata: Record<string, string> = {}
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
@@ -58,18 +52,6 @@ export async function POST(request: NextRequest) {
       // Add custom options to metadata if they exist
       if (item.customOptions) {
         console.log(`Adding custom options for item ${i + 1}:`, item.customOptions)
-
-        // Store emoji selections in metadata
-        Object.entries(item.customOptions).forEach(([key, value]) => {
-          if (value && typeof value === "object" && "path" in value) {
-            const metadataKey = `item_${i + 1}_${key}`
-            const metadataValue = JSON.stringify(value)
-            console.log(`Adding metadata: ${metadataKey} = ${metadataValue}`)
-            sessionMetadata[metadataKey] = metadataValue
-          }
-        })
-
-        // Also store the full custom options
         sessionMetadata[`item_${i + 1}_custom_options`] = JSON.stringify(item.customOptions)
       }
     }
@@ -106,17 +88,17 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Checkout API error:", error)
 
-    if (error instanceof Stripe.errors.StripeError) {
-      console.error("Stripe error details:", {
-        type: error.type,
-        code: error.code,
-        message: error.message,
-        param: error.param,
-      })
-
-      return NextResponse.json({ error: `Stripe error: ${error.message}` }, { status: 400 })
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
     }
 
-    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Error creating checkout session",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
