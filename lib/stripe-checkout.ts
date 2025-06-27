@@ -6,21 +6,16 @@ export interface CheckoutItem {
   price: number
   quantity: number
   stripeId?: string
-  customizations?: {
-    selectedEmoji?: string
-    customId?: string
-    emojiType?: string
-  }
+  customOptions?: Record<string, any>
 }
 
-export interface CheckoutResponse {
-  sessionId?: string
-  url?: string
+export interface CheckoutResult {
+  success: boolean
   error?: string
-  details?: string
+  isRedirectBlocked?: boolean
 }
 
-export async function createCheckoutSession(items: CheckoutItem[]): Promise<CheckoutResponse> {
+export async function createCheckoutSession(items: CheckoutItem[]): Promise<CheckoutResult> {
   try {
     console.log("Creating checkout session with items:", items)
 
@@ -32,39 +27,67 @@ export async function createCheckoutSession(items: CheckoutItem[]): Promise<Chec
       body: JSON.stringify({ items }),
     })
 
-    const data = await response.json()
+    console.log("Checkout API response status:", response.status)
 
     if (!response.ok) {
-      console.error("Checkout session creation failed:", data)
-      throw new Error(data.error || "Failed to create checkout session")
+      const errorText = await response.text()
+      console.error("Checkout API error:", errorText)
+      return {
+        success: false,
+        error: `Checkout failed: ${response.status} ${errorText}`,
+      }
     }
 
-    console.log("Checkout session created:", data)
-    return data
-  } catch (error) {
-    console.error("Error creating checkout session:", error)
-    return {
-      error: "Failed to create checkout session",
-      details: error instanceof Error ? error.message : "Unknown error",
-    }
-  }
-}
+    const { sessionId, url } = await response.json()
+    console.log("Received session ID:", sessionId)
+    console.log("Received checkout URL:", url)
 
-export async function redirectToCheckout(sessionId: string) {
-  try {
+    if (!sessionId) {
+      return {
+        success: false,
+        error: "No session ID received from server",
+      }
+    }
+
+    // Get Stripe instance
     const stripe = await getStripe()
     if (!stripe) {
-      throw new Error("Stripe failed to load")
+      return {
+        success: false,
+        error: "Failed to load Stripe",
+      }
     }
 
-    const { error } = await stripe.redirectToCheckout({ sessionId })
+    // Redirect to Stripe Checkout
+    console.log("Redirecting to Stripe checkout...")
+    const { error } = await stripe.redirectToCheckout({
+      sessionId,
+    })
 
     if (error) {
       console.error("Stripe redirect error:", error)
-      throw error
+
+      // Check if it's a redirect blocking issue (common in preview environments)
+      if (error.message?.includes("redirect") || error.message?.includes("blocked")) {
+        return {
+          success: false,
+          error: error.message,
+          isRedirectBlocked: true,
+        }
+      }
+
+      return {
+        success: false,
+        error: error.message,
+      }
     }
+
+    return { success: true }
   } catch (error) {
-    console.error("Error redirecting to checkout:", error)
-    throw error
+    console.error("Checkout session creation error:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
   }
 }

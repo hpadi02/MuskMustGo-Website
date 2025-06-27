@@ -1,13 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { stripe } from "@/lib/stripe"
 import Stripe from "stripe"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2023-10-16",
-})
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== CHECKOUT API STARTED ===")
+    console.log("=== CHECKOUT API CALLED ===")
+
+    // Validate environment variables
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("STRIPE_SECRET_KEY is not set")
+      return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
+    }
+
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      console.error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set")
+      return NextResponse.json({ error: "Stripe configuration error" }, { status: 500 })
+    }
 
     const body = await request.json()
     console.log("Request body:", JSON.stringify(body, null, 2))
@@ -15,99 +23,100 @@ export async function POST(request: NextRequest) {
     const { items } = body
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      console.error("No items provided")
-      return NextResponse.json({ error: "No items provided" }, { status: 400 })
+      console.error("Invalid items provided:", items)
+      return NextResponse.json({ error: "Invalid items provided" }, { status: 400 })
     }
-
-    console.log("Processing", items.length, "items")
 
     // Create line items for Stripe
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
-    const metadata: Record<string, string> = {}
+    const sessionMetadata: Record<string, string> = {}
+
+    console.log("Processing items for Stripe...")
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]
-      console.log(`Processing item ${i}:`, item)
+      console.log(`Processing item ${i + 1}:`, {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        stripeId: item.stripeId,
+        customOptions: item.customOptions,
+      })
 
       if (!item.stripeId) {
-        console.error(`Item ${i} missing stripeId:`, item)
-        continue
+        console.error(`Item ${item.name} is missing stripeId`)
+        return NextResponse.json({ error: `Item ${item.name} is missing Stripe price ID` }, { status: 400 })
       }
 
       // Add line item
       lineItems.push({
         price: item.stripeId,
-        quantity: item.quantity || 1,
+        quantity: item.quantity,
       })
 
-      // Add customizations to metadata
-      if (item.customizations) {
-        console.log(`Adding customizations for item ${i}:`, item.customizations)
+      // Add custom options to metadata if they exist
+      if (item.customOptions) {
+        console.log(`Adding custom options for item ${i + 1}:`, item.customOptions)
 
-        if (item.customizations.selectedEmoji) {
-          metadata[`item_${i}_emoji`] = item.customizations.selectedEmoji
-        }
-        if (item.customizations.customId) {
-          metadata[`item_${i}_custom_id`] = item.customizations.customId
-        }
-        if (item.customizations.emojiType) {
-          metadata[`item_${i}_emoji_type`] = item.customizations.emojiType
-        }
+        // Store emoji selections in metadata
+        Object.entries(item.customOptions).forEach(([key, value]) => {
+          if (value && typeof value === "object" && "path" in value) {
+            const metadataKey = `item_${i + 1}_${key}`
+            const metadataValue = JSON.stringify(value)
+            console.log(`Adding metadata: ${metadataKey} = ${metadataValue}`)
+            sessionMetadata[metadataKey] = metadataValue
+          }
+        })
+
+        // Also store the full custom options
+        sessionMetadata[`item_${i + 1}_custom_options`] = JSON.stringify(item.customOptions)
       }
     }
 
-    if (lineItems.length === 0) {
-      console.error("No valid line items created")
-      return NextResponse.json({ error: "No valid items for checkout" }, { status: 400 })
-    }
-
-    console.log("Line items:", JSON.stringify(lineItems, null, 2))
-    console.log("Metadata:", JSON.stringify(metadata, null, 2))
+    console.log("Final line items:", JSON.stringify(lineItems, null, 2))
+    console.log("Final session metadata:", JSON.stringify(sessionMetadata, null, 2))
 
     // Create Stripe checkout session
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    console.log("Creating Stripe checkout session...")
+
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
       success_url: `${request.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${request.nextUrl.origin}/cart`,
+      metadata: sessionMetadata,
       shipping_address_collection: {
-        allowed_countries: ["US", "CA", "GB", "AU", "DE", "FR", "IT", "ES"],
+        allowed_countries: ["US", "CA", "GB", "AU", "DE", "FR", "IT", "ES", "NL", "BE"],
       },
       billing_address_collection: "required",
-    }
+    })
 
-    // Only add metadata if it exists
-    if (Object.keys(metadata).length > 0) {
-      sessionParams.metadata = metadata
-    }
-
-    console.log("Creating Stripe session with params:", JSON.stringify(sessionParams, null, 2))
-
-    const session = await stripe.checkout.sessions.create(sessionParams)
-
-    console.log("Stripe session created successfully:", session.id)
-    console.log("Session URL:", session.url)
+    console.log("Stripe session created successfully:", {
+      id: session.id,
+      url: session.url,
+      metadata: session.metadata,
+    })
 
     return NextResponse.json({
       sessionId: session.id,
       url: session.url,
     })
   } catch (error) {
-    console.error("=== CHECKOUT API ERROR ===")
-    console.error("Error:", error)
+    console.error("Checkout API error:", error)
 
-    if (error instanceof Error) {
-      console.error("Error message:", error.message)
-      console.error("Error stack:", error.stack)
+    if (error instanceof Stripe.errors.StripeError) {
+      console.error("Stripe error details:", {
+        type: error.type,
+        code: error.code,
+        message: error.message,
+        param: error.param,
+      })
+
+      return NextResponse.json({ error: `Stripe error: ${error.message}` }, { status: 400 })
     }
 
-    return NextResponse.json(
-      {
-        error: "Failed to create checkout session",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Error creating checkout session" }, { status: 500 })
   }
 }
