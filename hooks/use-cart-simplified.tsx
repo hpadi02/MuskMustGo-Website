@@ -9,7 +9,7 @@ export type CartItem = {
   price: number
   image: string
   quantity: number
-  customOptions?: Record<string, any>
+  customOptions?: any // ✅ This should contain emoji choices
   customId?: string // Added to track unique customized products
   stripeId?: string // Stripe price ID
   productId?: string // Stripe product ID
@@ -22,10 +22,10 @@ type CartContextType = {
   removeItem: (id: string) => void
   updateItemQuantity: (id: string, quantity: number) => void
   clearCart: () => void
-  getCartTotal: () => number
+  total: number
 }
 
-const CartContext = createContext<CartContextType | null>(null)
+const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
@@ -39,8 +39,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     toastRef.current = toast
   }, [toast])
 
-  // Calculate total items in cart
   const itemCount = items.reduce((total, item) => total + item.quantity, 0)
+  const total = items.reduce((total, item) => total + item.price * item.quantity, 0)
 
   // Load cart from localStorage on initial render
   useEffect(() => {
@@ -49,13 +49,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart)
         setItems(parsedCart)
+        console.log("Loaded cart from localStorage:", parsedCart)
       }
     } catch (error) {
-      console.error("Failed to load cart from localStorage:", error)
+      console.error("Error parsing saved cart:", error)
+      setItems([])
     } finally {
       setIsInitialized(true)
     }
   }, [])
+
+  // Save cart to localStorage whenever it changes (but only after initialization)
+  useEffect(() => {
+    if (!isInitialized || clearingRef.current) return
+
+    if (items.length > 0) {
+      localStorage.setItem("cart", JSON.stringify(items))
+      console.log("Saved cart to localStorage:", items)
+    }
+  }, [items, isInitialized])
 
   // Listen for storage events (when localStorage is changed from other tabs/components)
   useEffect(() => {
@@ -90,17 +102,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("cart-cleared", handleCartClear)
     }
   }, [])
-
-  // Save cart to localStorage whenever it changes (but only after initialization)
-  useEffect(() => {
-    if (!isInitialized || clearingRef.current) return
-
-    try {
-      localStorage.setItem("cart", JSON.stringify(items))
-    } catch (error) {
-      console.error("Failed to save cart to localStorage:", error)
-    }
-  }, [items, isInitialized])
 
   // Generate a unique ID for customized products
   const generateCustomId = (item: CartItem) => {
@@ -200,11 +201,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  // Calculate cart total
-  const getCartTotal = () => {
-    return items.reduce((total, item) => total + item.price * item.quantity, 0)
-  }
-
   // Clear cart
   const clearCart = () => {
     // Prevent multiple clear operations
@@ -252,7 +248,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeItem,
         updateItemQuantity,
         clearCart,
-        getCartTotal,
+        total,
       }}
     >
       {children}
@@ -262,7 +258,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext)
-  if (context === null) {
+  if (context === undefined) {
     throw new Error("useCart must be used within a CartProvider")
   }
   return context

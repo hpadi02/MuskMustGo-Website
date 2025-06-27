@@ -2,54 +2,69 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { ShoppingCart, Loader2 } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
-import { getStripe } from "@/lib/stripe"
+import { createCheckoutSession } from "@/lib/stripe-checkout"
+import { useToast } from "@/hooks/use-toast"
 
-interface CheckoutButtonProps {
-  className?: string
-}
-
-export default function CheckoutButton({ className }: CheckoutButtonProps) {
+export function CheckoutButton() {
   const [isLoading, setIsLoading] = useState(false)
-  const { items, getTotalPrice } = useCart()
+  const { items, clearCart } = useCart()
+  const { toast } = useToast()
 
   const handleCheckout = async () => {
-    if (items.length === 0) return
+    if (items.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Add some items to your cart before checking out.",
+        variant: "destructive",
+      })
+      return
+    }
 
     setIsLoading(true)
 
     try {
-      // Create checkout session
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            price_id: item.price_id,
-            quantity: item.quantity,
-          })),
-          successUrl: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/cart`,
-        }),
-      })
+      console.log("Starting checkout with items:", items) // ✅ This should show customOptions
 
-      const { sessionId } = await response.json()
+      const result = await createCheckoutSession(items) // ✅ Passing full items array
 
-      // Redirect to Stripe Checkout
-      const stripe = await getStripe()
-      await stripe?.redirectToCheckout({ sessionId })
+      if (result.success) {
+        // Clear cart on successful checkout initiation
+        clearCart()
+      } else {
+        console.error("Checkout failed:", result.error)
+        toast({
+          title: "Checkout failed",
+          description: result.error || "Something went wrong. Please try again.",
+          variant: "destructive",
+        })
+      }
     } catch (error) {
       console.error("Checkout error:", error)
+      toast({
+        title: "Checkout failed",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <Button onClick={handleCheckout} disabled={isLoading || items.length === 0} className={className}>
-      {isLoading ? "Processing..." : `Checkout - $${getTotalPrice().toFixed(2)}`}
+    <Button onClick={handleCheckout} disabled={isLoading || items.length === 0} className="w-full" size="lg">
+      {isLoading ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <ShoppingCart className="mr-2 h-4 w-4" />
+          Checkout (${items.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2)})
+        </>
+      )}
     </Button>
   )
 }
