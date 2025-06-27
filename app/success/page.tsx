@@ -30,6 +30,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     console.log("=== PAYMENT PROCESSING ===")
     console.log("Session ID:", session.id)
     console.log("Payment Intent ID:", paymentIntentId)
+    console.log("Session metadata:", session.metadata)
 
     // Process the order - send to backend
     try {
@@ -47,17 +48,54 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         },
         payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
         products:
-          session.line_items?.data.map((item) => ({
-            product_id: typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || "",
-            quantity: item.quantity || 1,
-            // Only add attributes for custom emoji products
-            ...(item.description?.includes("emoji") && {
-              attributes: [
-                { name: "Type", value: "Custom Emoji" },
-                { name: "Source", value: "Stripe Checkout" },
-              ],
-            }),
-          })) || [],
+          session.line_items?.data.map((item) => {
+            const product_id =
+              typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || ""
+
+            // Check if this is a Tesla vs Elon emoji product and has emoji choices
+            const isEmojiProduct = item.description?.includes("emoji") || product_id.includes("tesla_vs_elon_emoji")
+
+            if (isEmojiProduct && session.metadata?.emoji_choices) {
+              try {
+                // Parse the emoji choices from session metadata
+                const emojiChoices = JSON.parse(session.metadata.emoji_choices)
+                console.log("Parsed emoji choices:", emojiChoices)
+
+                // Extract emoji names (remove .png extension)
+                const teslaEmoji = emojiChoices.tesla?.name?.replace(".png", "") || ""
+                const elonEmoji = emojiChoices.elon?.name?.replace(".png", "") || ""
+
+                console.log("Tesla emoji:", teslaEmoji)
+                console.log("Elon emoji:", elonEmoji)
+
+                return {
+                  product_id,
+                  quantity: item.quantity || 1,
+                  attributes: [
+                    { name: "emoji_good", value: teslaEmoji },
+                    { name: "emoji_bad", value: elonEmoji },
+                  ],
+                }
+              } catch (error) {
+                console.error("Error parsing emoji choices:", error)
+                // Fallback to generic attributes if parsing fails
+                return {
+                  product_id,
+                  quantity: item.quantity || 1,
+                  attributes: [
+                    { name: "Type", value: "Custom Emoji" },
+                    { name: "Source", value: "Stripe Checkout" },
+                  ],
+                }
+              }
+            }
+
+            // For non-emoji products, return without attributes
+            return {
+              product_id,
+              quantity: item.quantity || 1,
+            }
+          }) || [],
         shipping: 0,
         tax: 0,
       }
@@ -143,7 +181,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/account/orders">
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
                     View Orders
                   </Button>
                 </Link>
