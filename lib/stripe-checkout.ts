@@ -1,13 +1,5 @@
 import { getStripe } from "./stripe"
-
-export interface CheckoutItem {
-  id: string
-  name: string
-  price: number
-  quantity: number
-  stripeId?: string
-  customOptions?: Record<string, any>
-}
+import type { CartItem } from "@/hooks/use-cart-simplified"
 
 export interface CheckoutResult {
   success: boolean
@@ -15,103 +7,75 @@ export interface CheckoutResult {
   isRedirectBlocked?: boolean
 }
 
-export async function createCheckoutSession(items: CheckoutItem[]): Promise<CheckoutResult> {
+export async function createCheckoutSession(items: CartItem[]): Promise<CheckoutResult> {
   try {
-    console.log("=== STARTING CHECKOUT ===")
-    console.log("All cart items:", items)
+    console.log("Creating checkout session with items:", items)
 
-    // Filter items that have Stripe IDs
-    const stripeItems = items.filter((item) => {
-      const hasStripeId = Boolean(item.stripeId)
-      console.log(`Filtering item "${item.name}": hasStripeId = ${hasStripeId}`)
-      return hasStripeId
-    })
-
-    console.log("Stripe items after filtering:", stripeItems)
-    console.log("Number of Stripe items:", stripeItems.length)
-    console.log("Number of total items:", items.length)
+    // Filter items that have Stripe price IDs
+    const stripeItems = items.filter((item) => item.stripeId)
 
     if (stripeItems.length === 0) {
+      console.log("No Stripe items found, using fallback")
       return {
         success: false,
-        error: "No items with Stripe integration found in cart",
+        error: "No items available for Stripe checkout",
       }
     }
 
-    console.log("Proceeding with Stripe checkout...")
-
-    // Create checkout session
-    console.log("Creating checkout session with items:", stripeItems)
-
+    // Create checkout session on server
     const response = await fetch("/api/checkout", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ items: stripeItems }),
+      body: JSON.stringify({
+        items: stripeItems.map((item) => ({
+          price: item.stripeId,
+          quantity: item.quantity,
+          metadata: item.customOptions
+            ? {
+                customOptions: JSON.stringify(item.customOptions),
+              }
+            : undefined,
+        })),
+      }),
     })
 
-    console.log("Checkout API response status:", response.status)
-
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Checkout API error:", errorText)
+      const errorData = await response.json().catch(() => ({}))
+      console.error("Checkout API error:", errorData)
       return {
         success: false,
-        error: `Checkout failed: ${response.status} - ${errorText}`,
+        error: errorData.error || `Server error: ${response.status}`,
       }
     }
 
-    const { sessionId, url } = await response.json()
-    console.log("Received session ID:", sessionId)
-    console.log("Received checkout URL:", url)
+    const { sessionId } = await response.json()
 
     if (!sessionId) {
       return {
         success: false,
-        error: "No session ID received from server",
-      }
-    }
-
-    // Get Stripe instance
-    const stripe = await getStripe()
-    if (!stripe) {
-      return {
-        success: false,
-        error: "Failed to load Stripe",
-      }
-    }
-
-    // Check if we're in an iframe (preview environment)
-    const isInIframe = () => {
-      try {
-        return window.self !== window.top
-      } catch (e) {
-        return true
-      }
-    }
-
-    if (isInIframe()) {
-      console.log("Detected iframe environment, cannot redirect to Stripe")
-      return {
-        success: false,
-        error:
-          "Stripe checkout is not available in preview mode. In production, this would redirect to Stripe's secure checkout page.",
-        isRedirectBlocked: true,
+        error: "No session ID returned from server",
       }
     }
 
     // Redirect to Stripe Checkout
-    console.log("Redirecting to Stripe checkout...")
-    const { error } = await stripe.redirectToCheckout({
-      sessionId,
-    })
+    const stripe = await getStripe()
+    if (!stripe) {
+      return {
+        success: false,
+        error: "Stripe failed to load",
+      }
+    }
+
+    const { error } = await stripe.redirectToCheckout({ sessionId })
 
     if (error) {
       console.error("Stripe redirect error:", error)
       return {
         success: false,
-        error: error.message || "Failed to redirect to Stripe checkout",
+        error: error.message,
+        isRedirectBlocked: error.message?.includes("redirect"),
       }
     }
 

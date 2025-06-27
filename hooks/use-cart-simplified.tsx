@@ -1,98 +1,187 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
+import { useToast } from "@/hooks/use-toast"
 
-export interface CartItem {
+export type CartItem = {
   id: string
   name: string
   price: number
+  image: string
   quantity: number
-  image?: string
-  stripeId?: string
   customOptions?: Record<string, any>
+  customId?: string
+  stripeId?: string
+  productId?: string
 }
 
-interface CartContextType {
+type CartContextType = {
   items: CartItem[]
-  addToCart: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void
-  removeFromCart: (id: string) => void
-  updateQuantity: (id: string, quantity: number) => void
+  itemCount: number
+  addItem: (item: CartItem) => void
+  removeItem: (id: string) => void
+  updateItemQuantity: (id: string, quantity: number) => void
   clearCart: () => void
-  getTotalPrice: () => number
-  getItemCount: () => number
+  getCartTotal: () => number
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined)
+const CartContext = createContext<CartContextType | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [isInitialized, setIsInitialized] = useState(false)
+  const { toast } = useToast()
+  const toastRef = useRef(toast)
 
-  // Load cart from localStorage on mount
+  // Update toast ref when toast changes
   useEffect(() => {
-    const savedCart = localStorage.getItem("cart")
-    if (savedCart) {
-      try {
-        setItems(JSON.parse(savedCart))
-      } catch (error) {
-        console.error("Error loading cart from localStorage:", error)
+    toastRef.current = toast
+  }, [toast])
+
+  // Calculate total items in cart
+  const itemCount = items.reduce((total, item) => total + item.quantity, 0)
+
+  // Load cart from localStorage on initial render
+  useEffect(() => {
+    try {
+      const savedCart = localStorage.getItem("cart")
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart)
+        setItems(parsedCart)
       }
+    } catch (error) {
+      console.error("Failed to load cart from localStorage:", error)
+    } finally {
+      setIsInitialized(true)
     }
   }, [])
 
-  // Save cart to localStorage whenever items change
+  // Save cart to localStorage whenever it changes (but only after initialization)
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(items))
-  }, [items])
+    if (!isInitialized) return
 
-  const addToCart = (newItem: Omit<CartItem, "quantity"> & { quantity?: number }) => {
-    setItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === newItem.id)
+    try {
+      localStorage.setItem("cart", JSON.stringify(items))
+    } catch (error) {
+      console.error("Failed to save cart to localStorage:", error)
+    }
+  }, [items, isInitialized])
 
-      if (existingItem) {
-        return currentItems.map((item) =>
-          item.id === newItem.id ? { ...item, quantity: item.quantity + (newItem.quantity || 1) } : item,
-        )
+  // Generate a unique ID for customized products
+  const generateCustomId = (item: CartItem) => {
+    if (!item.customOptions) return item.id
+
+    if (item.customId) return item.customId
+
+    const optionsString = JSON.stringify(item.customOptions)
+    return `${item.id}-${optionsString}`
+  }
+
+  // Add item to cart
+  const addItem = (item: CartItem) => {
+    console.log("Adding item to cart:", item)
+
+    const customId = item.customId || (item.customOptions ? generateCustomId(item) : item.id)
+
+    setItems((prevItems) => {
+      const existingItemIndex = prevItems.findIndex(
+        (i) => (i.customId && i.customId === customId) || (!i.customId && !customId && i.id === item.id),
+      )
+
+      if (existingItemIndex >= 0) {
+        const updatedItems = [...prevItems]
+        updatedItems[existingItemIndex].quantity += item.quantity
+
+        setTimeout(() => {
+          toastRef.current({
+            title: "Cart updated",
+            description: `${item.name} quantity updated in your cart`,
+          })
+        }, 0)
+
+        return updatedItems
+      } else {
+        setTimeout(() => {
+          toastRef.current({
+            title: "Added to cart",
+            description: `${item.name} has been added to your cart`,
+          })
+        }, 0)
+
+        return [...prevItems, { ...item, customId }]
       }
-
-      return [...currentItems, { ...newItem, quantity: newItem.quantity || 1 }]
     })
   }
 
-  const removeFromCart = (id: string) => {
-    setItems((currentItems) => currentItems.filter((item) => item.id !== id))
+  // Remove item from cart
+  const removeItem = (id: string) => {
+    setItems((prevItems) => {
+      const itemToRemove = prevItems.find(
+        (item) => (item.customId && item.customId === id) || (!item.customId && item.id === id),
+      )
+
+      if (itemToRemove) {
+        setTimeout(() => {
+          toastRef.current({
+            title: "Removed from cart",
+            description: `${itemToRemove.name} has been removed from your cart`,
+          })
+        }, 0)
+      }
+
+      return prevItems.filter((item) => !(item.customId && item.customId === id) && !(!item.customId && item.id === id))
+    })
   }
 
-  const updateQuantity = (id: string, quantity: number) => {
+  // Update item quantity
+  const updateItemQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(id)
+      removeItem(id)
       return
     }
 
-    setItems((currentItems) => currentItems.map((item) => (item.id === id ? { ...item, quantity } : item)))
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        (item.customId && item.customId === id) || (!item.customId && item.id === id) ? { ...item, quantity } : item,
+      ),
+    )
   }
 
-  const clearCart = () => {
-    setItems([])
-  }
-
-  const getTotalPrice = () => {
+  // Calculate cart total
+  const getCartTotal = () => {
     return items.reduce((total, item) => total + item.price * item.quantity, 0)
   }
 
-  const getItemCount = () => {
-    return items.reduce((total, item) => total + item.quantity, 0)
+  // Clear cart
+  const clearCart = () => {
+    console.log("Clearing cart completely")
+    setItems([])
+
+    try {
+      localStorage.removeItem("cart")
+      localStorage.setItem("cart", "[]")
+    } catch (error) {
+      console.error("Failed to clear cart from localStorage:", error)
+    }
+
+    setTimeout(() => {
+      toastRef.current({
+        title: "Cart cleared",
+        description: "All items have been removed from your cart",
+      })
+    }, 0)
   }
 
   return (
     <CartContext.Provider
       value={{
         items,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
+        itemCount,
+        addItem,
+        removeItem,
+        updateItemQuantity,
         clearCart,
-        getTotalPrice,
-        getItemCount,
+        getCartTotal,
       }}
     >
       {children}
@@ -102,7 +191,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext)
-  if (context === undefined) {
+  if (context === null) {
     throw new Error("useCart must be used within a CartProvider")
   }
   return context
