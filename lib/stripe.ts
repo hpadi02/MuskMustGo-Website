@@ -1,7 +1,6 @@
-import { loadStripe } from "@stripe/stripe-js"
-import StripeServer from "stripe"
+import { loadStripe, type Stripe } from "@stripe/stripe-js"
 
-let stripePromise: Promise<any | null>
+let stripePromise: Promise<Stripe | null>
 
 export const getStripe = () => {
   if (!stripePromise) {
@@ -11,11 +10,8 @@ export const getStripe = () => {
 }
 
 // Server-side Stripe instance
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set")
-}
+import StripeServer from "stripe"
 
-export const stripe = new StripeServer(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-  typescript: true,
+export const stripe = new StripeServer(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
 })

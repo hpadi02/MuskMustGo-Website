@@ -2,7 +2,10 @@ import { getStripe } from "./stripe"
 
 export interface CheckoutItem {
   id: string
+  name: string
+  price: number
   quantity: number
+  stripeId?: string
   customizations?: {
     selectedEmoji?: string
     customId?: string
@@ -10,9 +13,16 @@ export interface CheckoutItem {
   }
 }
 
-export async function redirectToCheckout(items: CheckoutItem[]) {
+export interface CheckoutResponse {
+  sessionId?: string
+  url?: string
+  error?: string
+  details?: string
+}
+
+export async function createCheckoutSession(items: CheckoutItem[]): Promise<CheckoutResponse> {
   try {
-    console.log("Stripe checkout initiated with items:", items)
+    console.log("Creating checkout session with items:", items)
 
     const response = await fetch("/api/checkout", {
       method: "POST",
@@ -22,15 +32,26 @@ export async function redirectToCheckout(items: CheckoutItem[]) {
       body: JSON.stringify({ items }),
     })
 
+    const data = await response.json()
+
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error("Checkout session creation failed:", errorData)
-      throw new Error(errorData.error || "Failed to create checkout session")
+      console.error("Checkout session creation failed:", data)
+      throw new Error(data.error || "Failed to create checkout session")
     }
 
-    const { sessionId } = await response.json()
-    console.log("Checkout session created:", sessionId)
+    console.log("Checkout session created:", data)
+    return data
+  } catch (error) {
+    console.error("Error creating checkout session:", error)
+    return {
+      error: "Failed to create checkout session",
+      details: error instanceof Error ? error.message : "Unknown error",
+    }
+  }
+}
 
+export async function redirectToCheckout(sessionId: string) {
+  try {
     const stripe = await getStripe()
     if (!stripe) {
       throw new Error("Stripe failed to load")
@@ -43,7 +64,7 @@ export async function redirectToCheckout(items: CheckoutItem[]) {
       throw error
     }
   } catch (error) {
-    console.error("Stripe checkout failed:", error)
+    console.error("Error redirecting to checkout:", error)
     throw error
   }
 }
