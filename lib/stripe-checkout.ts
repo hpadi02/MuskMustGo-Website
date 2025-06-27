@@ -1,70 +1,49 @@
-import { stripe } from "./stripe"
+import { getStripe } from "./stripe"
 
 export interface CheckoutItem {
   id: string
-  name: string
-  price: number
   quantity: number
-  image?: string
   customizations?: {
     selectedEmoji?: string
+    customId?: string
     emojiType?: string
-    [key: string]: any
   }
 }
 
-export async function createCheckoutSession(items: CheckoutItem[], successUrl: string, cancelUrl: string) {
+export async function redirectToCheckout(items: CheckoutItem[]) {
   try {
-    console.log("Creating checkout session for items:", items)
+    console.log("Stripe checkout initiated with items:", items)
 
-    const lineItems = items.map((item) => ({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: item.name,
-          images: item.image ? [item.image] : [],
-        },
-        unit_amount: Math.round(item.price * 100), // Convert to cents
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      quantity: item.quantity,
-    }))
-
-    // Prepare metadata for custom attributes
-    const metadata: Record<string, string> = {}
-    items.forEach((item, index) => {
-      if (item.customizations) {
-        Object.entries(item.customizations).forEach(([key, value]) => {
-          if (typeof value === "string") {
-            metadata[`item_${index}_${key}`] = value
-          }
-        })
-      }
+      body: JSON.stringify({ items }),
     })
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      mode: "payment",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata,
-    })
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("Checkout session creation failed:", errorData)
+      throw new Error(errorData.error || "Failed to create checkout session")
+    }
 
-    return session
+    const { sessionId } = await response.json()
+    console.log("Checkout session created:", sessionId)
+
+    const stripe = await getStripe()
+    if (!stripe) {
+      throw new Error("Stripe failed to load")
+    }
+
+    const { error } = await stripe.redirectToCheckout({ sessionId })
+
+    if (error) {
+      console.error("Stripe redirect error:", error)
+      throw error
+    }
   } catch (error) {
-    console.error("Error creating checkout session:", error)
-    throw error
-  }
-}
-
-export async function retrieveCheckoutSession(sessionId: string) {
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "payment_intent"],
-    })
-    return session
-  } catch (error) {
-    console.error("Error retrieving checkout session:", error)
+    console.error("Stripe checkout failed:", error)
     throw error
   }
 }
