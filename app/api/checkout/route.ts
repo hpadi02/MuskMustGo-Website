@@ -59,21 +59,29 @@ export async function POST(request: NextRequest) {
       const protocol =
         request.headers.get("x-forwarded-proto") || request.headers.get("x-forwarded-protocol") || "https"
 
+      console.log("🔍 Debug - host header:", host)
+      console.log("🔍 Debug - protocol header:", protocol)
+
       if (host && !host.includes("localhost") && !host.includes("127.0.0.1") && !host.includes("0.0.0.0")) {
-        return `${protocol}://${host}`
+        const detectedUrl = `${protocol}://${host}`
+        console.log("✅ Using detected URL from headers:", detectedUrl)
+        return detectedUrl
       }
 
       // Method 2: Fallback to environment variable if available
       if (process.env.PUBLIC_URL) {
+        console.log("✅ Using PUBLIC_URL:", process.env.PUBLIC_URL)
         return process.env.PUBLIC_URL
       }
 
       // Method 3: Final fallback based on environment
-      return process.env.NODE_ENV === "production" ? "https://elonmustgo.com" : "http://localhost:3000"
+      const fallbackUrl = process.env.NODE_ENV === "production" ? "https://elonmustgo.com" : "http://localhost:3000"
+      console.log("✅ Using fallback URL:", fallbackUrl)
+      return fallbackUrl
     }
 
     const baseUrl = getBaseUrl()
-    console.log("Using base URL:", baseUrl)
+    console.log("🎯 Final base URL:", baseUrl)
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -89,7 +97,8 @@ export async function POST(request: NextRequest) {
     })
 
     console.log("Stripe session created:", session.id)
-    console.log("Success URL:", `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`)
+    console.log("📤 Success URL sent to Stripe:", `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`)
+    console.log("📤 Cancel URL sent to Stripe:", `${baseUrl}/cart`)
 
     return NextResponse.json({ sessionId: session.id })
   } catch (error) {
