@@ -35,6 +35,9 @@ module.exports = {
       wait_ready: true,
       listen_timeout: 10000,
 
+      // Force the app to use the specified port
+      // node_args: "--port=3000",
+
       // Load environment variables from .env.local
       env_file: ".env.local",
     },
