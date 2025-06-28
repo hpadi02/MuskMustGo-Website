@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "muskmustgo-app",
+      name: "muskmustgo",
       script: "server.js",
       instances: 1,
       exec_mode: "cluster",
