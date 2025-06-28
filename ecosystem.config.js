@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "muskmustgo-app", // Keep original name to avoid PM2 confusion
+      name: "muskmustgo-app",
       script: "server.js",
       instances: 1,
       exec_mode: "cluster",
@@ -14,7 +14,7 @@ module.exports = {
       env_production: {
         NODE_ENV: "production",
         PORT: 3000,
-        // Removed HOSTNAME - will use 127.0.0.1 from .env.local for security
+        // HOSTNAME removed - will use 127.0.0.1 from .env.local
       },
       // Restart settings
       max_restarts: 10,
