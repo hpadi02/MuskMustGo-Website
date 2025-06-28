@@ -19,13 +19,20 @@ export async function POST(req: NextRequest) {
       quantity: item.quantity,
     }))
 
+    // Determine the correct base URL for redirects
+    // For nginx proxy setup, use the actual domain instead of req.nextUrl.origin
+    const baseUrl =
+      process.env.NODE_ENV === "production"
+        ? "https://elonmustgo.com" // Use actual domain in production
+        : "http://localhost:3000" // Use localhost in development
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: successUrl || `${req.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${req.nextUrl.origin}/cart`,
+      success_url: successUrl || `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${baseUrl}/cart`,
       metadata: metadata || {}, // Include emoji choices in session metadata
       shipping_address_collection: {
         allowed_countries: ["US", "CA"],
