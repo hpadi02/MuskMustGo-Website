@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, successUrl, cancelUrl } = await req.json()
+    const { items, successUrl, cancelUrl, metadata } = await req.json()
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "No items provided" }, { status: 400 })
@@ -15,23 +15,9 @@ export async function POST(req: NextRequest) {
 
     // Prepare line items for Stripe
     const lineItems = items.map((item: any) => ({
-      price: item.stripeId,
+      price: item.price,
       quantity: item.quantity,
     }))
-
-    // Extract emoji metadata from Tesla vs Elon emoji products
-    const metadata: Record<string, string> = {}
-
-    items.forEach((item: any) => {
-      if (item.baseId === "tesla_vs_elon_emoji" && item.customOptions) {
-        if (item.customOptions.teslaEmoji) {
-          metadata.tesla_emoji = item.customOptions.teslaEmoji
-        }
-        if (item.customOptions.elonEmoji) {
-          metadata.elon_emoji = item.customOptions.elonEmoji
-        }
-      }
-    })
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -40,7 +26,7 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       success_url: successUrl || `${req.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${req.nextUrl.origin}/cart`,
-      metadata, // Include emoji choices in session metadata
+      metadata: metadata || {}, // Include emoji choices in session metadata
       shipping_address_collection: {
         allowed_countries: ["US", "CA"],
       },
