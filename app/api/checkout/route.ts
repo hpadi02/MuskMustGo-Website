@@ -6,64 +6,86 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 export async function POST(request: NextRequest) {
+  console.log("\n🚀 === CHECKOUT API STARTED ===")
+
   try {
-    console.log("\n🚀 === CHECKOUT API STARTED ===")
-    console.log("🕐 Timestamp:", new Date().toISOString())
-
-    // Log all headers for debugging
-    console.log("\n📋 === REQUEST HEADERS ===")
-    const headers = Object.fromEntries(request.headers.entries())
-    console.log("All headers:", JSON.stringify(headers, null, 2))
-
-    // Multiple methods to detect the correct base URL
-    console.log("\n🔍 === URL DETECTION METHODS ===")
-
-    // Method 1: PUBLIC_URL environment variable (highest priority)
-    const publicUrl = process.env.PUBLIC_URL
-    console.log("Method 1 - PUBLIC_URL:", publicUrl)
-
-    // Method 2: Nginx proxy headers (should work for your setup)
-    const host = request.headers.get("host")
-    const forwardedProto = request.headers.get("x-forwarded-proto")
-    const nginxUrl = forwardedProto && host ? `${forwardedProto}://${host}` : null
-    console.log("Method 2 - Nginx headers:", { host, forwardedProto, nginxUrl })
-
-    // Method 3: Vercel URL
-    const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-    console.log("Method 3 - Vercel URL:", vercelUrl)
-
-    // Method 4: API_BASE_URL (if properly formatted)
-    const apiBaseUrl = process.env.API_BASE_URL
-    console.log("Method 4 - API_BASE_URL:", apiBaseUrl)
-
-    // Method 5: Alternative headers
-    const xForwardedHost = request.headers.get("x-forwarded-host")
-    const xForwardedProto = request.headers.get("x-forwarded-proto")
-    const altUrl = xForwardedProto && xForwardedHost ? `${xForwardedProto}://${xForwardedHost}` : null
-    console.log("Method 5 - Alternative headers:", { xForwardedHost, xForwardedProto, altUrl })
-
-    // Method 6: Environment-based fallback
-    const envFallback = process.env.NODE_ENV === "production" ? "https://elonmustgo.com" : "http://localhost:3000"
-    console.log("Method 6 - Environment fallback:", envFallback)
-
-    // Determine the best URL (priority order)
-    const baseUrl = publicUrl || nginxUrl || vercelUrl || apiBaseUrl || altUrl || envFallback
-    console.log("\n✅ === SELECTED BASE URL ===")
-    console.log("Final baseUrl:", baseUrl)
-
     const body = await request.json()
-    console.log("\n📦 === REQUEST BODY ===")
-    console.log("Cart items:", JSON.stringify(body.items, null, 2))
+    console.log("📦 Request body:", JSON.stringify(body, null, 2))
 
-    if (!body.items || body.items.length === 0) {
-      console.log("❌ No items in cart")
-      return NextResponse.json({ error: "No items in cart" }, { status: 400 })
+    const { items } = body
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      console.log("❌ No items provided")
+      return NextResponse.json({ error: "No items provided" }, { status: 400 })
     }
 
-    // Build line items for Stripe
-    const lineItems = body.items.map((item: any) => {
-      console.log(`\n🏷️ Processing item: ${item.name}`)
-      console.log("Item details:", JSON.stringify(item, null, 2))
+    // === EXTENSIVE URL DETECTION WITH 6 FALLBACK METHODS ===
+    console.log("\n🔍 === URL DETECTION STARTED ===")
+
+    // Log all headers for debugging
+    console.log("📋 All request headers:")
+    request.headers.forEach((value, key) => {
+      console.log(`  ${key}: ${value}`)
+    })
+
+    let baseUrl = ""
+    let detectionMethod = ""
+
+    // Method 1: PUBLIC_URL environment variable (highest priority)
+    if (process.env.PUBLIC_URL) {
+      baseUrl = process.env.PUBLIC_URL
+      detectionMethod = "Method 1: PUBLIC_URL env var"
+      console.log(`✅ ${detectionMethod}: ${baseUrl}`)
+    }
+    // Method 2: Nginx proxy headers (should work for your setup)
+    else if (request.headers.get("host") && request.headers.get("x-forwarded-proto")) {
+      const host = request.headers.get("host")
+      const protocol = request.headers.get("x-forwarded-proto")
+      baseUrl = `${protocol}://${host}`
+      detectionMethod = "Method 2: Nginx proxy headers"
+      console.log(`✅ ${detectionMethod}: ${baseUrl}`)
+    }
+    // Method 3: Vercel URL
+    else if (process.env.VERCEL_URL) {
+      baseUrl = `https://${process.env.VERCEL_URL}`
+      detectionMethod = "Method 3: Vercel URL"
+      console.log(`✅ ${detectionMethod}: ${baseUrl}`)
+    }
+    // Method 4: API_BASE_URL if properly formatted
+    else if (process.env.API_BASE_URL && process.env.API_BASE_URL.startsWith("http")) {
+      baseUrl = process.env.API_BASE_URL
+      detectionMethod = "Method 4: API_BASE_URL"
+      console.log(`✅ ${detectionMethod}: ${baseUrl}`)
+    }
+    // Method 5: Alternative headers
+    else if (request.headers.get("x-forwarded-host")) {
+      const host = request.headers.get("x-forwarded-host")
+      const protocol = request.headers.get("x-forwarded-proto") || "https"
+      baseUrl = `${protocol}://${host}`
+      detectionMethod = "Method 5: Alternative headers"
+      console.log(`✅ ${detectionMethod}: ${baseUrl}`)
+    }
+    // Method 6: Environment-based fallback
+    else {
+      baseUrl = process.env.NODE_ENV === "production" ? "https://elonmustgo.com" : "http://localhost:3000"
+      detectionMethod = "Method 6: Environment fallback"
+      console.log(`✅ ${detectionMethod}: ${baseUrl}`)
+    }
+
+    console.log(`🎯 Final base URL: ${baseUrl}`)
+    console.log(`📍 Detection method: ${detectionMethod}`)
+
+    // Build URLs
+    const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`
+    const cancelUrl = `${baseUrl}/cart`
+
+    console.log(`✅ Success URL: ${successUrl}`)
+    console.log(`❌ Cancel URL: ${cancelUrl}`)
+
+    // Process line items
+    console.log("\n📦 === PROCESSING LINE ITEMS ===")
+    const lineItems = items.map((item: any) => {
+      console.log(`Processing item:`, JSON.stringify(item, null, 2))
 
       const lineItem: any = {
         price_data: {
@@ -74,38 +96,23 @@ export async function POST(request: NextRequest) {
           },
           unit_amount: Math.round(item.price * 100),
         },
-        quantity: item.quantity || 1,
+        quantity: item.quantity,
       }
 
       // Add custom options as metadata
       if (item.customOptions) {
-        console.log("📝 Adding custom options:", JSON.stringify(item.customOptions, null, 2))
-        lineItem.price_data.product_data.metadata = {}
-
-        // Handle different types of custom options
-        Object.entries(item.customOptions).forEach(([key, value]) => {
-          if (typeof value === "object" && value !== null) {
-            lineItem.price_data.product_data.metadata[key] = JSON.stringify(value)
-          } else {
-            lineItem.price_data.product_data.metadata[key] = String(value)
-          }
-        })
-
-        console.log("✅ Final metadata:", JSON.stringify(lineItem.price_data.product_data.metadata, null, 2))
+        console.log("🎨 Adding custom options:", item.customOptions)
+        lineItem.price_data.product_data.metadata = {
+          customOptions: JSON.stringify(item.customOptions),
+        }
       }
 
+      console.log("✅ Line item created:", JSON.stringify(lineItem, null, 2))
       return lineItem
     })
 
+    // Create Stripe session
     console.log("\n💳 === CREATING STRIPE SESSION ===")
-    console.log("Line items for Stripe:", JSON.stringify(lineItems, null, 2))
-
-    const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${baseUrl}/cart`
-
-    console.log("Success URL:", successUrl)
-    console.log("Cancel URL:", cancelUrl)
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
@@ -113,25 +120,19 @@ export async function POST(request: NextRequest) {
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
-        source: "muskmustgo-website",
-        timestamp: new Date().toISOString(),
+        items: JSON.stringify(items),
       },
     })
 
-    console.log("\n🎉 === STRIPE SESSION CREATED ===")
-    console.log("Session ID:", session.id)
-    console.log("Session URL:", session.url)
-    console.log("Session metadata:", JSON.stringify(session.metadata, null, 2))
+    console.log(`✅ Stripe session created: ${session.id}`)
+    console.log(`🔗 Checkout URL: ${session.url}`)
+    console.log("🚀 === CHECKOUT API COMPLETED ===\n")
 
-    return NextResponse.json({
-      sessionId: session.id,
-      url: session.url,
-    })
+    return NextResponse.json({ sessionId: session.id, url: session.url })
   } catch (error) {
-    console.error("\n❌ === CHECKOUT ERROR ===")
+    console.error("❌ === CHECKOUT API ERROR ===")
     console.error("Error details:", error)
-    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
-
+    console.error("Stack trace:", error instanceof Error ? error.stack : "No stack trace")
     return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 })
   }
 }
