@@ -14,26 +14,56 @@ interface SuccessPageProps {
 
 async function SuccessContent({ sessionId }: { sessionId: string }) {
   try {
+    console.log("🎉 === SUCCESS PAGE STARTED ===")
+    console.log("⏰ Timestamp:", new Date().toISOString())
+    console.log("🔑 Session ID received:", sessionId)
+
     // Retrieve the Stripe session with payment intent
+    console.log("💳 Retrieving Stripe session...")
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "line_items.data.price.product", "payment_intent"],
     })
 
     if (!session) {
+      console.error("❌ No session found for ID:", sessionId)
       redirect("/cart")
     }
+
+    console.log("✅ Stripe session retrieved successfully")
+    console.log("📋 Session details:")
+    console.log("  - Session ID:", session.id)
+    console.log("  - Payment status:", session.payment_status)
+    console.log("  - Amount total:", session.amount_total)
+    console.log("  - Currency:", session.currency)
+    console.log("  - Customer email:", session.customer_details?.email)
+    console.log("  - Customer name:", session.customer_details?.name)
 
     // Get the payment intent ID (this is what Ed needs)
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    console.log("=== PAYMENT PROCESSING ===")
-    console.log("Session ID:", session.id)
-    console.log("Payment Intent ID:", paymentIntentId)
-    console.log("Session metadata:", session.metadata)
+    console.log("💰 === PAYMENT PROCESSING ===")
+    console.log("💰 Session ID:", session.id)
+    console.log("💰 Payment Intent ID:", paymentIntentId)
+    console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
+
+    // Log line items details
+    console.log("📦 === ORDER ITEMS ===")
+    session.line_items?.data.forEach((item, index) => {
+      console.log(`📦 Item ${index + 1}:`)
+      console.log(`  - Description: ${item.description}`)
+      console.log(`  - Quantity: ${item.quantity}`)
+      console.log(`  - Amount: ${item.amount_total}`)
+      console.log(`  - Price ID: ${item.price?.id}`)
+      console.log(
+        `  - Product ID: ${typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id}`,
+      )
+    })
 
     // Process the order - send to backend
     try {
+      console.log("🏗️ === BUILDING ORDER DATA ===")
+
       const orderData = {
         customer: {
           email: session.customer_details?.email || "",
@@ -48,25 +78,47 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         },
         payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
         products:
-          session.line_items?.data.map((item) => {
+          session.line_items?.data.map((item, itemIndex) => {
             const product_id =
               typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || ""
+
+            console.log(`🎭 Processing product ${itemIndex + 1}: ${product_id}`)
 
             // Check if this is a Tesla vs Elon emoji product and has emoji choices
             const isEmojiProduct = item.description?.includes("emoji") || product_id.includes("tesla_vs_elon_emoji")
 
-            if (isEmojiProduct && session.metadata?.emoji_choices) {
-              try {
-                // Parse the emoji choices from session metadata
-                const emojiChoices = JSON.parse(session.metadata.emoji_choices)
-                console.log("Parsed emoji choices:", emojiChoices)
+            if (isEmojiProduct) {
+              console.log("🎭 Detected emoji product, checking for emoji choices...")
 
+              // Try multiple metadata keys for emoji choices
+              const possibleKeys = [
+                "emoji_choices",
+                `item_${itemIndex}_emoji_choices`,
+                `item_${itemIndex}_custom_options`,
+              ]
+
+              let emojiChoices = null
+              for (const key of possibleKeys) {
+                if (session.metadata?.[key]) {
+                  console.log(`🎭 Found emoji data in metadata key: ${key}`)
+                  console.log(`🎭 Raw emoji data: ${session.metadata[key]}`)
+                  try {
+                    emojiChoices = JSON.parse(session.metadata[key])
+                    console.log("🎭 Parsed emoji choices:", JSON.stringify(emojiChoices, null, 2))
+                    break
+                  } catch (parseError) {
+                    console.error(`❌ Failed to parse emoji data from ${key}:`, parseError)
+                  }
+                }
+              }
+
+              if (emojiChoices) {
                 // Extract emoji names (remove .png extension)
                 const teslaEmoji = emojiChoices.tesla?.name?.replace(".png", "") || ""
                 const elonEmoji = emojiChoices.elon?.name?.replace(".png", "") || ""
 
-                console.log("Tesla emoji:", teslaEmoji)
-                console.log("Elon emoji:", elonEmoji)
+                console.log("🎭 Tesla emoji:", teslaEmoji)
+                console.log("🎭 Elon emoji:", elonEmoji)
 
                 return {
                   product_id,
@@ -76,8 +128,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                     { name: "emoji_bad", value: elonEmoji },
                   ],
                 }
-              } catch (error) {
-                console.error("Error parsing emoji choices:", error)
+              } else {
+                console.log("⚠️ Emoji product but no emoji choices found in metadata")
                 // Fallback to generic attributes if parsing fails
                 return {
                   product_id,
@@ -91,6 +143,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
             }
 
             // For non-emoji products, return without attributes
+            console.log("📦 Regular product (no emoji customization)")
             return {
               product_id,
               quantity: item.quantity || 1,
@@ -100,27 +153,39 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         tax: 0,
       }
 
-      console.log("=== SENDING ORDER TO ED'S BACKEND ===")
-      console.log("Order data:", JSON.stringify(orderData, null, 2))
+      console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
+      console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
 
-      // ✅ Correct URL determination
+      // ✅ URL determination with extensive debugging
+      console.log("🌐 === DETERMINING API URL ===")
+
       let baseUrl: string
 
-      if (process.env.VERCEL_URL) {
+      // Log environment variables
+      console.log("🔧 Environment check:")
+      console.log("  - NODE_ENV:", process.env.NODE_ENV)
+      console.log("  - VERCEL_URL:", process.env.VERCEL_URL)
+      console.log("  - PUBLIC_URL:", process.env.PUBLIC_URL)
+
+      if (process.env.PUBLIC_URL) {
+        baseUrl = process.env.PUBLIC_URL
+        console.log("✅ Using PUBLIC_URL:", baseUrl)
+      } else if (process.env.VERCEL_URL) {
         baseUrl = `https://${process.env.VERCEL_URL}`
-        console.log("Using Vercel URL:", baseUrl)
+        console.log("✅ Using Vercel URL:", baseUrl)
       } else if (process.env.NODE_ENV === "production") {
         baseUrl = "https://elonmustgo.com" // ✅ Production URL
-        console.log("Using production URL:", baseUrl)
+        console.log("✅ Using production URL:", baseUrl)
       } else {
         baseUrl = "http://localhost:3000" // ✅ Development URL
-        console.log("Using development URL:", baseUrl)
+        console.log("✅ Using development URL:", baseUrl)
       }
 
       const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
-      console.log("Calling API at:", apiUrl)
+      console.log("🎯 Final API URL:", apiUrl)
 
       // Send to Ed's backend via your API route
+      console.log("📡 Making API call to backend...")
       const backendResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -129,16 +194,30 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         body: JSON.stringify(orderData),
       })
 
+      console.log("📡 Backend response status:", backendResponse.status)
+      console.log("📡 Backend response headers:", Object.fromEntries(backendResponse.headers.entries()))
+
       if (!backendResponse.ok) {
         const errorText = await backendResponse.text()
-        console.error("Failed to send order to backend:", errorText)
+        console.error("❌ Failed to send order to backend:")
+        console.error("❌ Status:", backendResponse.status)
+        console.error("❌ Error text:", errorText)
       } else {
         const result = await backendResponse.json()
-        console.log("✅ Order successfully sent to Ed's backend:", result)
+        console.log("✅ Order successfully sent to Ed's backend:")
+        console.log("✅ Backend response:", JSON.stringify(result, null, 2))
       }
     } catch (error) {
-      console.error("❌ Error processing order:", error)
+      console.error("💥 === ORDER PROCESSING ERROR ===")
+      console.error("💥 Error:", error)
+      if (error instanceof Error) {
+        console.error("💥 Error message:", error.message)
+        console.error("💥 Error stack:", error.stack)
+      }
     }
+
+    console.log("🎉 === SUCCESS PAGE RENDERING ===")
+    console.log("🎉 Rendering success page for user")
 
     return (
       <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
@@ -162,7 +241,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="space-y-4 text-left">
-                {/* ❌ Removed Order ID display */}
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
@@ -197,7 +275,13 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       </div>
     )
   } catch (error) {
-    console.error("Error retrieving session:", error)
+    console.error("💥 === SUCCESS PAGE ERROR ===")
+    console.error("💥 Error retrieving session:", error)
+    if (error instanceof Error) {
+      console.error("💥 Error message:", error.message)
+      console.error("💥 Error stack:", error.stack)
+    }
+    console.error("💥 Redirecting to cart...")
     redirect("/cart")
   }
 }
@@ -205,7 +289,11 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 export default function SuccessPage({ searchParams }: SuccessPageProps) {
   const sessionId = searchParams.session_id
 
+  console.log("🚀 === SUCCESS PAGE ENTRY ===")
+  console.log("🚀 Session ID from URL:", sessionId)
+
   if (!sessionId) {
+    console.error("❌ No session_id in URL parameters")
     redirect("/cart")
   }
 

@@ -14,7 +14,7 @@ module.exports = {
       env_production: {
         NODE_ENV: "production",
         PORT: 3000,
-        HOSTNAME: "0.0.0.0",
+        // HOSTNAME removed - will use 127.0.0.1 from .env.local
       },
       // Restart settings
       max_restarts: 10,
