@@ -19,12 +19,27 @@ export async function POST(req: NextRequest) {
       quantity: item.quantity,
     }))
 
-    // Determine the correct base URL for redirects
-    // For nginx proxy setup, use the actual domain instead of req.nextUrl.origin
-    const baseUrl =
-      process.env.NODE_ENV === "production"
-        ? "https://elonmustgo.com" // Use actual domain in production
-        : "http://localhost:3000" // Use localhost in development
+    // Get the correct base URL for redirects
+    // Use PUBLIC_URL from environment, fallback to detecting from headers
+    const getBaseUrl = () => {
+      // First try environment variable
+      if (process.env.PUBLIC_URL) {
+        return process.env.PUBLIC_URL
+      }
+
+      // Fallback: try to detect from request headers (for nginx proxy)
+      const host = req.headers.get("host")
+      const protocol = req.headers.get("x-forwarded-proto") || "https"
+
+      if (host && !host.includes("localhost") && !host.includes("127.0.0.1") && !host.includes("0.0.0.0")) {
+        return `${protocol}://${host}`
+      }
+
+      // Final fallback for development
+      return process.env.NODE_ENV === "production" ? "https://elonmustgo.com" : "http://localhost:3000"
+    }
+
+    const baseUrl = getBaseUrl()
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
