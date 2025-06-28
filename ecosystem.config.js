@@ -14,7 +14,7 @@ module.exports = {
       env_production: {
         NODE_ENV: "production",
         PORT: 3000,
-        HOSTNAME: "0.0.0.0",
+        // Remove HOSTNAME line - let .env.local handle it (127.0.0.1)
       },
       // Restart settings
       max_restarts: 10,
@@ -34,9 +34,6 @@ module.exports = {
       kill_timeout: 5000,
       wait_ready: true,
       listen_timeout: 10000,
-
-      // Force the app to use the specified port
-      // node_args: "--port=3000",
 
       // Load environment variables from .env.local
       env_file: ".env.local",
