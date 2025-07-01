@@ -13,6 +13,11 @@ interface SuccessPageProps {
 }
 
 async function SuccessContent({ sessionId }: { sessionId: string }) {
+  // ✅ Add state variables for order processing
+  let orderNumber: string | null = null
+  let orderProcessingError: string | null = null
+  let backendOrderData: any = null
+
   try {
     console.log("🎉 === SUCCESS PAGE STARTED ===")
     console.log("⏰ Timestamp:", new Date().toISOString())
@@ -77,6 +82,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
           country: session.customer_details?.address?.country || "",
         },
         payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
+        // ✅ IMPROVED: Process products with emoji attributes
         products:
           session.line_items?.data.map((item, itemIndex) => {
             const product_id =
@@ -84,59 +90,115 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
             console.log(`🎭 Processing product ${itemIndex + 1}: ${product_id}`)
 
-            // Check if this is a Tesla vs Elon emoji product and has emoji choices
-            const isEmojiProduct = item.description?.includes("emoji") || product_id.includes("tesla_vs_elon_emoji")
+            // Check if this is a Tesla vs Elon emoji product
+            const isEmojiProduct =
+              item.description?.toLowerCase().includes("emoji") ||
+              product_id.includes("tesla_vs_elon_emoji") ||
+              item.description?.toLowerCase().includes("tesla vs elon")
 
             if (isEmojiProduct) {
-              console.log("🎭 Detected emoji product, checking for emoji choices...")
+              console.log("🎭 Detected emoji product, extracting emoji choices...")
 
-              // Try multiple metadata keys for emoji choices
-              const possibleKeys = [
-                "emoji_choices",
-                `item_${itemIndex}_emoji_choices`,
-                `item_${itemIndex}_custom_options`,
-              ]
+              try {
+                // ✅ Extract emoji choices from session metadata using item index
+                const teslaEmojiKey = `item_${itemIndex}_tesla_emoji`
+                const elonEmojiKey = `item_${itemIndex}_elon_emoji`
+                const variantKey = `item_${itemIndex}_variant`
 
-              let emojiChoices = null
-              for (const key of possibleKeys) {
-                if (session.metadata?.[key]) {
-                  console.log(`🎭 Found emoji data in metadata key: ${key}`)
-                  console.log(`🎭 Raw emoji data: ${session.metadata[key]}`)
+                console.log(`🔍 Looking for metadata keys: ${teslaEmojiKey}, ${elonEmojiKey}, ${variantKey}`)
+
+                let teslaEmoji = null
+                let elonEmoji = null
+                let variant = null
+
+                // Extract Tesla emoji
+                if (session.metadata?.[teslaEmojiKey]) {
+                  console.log(`🎭 Found Tesla emoji data: ${session.metadata[teslaEmojiKey]}`)
                   try {
-                    emojiChoices = JSON.parse(session.metadata[key])
-                    console.log("🎭 Parsed emoji choices:", JSON.stringify(emojiChoices, null, 2))
-                    break
+                    teslaEmoji = JSON.parse(session.metadata[teslaEmojiKey])
+                    console.log("🎭 Parsed Tesla emoji:", teslaEmoji)
                   } catch (parseError) {
-                    console.error(`❌ Failed to parse emoji data from ${key}:`, parseError)
+                    console.error(`❌ Failed to parse Tesla emoji data:`, parseError)
                   }
                 }
-              }
 
-              if (emojiChoices) {
-                // Extract emoji names (remove .png extension)
-                const teslaEmoji = emojiChoices.tesla?.name?.replace(".png", "") || ""
-                const elonEmoji = emojiChoices.elon?.name?.replace(".png", "") || ""
-
-                console.log("🎭 Tesla emoji:", teslaEmoji)
-                console.log("🎭 Elon emoji:", elonEmoji)
-
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "emoji_good", value: teslaEmoji },
-                    { name: "emoji_bad", value: elonEmoji },
-                  ],
+                // Extract Elon emoji
+                if (session.metadata?.[elonEmojiKey]) {
+                  console.log(`🎭 Found Elon emoji data: ${session.metadata[elonEmojiKey]}`)
+                  try {
+                    elonEmoji = JSON.parse(session.metadata[elonEmojiKey])
+                    console.log("🎭 Parsed Elon emoji:", elonEmoji)
+                  } catch (parseError) {
+                    console.error(`❌ Failed to parse Elon emoji data:`, parseError)
+                  }
                 }
-              } else {
-                console.log("⚠️ Emoji product but no emoji choices found in metadata")
-                // Fallback to generic attributes if parsing fails
+
+                // Extract variant
+                if (session.metadata?.[variantKey]) {
+                  variant = session.metadata[variantKey]
+                  console.log("🎭 Found variant:", variant)
+                }
+
+                // ✅ Format emoji names (extract filename without .png)
+                let teslaEmojiName = ""
+                let elonEmojiName = ""
+
+                if (teslaEmoji?.path) {
+                  // Extract filename from path: "/emojis/positives/02_smile_sly.png" -> "02_smile_sly"
+                  const teslaFilename = teslaEmoji.path.split("/").pop() || ""
+                  teslaEmojiName = teslaFilename.replace(".png", "")
+                  console.log("🎭 Tesla emoji filename:", teslaEmojiName)
+                }
+
+                if (elonEmoji?.path) {
+                  // Extract filename from path: "/emojis/negatives/02_gradient_angry.png" -> "02_gradient_angry"
+                  const elonFilename = elonEmoji.path.split("/").pop() || ""
+                  elonEmojiName = elonFilename.replace(".png", "")
+                  console.log("🎭 Elon emoji filename:", elonEmojiName)
+                }
+
+                // ✅ Return product with attributes if we have emoji data
+                if (teslaEmojiName && elonEmojiName) {
+                  console.log(`✅ Creating emoji product with attributes:`, {
+                    product_id,
+                    quantity: item.quantity || 1,
+                    attributes: [
+                      { name: "emoji_good", value: teslaEmojiName },
+                      { name: "emoji_bad", value: elonEmojiName },
+                    ],
+                  })
+
+                  return {
+                    product_id,
+                    quantity: item.quantity || 1,
+                    attributes: [
+                      { name: "emoji_good", value: teslaEmojiName },
+                      { name: "emoji_bad", value: elonEmojiName },
+                    ],
+                  }
+                } else {
+                  console.warn(
+                    `⚠️ Emoji product but missing emoji data. Tesla: ${teslaEmojiName}, Elon: ${elonEmojiName}`,
+                  )
+                  // Fallback: return product without attributes but log the issue
+                  return {
+                    product_id,
+                    quantity: item.quantity || 1,
+                    attributes: [
+                      { name: "Type", value: "Custom Emoji (Missing Data)" },
+                      { name: "Source", value: "Stripe Checkout" },
+                    ],
+                  }
+                }
+              } catch (error) {
+                console.error(`❌ Error processing emoji product ${itemIndex}:`, error)
+                // Fallback: return basic product
                 return {
                   product_id,
                   quantity: item.quantity || 1,
                   attributes: [
-                    { name: "Type", value: "Custom Emoji" },
-                    { name: "Source", value: "Stripe Checkout" },
+                    { name: "Type", value: "Custom Emoji (Error)" },
+                    { name: "Error", value: error instanceof Error ? error.message : "Unknown error" },
                   ],
                 }
               }
@@ -194,18 +256,30 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         body: JSON.stringify(orderData),
       })
 
-      console.log("📡 Backend response status:", backendResponse.status)
-      console.log("📡 Backend response headers:", Object.fromEntries(backendResponse.headers.entries()))
-
+      // ✅ IMPROVED: Handle backend response with order number
       if (!backendResponse.ok) {
         const errorText = await backendResponse.text()
         console.error("❌ Failed to send order to backend:")
         console.error("❌ Status:", backendResponse.status)
         console.error("❌ Error text:", errorText)
+
+        // Store error for display
+        orderProcessingError = `Backend error: ${backendResponse.status}`
       } else {
         const result = await backendResponse.json()
         console.log("✅ Order successfully sent to Ed's backend:")
         console.log("✅ Backend response:", JSON.stringify(result, null, 2))
+
+        // ✅ Extract order number for display
+        if (result.order_number) {
+          orderNumber = result.order_number
+          console.log("🎫 Order number received:", orderNumber)
+        } else {
+          console.warn("⚠️ No order_number in backend response")
+        }
+
+        // Store other response data
+        backendOrderData = result
       }
     } catch (error) {
       console.error("💥 === ORDER PROCESSING ERROR ===")
@@ -241,6 +315,12 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               </div>
 
               <div className="space-y-4 text-left">
+                {orderNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-white/70">Order Number:</span>
+                    <span className="font-medium text-green-400">{orderNumber}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
@@ -249,6 +329,12 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                   <span className="text-white/70">Total:</span>
                   <span className="font-medium">${((session.amount_total || 0) / 100).toFixed(2)}</span>
                 </div>
+                {orderProcessingError && (
+                  <div className="flex justify-between">
+                    <span className="text-red-400">Processing Status:</span>
+                    <span className="text-red-400">Error: {orderProcessingError}</span>
+                  </div>
+                )}
               </div>
             </div>
 

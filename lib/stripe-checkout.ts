@@ -31,40 +31,55 @@ export async function createCheckoutSession(items: CartItem[]) {
       }
     }
 
-    // Extract emoji choices for metadata
+    // Extract emoji choices for metadata - IMPROVED VERSION
     const metadata: Record<string, string> = {}
 
     items.forEach((item, index) => {
-      console.log(`Processing item ${index + 1}:`, {
+      console.log(`🔍 Processing item ${index + 1} for metadata:`, {
         id: item.id,
         name: item.name,
         customOptions: item.customOptions,
       })
 
-      // ✅ FIXED: Check if this is the Tesla vs Elon emoji product using the product ID
-      if (item.id?.includes("tesla_vs_elon_emoji") && item.customOptions) {
-        console.log("Found Tesla vs Elon emoji product with customOptions:", item.customOptions)
+      // ✅ Check if this is the Tesla vs Elon emoji product
+      const isEmojiProduct =
+        item.id?.includes("tesla_vs_elon_emoji") || item.name?.toLowerCase().includes("tesla vs elon emoji")
 
-        // ✅ FIXED: Extract Tesla and Elon emoji choices with correct property names
-        if (item.customOptions.teslaEmoji) {
-          metadata.tesla_emoji = JSON.stringify(item.customOptions.teslaEmoji)
-          console.log("Added Tesla emoji to metadata:", item.customOptions.teslaEmoji)
-        }
+      if (isEmojiProduct && item.customOptions) {
+        console.log("🎭 Found Tesla vs Elon emoji product with customOptions:", item.customOptions)
 
-        if (item.customOptions.elonEmoji) {
-          metadata.elon_emoji = JSON.stringify(item.customOptions.elonEmoji)
-          console.log("Added Elon emoji to metadata:", item.customOptions.elonEmoji)
-        }
+        try {
+          // ✅ Extract Tesla and Elon emoji choices with error handling
+          if (item.customOptions.teslaEmoji) {
+            const teslaEmojiData = JSON.stringify(item.customOptions.teslaEmoji)
+            metadata[`item_${index}_tesla_emoji`] = teslaEmojiData
+            console.log(`✅ Added Tesla emoji for item ${index}:`, item.customOptions.teslaEmoji)
+          } else {
+            console.warn(`⚠️ No Tesla emoji found for item ${index}`)
+          }
 
-        // Also add the variant info
-        if (item.customOptions.variant) {
-          metadata.variant = item.customOptions.variant
-          console.log("Added variant to metadata:", item.customOptions.variant)
+          if (item.customOptions.elonEmoji) {
+            const elonEmojiData = JSON.stringify(item.customOptions.elonEmoji)
+            metadata[`item_${index}_elon_emoji`] = elonEmojiData
+            console.log(`✅ Added Elon emoji for item ${index}:`, item.customOptions.elonEmoji)
+          } else {
+            console.warn(`⚠️ No Elon emoji found for item ${index}`)
+          }
+
+          // Also add the variant info
+          if (item.customOptions.variant) {
+            metadata[`item_${index}_variant`] = item.customOptions.variant
+            console.log(`✅ Added variant for item ${index}:`, item.customOptions.variant)
+          }
+        } catch (error) {
+          console.error(`❌ Error processing emoji data for item ${index}:`, error)
         }
+      } else if (isEmojiProduct) {
+        console.warn(`⚠️ Emoji product found but no customOptions for item ${index}`)
       }
     })
 
-    console.log("Final metadata for Stripe session:", metadata)
+    console.log("📋 Final metadata for Stripe session:", metadata)
 
     // Create checkout session
     const response = await fetch("/api/checkout", {
