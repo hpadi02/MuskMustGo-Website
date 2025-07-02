@@ -1,154 +1,68 @@
-import { loadStripe } from "@stripe/stripe-js"
+import Stripe from "stripe"
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
 
-export interface CartItem {
-  id: string
-  name: string
-  price: number
-  image: string
-  quantity: number
-  customOptions?: Record<string, any>
-  customId?: string
-  stripeId?: string
-  productId?: string
-}
-
-export async function createCheckoutSession(items: CartItem[]) {
+export async function createCheckoutSession(cartItems: any[]) {
   try {
-    console.log("=== CREATING CHECKOUT SESSION ===")
-    console.log("Items received:", items)
+    console.log("🛒 Creating checkout session for items:", cartItems)
 
-    // Filter items to only include those with Stripe price IDs
-    const stripeItems = items.filter((item) => item.stripeId)
-    console.log("Stripe items:", stripeItems)
+    const lineItems = cartItems.map((item) => ({
+      price: item.stripeId,
+      quantity: item.quantity,
+    }))
 
-    if (stripeItems.length === 0) {
-      return {
-        success: false,
-        error: "No valid Stripe items found",
-        isRedirectBlocked: false,
-      }
-    }
-
-    // Extract emoji choices for metadata - IMPROVED VERSION
+    // ✅ Enhanced metadata extraction with item indexing
     const metadata: Record<string, string> = {}
 
-    items.forEach((item, index) => {
-      console.log(`🔍 Processing item ${index + 1} for metadata:`, {
-        id: item.id,
-        name: item.name,
-        customOptions: item.customOptions,
-      })
+    cartItems.forEach((item, index) => {
+      console.log(`🎭 Processing item ${index}:`, item)
 
-      // ✅ Check if this is the Tesla vs Elon emoji product
-      const isEmojiProduct =
-        item.id?.includes("tesla_vs_elon_emoji") || item.name?.toLowerCase().includes("tesla vs elon emoji")
-
-      if (isEmojiProduct && item.customOptions) {
-        console.log("🎭 Found Tesla vs Elon emoji product with customOptions:", item.customOptions)
+      // Check if this item has emoji customizations
+      if (item.customOptions?.teslaEmoji && item.customOptions?.elonEmoji) {
+        console.log(`🎭 Found emoji customizations for item ${index}:`, item.customOptions)
 
         try {
-          // ✅ Extract Tesla and Elon emoji choices with error handling
-          if (item.customOptions.teslaEmoji) {
-            const teslaEmojiData = JSON.stringify(item.customOptions.teslaEmoji)
-            metadata[`item_${index}_tesla_emoji`] = teslaEmojiData
-            console.log(`✅ Added Tesla emoji for item ${index}:`, item.customOptions.teslaEmoji)
-          } else {
-            console.warn(`⚠️ No Tesla emoji found for item ${index}`)
-          }
+          // Store emoji data with item index for multiple emoji products
+          metadata[`item_${index}_tesla_emoji`] = JSON.stringify(item.customOptions.teslaEmoji)
+          metadata[`item_${index}_elon_emoji`] = JSON.stringify(item.customOptions.elonEmoji)
+          metadata[`item_${index}_variant`] = item.customOptions.variant || "magnet"
+          metadata[`item_${index}_product_id`] = item.id
 
-          if (item.customOptions.elonEmoji) {
-            const elonEmojiData = JSON.stringify(item.customOptions.elonEmoji)
-            metadata[`item_${index}_elon_emoji`] = elonEmojiData
-            console.log(`✅ Added Elon emoji for item ${index}:`, item.customOptions.elonEmoji)
-          } else {
-            console.warn(`⚠️ No Elon emoji found for item ${index}`)
-          }
-
-          // Also add the variant info
-          if (item.customOptions.variant) {
-            metadata[`item_${index}_variant`] = item.customOptions.variant
-            console.log(`✅ Added variant for item ${index}:`, item.customOptions.variant)
-          }
+          console.log(`✅ Stored emoji metadata for item ${index}:`, {
+            tesla: metadata[`item_${index}_tesla_emoji`],
+            elon: metadata[`item_${index}_elon_emoji`],
+            variant: metadata[`item_${index}_variant`],
+            productId: metadata[`item_${index}_product_id`],
+          })
         } catch (error) {
-          console.error(`❌ Error processing emoji data for item ${index}:`, error)
+          console.error(`❌ Error storing emoji metadata for item ${index}:`, error)
         }
-      } else if (isEmojiProduct) {
-        console.warn(`⚠️ Emoji product found but no customOptions for item ${index}`)
+      } else {
+        console.log(`📦 Item ${index} has no emoji customizations`)
       }
     })
 
-    console.log("📋 Final metadata for Stripe session:", metadata)
+    console.log("🔄 Final metadata for Stripe session:", metadata)
 
-    // Create checkout session
-    const response = await fetch("/api/checkout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      success_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || process.env.PUBLIC_URL || "http://localhost:3000"}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || process.env.PUBLIC_URL || "http://localhost:3000"}/cart`,
+      metadata,
+      billing_address_collection: "required",
+      shipping_address_collection: {
+        allowed_countries: ["US"],
       },
-      body: JSON.stringify({
-        items: stripeItems.map((item) => ({
-          price: item.stripeId,
-          quantity: item.quantity,
-        })),
-        metadata: metadata, // ✅ Include emoji choices in session metadata
-        success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${window.location.origin}/cart`,
-      }),
     })
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error("Checkout API error:", errorData)
-      return {
-        success: false,
-        error: `Checkout failed: ${response.status}`,
-        isRedirectBlocked: false,
-      }
-    }
-
-    const { sessionId } = await response.json()
-    console.log("Created session ID:", sessionId)
-
-    // Redirect to Stripe Checkout
-    const stripe = await stripePromise
-    if (!stripe) {
-      return {
-        success: false,
-        error: "Stripe failed to load",
-        isRedirectBlocked: false,
-      }
-    }
-
-    const { error } = await stripe.redirectToCheckout({ sessionId })
-
-    if (error) {
-      console.error("Stripe redirect error:", error)
-
-      // Check if it's a redirect blocking issue (common in preview environments)
-      if (error.message?.includes("redirect") || error.message?.includes("blocked")) {
-        return {
-          success: false,
-          error: error.message,
-          isRedirectBlocked: true,
-        }
-      }
-
-      return {
-        success: false,
-        error: error.message,
-        isRedirectBlocked: false,
-      }
-    }
-
-    return { success: true }
+    console.log("✅ Checkout session created successfully:", session.id)
+    return { sessionId: session.id }
   } catch (error) {
-    console.error("Checkout session creation error:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-      isRedirectBlocked: false,
-    }
+    console.error("❌ Error creating checkout session:", error)
+    throw error
   }
 }

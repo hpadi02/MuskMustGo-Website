@@ -3,18 +3,18 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { ArrowLeft, ShoppingBag, Check, Minus, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, ShoppingBag, Check } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 import { useToast } from "@/hooks/use-toast"
+import { GROUPED_PRODUCTS } from "@/lib/product-data"
 import Image from "next/image"
 import EmojiPreviewCanvas from "@/components/emoji-preview-canvas"
-import { GROUPED_PRODUCTS } from "@/lib/product-data"
 
-// Updated emoji options using Ed's PNG files with correct file names
+// Emoji options
 const emojiOptions = {
-  // Positive emojis for Tesla (from /positives folder)
   tesla: [
     { name: "love_stickers", path: "/emojis/positives/01_love_stickers.png" },
     { name: "smile_sly", path: "/emojis/positives/02_smile_sly.png" },
@@ -34,7 +34,6 @@ const emojiOptions = {
     { name: "happy_meme", path: "/emojis/positives/16_happy_meme.png" },
     { name: "italian_chef_kiss", path: "/emojis/positives/17_italian_chef_kiss.png" },
   ],
-  // Negative emojis for Elon (from /negatives folder)
   elon: [
     { name: "orange_sad_face", path: "/emojis/negatives/01_orange_sad_face.png" },
     { name: "gradient_angry", path: "/emojis/negatives/02_gradient_angry.png" },
@@ -61,208 +60,164 @@ const emojiOptions = {
   ],
 }
 
-export default function CustomizeEmojiPage({ params }: { params: { type: string } }) {
+export default function CustomizeEmojiPage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
-
-  // Find the Tesla emoji product from our grouped products
-  const teslaEmojiProduct = GROUPED_PRODUCTS.find(
-    (product) => product.baseId.includes("tesla") && product.baseId.includes("emoji"),
-  )
-
-  console.log("Tesla emoji product found:", teslaEmojiProduct)
-
-  // State for selected variant (magnet or sticker)
-  const [selectedVariant, setSelectedVariant] = useState<"magnet" | "sticker">("magnet")
-
-  // State for selected emojis - now storing the full emoji objects
-  const [selectedEmojis, setSelectedEmojis] = useState({
-    tesla: emojiOptions.tesla[0], // Default Tesla emoji (first positive)
-    elon: emojiOptions.elon[2], // Default Elon emoji (vomit_face)
-  })
-  const [quantity, setQuantity] = useState(1)
-  const [added, setAdded] = useState(false)
   const { addItem } = useCart()
 
+  const type = params.type as "magnet" | "sticker"
+  const productId = searchParams.get("product")
+
+  // Find the product
+  const product = GROUPED_PRODUCTS.find((p) => p.baseId === productId)
+
+  // ✅ State management with persistence
+  const [selectedEmojis, setSelectedEmojis] = useState({
+    tesla: emojiOptions.tesla[0], // Default Tesla emoji
+    elon: emojiOptions.elon[2], // Default Elon emoji (vomit_face)
+  })
+
+  const [quantity, setQuantity] = useState(1)
+  const [added, setAdded] = useState(false)
+
+  // ✅ Debug logging
   useEffect(() => {
-    console.log("Selected emojis updated:", selectedEmojis)
-  }, [selectedEmojis])
+    console.log("🎭 CustomizeEmoji - Selected emojis updated:", selectedEmojis)
+    console.log("🎭 CustomizeEmoji - Type:", type)
+    console.log("🎭 CustomizeEmoji - Product:", product)
+  }, [selectedEmojis, type, product])
 
-  // Handler for emoji selection
-  const handleEmojiChange = (type: "tesla" | "elon", emoji: { name: string; path: string }) => {
-    setSelectedEmojis((prev) => {
-      const newState = { ...prev, [type]: emoji }
-      console.log(`Changed ${type} emoji to ${emoji.name}`, newState)
-      return newState
-    })
-  }
-
-  // Handler for adding to cart - NOW USES REAL PRODUCT DATA WITH STRIPE IDS
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (!teslaEmojiProduct) {
-      toast({
-        title: "Error",
-        description: "Tesla emoji product not found",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Get the selected variant (magnet or sticker) with Stripe IDs
-    const selectedProductVariant = teslaEmojiProduct.variants[selectedVariant]
-
-    if (!selectedProductVariant) {
-      toast({
-        title: "Error",
-        description: `${selectedVariant} variant not available`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Create a unique ID for the customized product
-    const customId = `${selectedProductVariant.product_id}-${selectedEmojis.tesla.name}-${selectedEmojis.elon.name}`
-
-    // Create a unique name that includes the variant
-    const customName = `${teslaEmojiProduct.baseName} (${selectedVariant})`
-
-    // ✅ FIXED: Create proper customOptions structure that matches what stripe-checkout.ts expects
-    const customOptions = {
-      teslaEmoji: selectedEmojis.tesla, // ✅ This matches the stripe-checkout.ts logic
-      elonEmoji: selectedEmojis.elon, // ✅ This matches the stripe-checkout.ts logic
-      variant: selectedVariant,
-    }
-
-    console.log("Adding customized product to cart with emoji choices:", {
-      id: selectedProductVariant.product_id,
-      customId,
-      name: customName,
-      price: selectedProductVariant.price,
-      image: teslaEmojiProduct.image,
-      quantity,
-      customOptions, // ✅ Now properly structured
-      stripeId: selectedProductVariant.stripeId,
-      productId: selectedProductVariant.productId,
-    })
-
-    addItem({
-      id: selectedProductVariant.product_id,
-      customId,
-      name: customName,
-      price: selectedProductVariant.price,
-      image: teslaEmojiProduct.image,
-      quantity,
-      customOptions, // ✅ FIXED: Proper structure for emoji choices
-      stripeId: selectedProductVariant.stripeId, // ✅ STRIPE PRICE ID
-      productId: selectedProductVariant.productId, // ✅ STRIPE PRODUCT ID
-    })
-
-    setAdded(true)
-
-    // Show toast notification
-    toast({
-      title: "Added to cart",
-      description: `${customName} has been added to your cart`,
-    })
-
-    // Reset the added state after 3 seconds
-    setTimeout(() => {
-      setAdded(false)
-    }, 3000)
-  }
-
-  if (!teslaEmojiProduct) {
+  if (!product || !product.variants[type]) {
     return (
-      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        <div className="container mx-auto px-6">
-          <h1 className="text-4xl font-bold mb-8">Product Not Found</h1>
-          <p className="text-white/70 mb-8">The Tesla emoji product could not be found.</p>
-          <Link href="/shop/all">
-            <Button className="bg-red-600 hover:bg-red-700">Back to Shop</Button>
+      <div className="bg-dark-400 text-white min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
+          <Link href="/shop/all" className="text-red-400 hover:text-red-300 underline">
+            Return to Shop
           </Link>
         </div>
       </div>
     )
   }
 
-  const selectedProductVariant = teslaEmojiProduct.variants[selectedVariant]
+  const selectedProductVariant = product.variants[type]
+
+  // Handler for emoji selection
+  const handleEmojiChange = (emojiType: "tesla" | "elon", emoji: { name: string; path: string }) => {
+    setSelectedEmojis((prev) => {
+      const newState = { ...prev, [emojiType]: emoji }
+      console.log(`🎭 Changed ${emojiType} emoji to ${emoji.name}`, newState)
+      return newState
+    })
+  }
+
+  // Handler for adding to cart
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    try {
+      // Create a unique ID for the customized product
+      const customId = `${selectedProductVariant.product_id}-${selectedEmojis.tesla.name}-${selectedEmojis.elon.name}`
+      const customName = `${product.baseName} (${type})`
+
+      // ✅ Create proper customOptions structure
+      const customOptions = {
+        teslaEmoji: selectedEmojis.tesla,
+        elonEmoji: selectedEmojis.elon,
+        variant: type,
+      }
+
+      console.log("🛒 Adding customized emoji product to cart:", {
+        id: selectedProductVariant.product_id,
+        customId,
+        name: customName,
+        price: selectedProductVariant.price,
+        quantity,
+        customOptions,
+        stripeId: selectedProductVariant.stripeId,
+        productId: selectedProductVariant.productId,
+      })
+
+      addItem({
+        id: selectedProductVariant.product_id,
+        customId,
+        name: customName,
+        price: selectedProductVariant.price,
+        image: product.image,
+        quantity,
+        customOptions,
+        stripeId: selectedProductVariant.stripeId,
+        productId: selectedProductVariant.productId,
+      })
+
+      setAdded(true)
+
+      toast({
+        title: "Added to cart",
+        description: `${customName} has been added to your cart`,
+      })
+
+      // Reset the added state after 3 seconds
+      setTimeout(() => {
+        setAdded(false)
+      }, 3000)
+    } catch (error) {
+      console.error("❌ Error adding emoji product to cart:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <div className="bg-dark-400 text-white min-h-screen">
       <div className="container mx-auto px-6 md:px-10 py-32">
-        <Link
-          href={`/product/tesla_vs_elon_emoji`}
-          className="inline-flex items-center text-white/70 hover:text-white mb-12"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to product
+        <Link href="/shop/all" className="inline-flex items-center text-white/70 hover:text-white mb-12">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Shop
         </Link>
 
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-4">
-            Customize Your {teslaEmojiProduct.baseName}
-          </h1>
-          <p className="text-lg text-white/70 mb-8">
-            Dimensions: {teslaEmojiProduct.height}" x {teslaEmojiProduct.width}"
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Preview with dynamic emoji canvas */}
-            <div className="bg-dark-300 p-8 rounded-lg flex flex-col items-center">
-              <EmojiPreviewCanvas
-                teslaEmoji={selectedEmojis.tesla}
-                elonEmoji={selectedEmojis.elon}
-                className="w-full"
-              />
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Left Column - Preview */}
+            <div className="space-y-6">
+              <div className="bg-dark-300 p-6 rounded-lg">
+                <h3 className="text-xl font-medium mb-4">Preview</h3>
+                <EmojiPreviewCanvas
+                  teslaEmoji={selectedEmojis.tesla}
+                  elonEmoji={selectedEmojis.elon}
+                  className="w-full max-w-md mx-auto"
+                />
+              </div>
             </div>
 
-            {/* Customization Options */}
-            <div className="bg-dark-300 p-8 rounded-lg">
-              <h2 className="text-xl font-medium mb-6">Choose Your Options</h2>
+            {/* Right Column - Customization */}
+            <div className="space-y-8">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-4">
+                  {product.baseName} ({type})
+                </h1>
+                <p className="text-lg text-white/70 mb-6">
+                  Express your Tesla love and Elon opinions with custom emoji combinations.
+                </p>
+                <div className="text-2xl font-bold mb-8">${selectedProductVariant.price.toFixed(2)}</div>
+              </div>
 
-              {/* Variant Selection */}
-              {teslaEmojiProduct.variants.magnet && teslaEmojiProduct.variants.sticker && (
-                <div className="mb-8">
-                  <h3 className="text-white/60 mb-3">Select Type:</h3>
-                  <div className="flex gap-4">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="variant"
-                        value="magnet"
-                        checked={selectedVariant === "magnet"}
-                        onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
-                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className="text-white">Magnet (${teslaEmojiProduct.variants.magnet.price.toFixed(2)})</span>
-                    </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="variant"
-                        value="sticker"
-                        checked={selectedVariant === "sticker"}
-                        onChange={(e) => setSelectedVariant(e.target.value as "magnet" | "sticker")}
-                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className="text-white">
-                        Sticker (${teslaEmojiProduct.variants.sticker.price.toFixed(2)})
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Tesla Emoji (Positive)</h3>
-                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+              {/* Tesla Emoji Selection */}
+              <div className="bg-dark-300 p-6 rounded-lg">
+                <h3 className="text-xl font-medium mb-4">Tesla Emoji (Positive)</h3>
+                <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto">
                   {emojiOptions.tesla.map((emoji) => (
                     <Button
                       key={emoji.name}
                       variant="outline"
-                      className={`p-2 h-16 ${
-                        selectedEmojis.tesla.name === emoji.name ? "border-red-500 bg-red-500/10" : "border-white/20"
+                      className={`p-3 h-16 ${
+                        selectedEmojis.tesla.name === emoji.name
+                          ? "border-red-500 bg-red-500/10"
+                          : "border-white/20 hover:border-white/40"
                       }`}
                       onClick={() => handleEmojiChange("tesla", emoji)}
                     >
@@ -278,15 +233,18 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
                 </div>
               </div>
 
-              <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Elon Emoji (Negative)</h3>
-                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+              {/* Elon Emoji Selection */}
+              <div className="bg-dark-300 p-6 rounded-lg">
+                <h3 className="text-xl font-medium mb-4">Elon Emoji (Negative)</h3>
+                <div className="grid grid-cols-6 gap-3 max-h-48 overflow-y-auto">
                   {emojiOptions.elon.map((emoji) => (
                     <Button
                       key={emoji.name}
                       variant="outline"
-                      className={`p-2 h-16 ${
-                        selectedEmojis.elon.name === emoji.name ? "border-red-500 bg-red-500/10" : "border-white/20"
+                      className={`p-3 h-16 ${
+                        selectedEmojis.elon.name === emoji.name
+                          ? "border-red-500 bg-red-500/10"
+                          : "border-white/20 hover:border-white/40"
                       }`}
                       onClick={() => handleEmojiChange("elon", emoji)}
                     >
@@ -302,72 +260,66 @@ export default function CustomizeEmojiPage({ params }: { params: { type: string 
                 </div>
               </div>
 
-              <div className="mb-8">
-                <h3 className="text-white/60 mb-3">Quantity</h3>
+              {/* Quantity Selection */}
+              <div className="bg-dark-300 p-6 rounded-lg">
+                <h3 className="text-xl font-medium mb-4">Quantity</h3>
                 <div className="flex items-center">
                   <Button
                     variant="outline"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="border-white/20"
+                    className="border-white/20 hover:border-white/40"
                   >
-                    -
+                    <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="mx-6 font-medium">{quantity}</span>
-                  <Button variant="outline" onClick={() => setQuantity(quantity + 1)} className="border-white/20">
-                    +
+                  <span className="mx-6 text-xl font-medium">{quantity}</span>
+                  <Button
+                    variant="outline"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="border-white/20 hover:border-white/40"
+                  >
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xl font-medium">Price:</span>
-                <span className="text-xl font-medium">
-                  ${selectedProductVariant ? (selectedProductVariant.price * quantity).toFixed(2) : "0.00"}
-                </span>
+              {/* Price and Add to Cart */}
+              <div className="bg-dark-300 p-6 rounded-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xl font-medium">Total:</span>
+                  <span className="text-2xl font-bold">${(selectedProductVariant.price * quantity).toFixed(2)}</span>
+                </div>
+
+                <Button
+                  size="lg"
+                  className={`${
+                    added ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                  } w-full py-6 text-lg`}
+                  onClick={handleAddToCart}
+                >
+                  {added ? (
+                    <>
+                      <Check className="mr-2 h-5 w-5" /> Added to Cart
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="mr-2 h-5 w-5" /> Add to Cart
+                    </>
+                  )}
+                </Button>
               </div>
 
-              <Button
-                size="lg"
-                className={`${added ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"} w-full py-6`}
-                onClick={handleAddToCart}
-                disabled={!selectedProductVariant}
-              >
-                {added ? (
-                  <>
-                    <Check className="mr-2 h-5 w-5" /> Added to Cart
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="mr-2 h-5 w-5" /> Add to Cart
-                  </>
-                )}
-              </Button>
-
-              {/* Link to cart for manual navigation */}
-              {added && (
-                <div className="mt-4 text-center">
-                  <Link href="/cart">
-                    <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                      View Cart
-                    </Button>
-                  </Link>
-                </div>
-              )}
+              {/* Features */}
+              <div className="bg-dark-300 p-6 rounded-lg">
+                <h3 className="text-xl font-medium mb-4">Features</h3>
+                <ul className="space-y-2 text-white/70">
+                  <li>• Weather and UV resistant</li>
+                  <li>• Premium materials</li>
+                  <li>• Perfect for cars, refrigerators, metal surfaces</li>
+                  <li>• Custom emoji combinations</li>
+                  <li>• High-quality printing</li>
+                </ul>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-12 bg-dark-300 p-8 rounded-lg">
-            <h2 className="text-xl font-medium mb-4">About This Customization</h2>
-            <p className="text-white/70 mb-4">
-              Our Tesla vs Elon Emoji {selectedVariant} ({teslaEmojiProduct.height}" x {teslaEmojiProduct.width}") lets
-              you express exactly how you feel about your Tesla and its CEO. Choose from Ed's curated collection of
-              custom emoji graphics to create your perfect combination.
-            </p>
-            <p className="text-white/70">
-              The {selectedVariant} is made from premium materials that are weather and UV resistant, making it perfect
-              for your car, refrigerator, or any metal surface where you want to display your Tesla pride (and Elon
-              opinions).
-            </p>
           </div>
         </div>
       </div>
