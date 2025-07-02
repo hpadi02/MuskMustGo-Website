@@ -9,7 +9,7 @@ import { ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PRODUCTS } from "@/lib/image-assets"
 
-export default function ProductShowcase() {
+export function ProductShowcase() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -59,3 +59,5 @@ export default function ProductShowcase() {
     </div>
   )
 }
+
+export default ProductShowcase

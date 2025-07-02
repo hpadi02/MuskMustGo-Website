@@ -1,68 +1,44 @@
-import Stripe from "stripe"
+// lib/stripe-checkout.ts
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-})
+import type { CartItem } from "@/types/CartItem"
 
-export async function createCheckoutSession(cartItems: any[]) {
-  try {
-    console.log("🛒 Creating checkout session for items:", cartItems)
+export async function createStripeCheckoutSession(cartItems: CartItem[]) {
+  // Enhanced metadata creation with item indexing for emoji products
+  const metadata: Record<string, string> = {}
 
-    const lineItems = cartItems.map((item) => ({
-      price: item.stripeId,
-      quantity: item.quantity,
-    }))
+  // Add item-indexed metadata for each cart item
+  cartItems.forEach((item, index) => {
+    console.log(`🔍 Processing cart item ${index}:`, item)
 
-    // ✅ Enhanced metadata extraction with item indexing
-    const metadata: Record<string, string> = {}
+    if (item.customOptions?.teslaEmoji && item.customOptions?.elonEmoji) {
+      console.log(`📝 Adding emoji metadata for item ${index}`)
 
-    cartItems.forEach((item, index) => {
-      console.log(`🎭 Processing item ${index}:`, item)
+      try {
+        metadata[`item_${index}_tesla_emoji`] = JSON.stringify({
+          name: item.customOptions.teslaEmoji.name,
+          path: item.customOptions.teslaEmoji.path,
+        })
 
-      // Check if this item has emoji customizations
-      if (item.customOptions?.teslaEmoji && item.customOptions?.elonEmoji) {
-        console.log(`🎭 Found emoji customizations for item ${index}:`, item.customOptions)
+        metadata[`item_${index}_elon_emoji`] = JSON.stringify({
+          name: item.customOptions.elonEmoji.name,
+          path: item.customOptions.elonEmoji.path,
+        })
 
-        try {
-          // Store emoji data with item index for multiple emoji products
-          metadata[`item_${index}_tesla_emoji`] = JSON.stringify(item.customOptions.teslaEmoji)
-          metadata[`item_${index}_elon_emoji`] = JSON.stringify(item.customOptions.elonEmoji)
-          metadata[`item_${index}_variant`] = item.customOptions.variant || "magnet"
-          metadata[`item_${index}_product_id`] = item.id
+        metadata[`item_${index}_variant`] = item.customOptions.variant || "sticker"
+        metadata[`item_${index}_product_id`] = item.productId
 
-          console.log(`✅ Stored emoji metadata for item ${index}:`, {
-            tesla: metadata[`item_${index}_tesla_emoji`],
-            elon: metadata[`item_${index}_elon_emoji`],
-            variant: metadata[`item_${index}_variant`],
-            productId: metadata[`item_${index}_product_id`],
-          })
-        } catch (error) {
-          console.error(`❌ Error storing emoji metadata for item ${index}:`, error)
-        }
-      } else {
-        console.log(`📦 Item ${index} has no emoji customizations`)
+        console.log(`✅ Emoji metadata added for item ${index}:`, {
+          tesla: item.customOptions.teslaEmoji.name,
+          elon: item.customOptions.elonEmoji.name,
+          variant: item.customOptions.variant,
+        })
+      } catch (error) {
+        console.error(`❌ Error creating emoji metadata for item ${index}:`, error)
       }
-    })
+    } else {
+      console.log(`ℹ️ Item ${index} has no emoji customization`)
+    }
+  })
 
-    console.log("🔄 Final metadata for Stripe session:", metadata)
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || process.env.PUBLIC_URL || "http://localhost:3000"}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || process.env.PUBLIC_URL || "http://localhost:3000"}/cart`,
-      metadata,
-      billing_address_collection: "required",
-      shipping_address_collection: {
-        allowed_countries: ["US"],
-      },
-    })
-
-    console.log("✅ Checkout session created successfully:", session.id)
-    return { sessionId: session.id }
-  } catch (error) {
-    console.error("❌ Error creating checkout session:", error)
-    throw error
-  }
+  console.log("📤 Final Stripe metadata:", metadata)
 }
