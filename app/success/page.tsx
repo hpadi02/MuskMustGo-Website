@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle, Package, User, MapPin } from "lucide-react"
 import Link from "next/link"
-import { CartClearer } from "@/components/cart-clearer"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, Package, CreditCard } from "lucide-react"
+import CartClearer from "@/components/cart-clearer"
 
 interface OrderResponse {
   customer_id: string
@@ -15,74 +14,37 @@ interface OrderResponse {
   total_cost: number
 }
 
-interface Customer {
-  firstname: string
-  lastname: string
-  email: string
-  addr1: string
-  addr2?: string
-  city: string
-  state_prov: string
-  postal_code: string
-  country: string
-}
-
-interface ProductAttribute {
-  name: string
-  value: string
-}
-
-interface OrderProduct {
-  product_id: string
-  quantity: number
-  attributes?: ProductAttribute[]
-}
-
 export default function SuccessPage() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
 
   const [orderData, setOrderData] = useState<OrderResponse | null>(null)
-  const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Helper function to extract filename from emoji path
-  const extractEmojiFilename = (path: string): string => {
-    try {
-      // Extract filename from path like "/emojis/positives/02_smile_sly.png"
-      const filename = path.split("/").pop() || ""
-      // Remove .png extension
-      return filename.replace(".png", "")
-    } catch (error) {
-      console.error("❌ Error extracting emoji filename from path:", path, error)
-      return "default_emoji"
-    }
-  }
-
   useEffect(() => {
+    if (!sessionId) {
+      setError("No session ID found")
+      setLoading(false)
+      return
+    }
+
     const processOrder = async () => {
-      if (!sessionId) {
-        console.error("❌ No session ID found in URL")
-        setError("No session ID found")
-        setLoading(false)
-        return
-      }
-
       try {
-        console.log("🔍 Processing order for session:", sessionId)
+        console.log("🎉 Processing successful order with session ID:", sessionId)
 
-        // Fetch Stripe session details
-        const response = await fetch(`/api/stripe/session/${sessionId}`)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch session: ${response.statusText}`)
+        // Retrieve the Stripe session
+        const sessionResponse = await fetch(`/api/stripe/session/${sessionId}`)
+        if (!sessionResponse.ok) {
+          throw new Error("Failed to retrieve session")
         }
 
-        const session = await response.json()
-        console.log("📋 Retrieved Stripe session:", JSON.stringify(session, null, 2))
+        const session = await sessionResponse.json()
+        console.log("📦 Retrieved Stripe session:", session)
+        console.log("🎭 Session metadata:", session.metadata)
 
         // Extract customer information
-        const customerInfo: Customer = {
+        const customer = {
           firstname: session.customer_details?.name?.split(" ")[0] || "",
           lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
           email: session.customer_details?.email || "",
@@ -94,95 +56,109 @@ export default function SuccessPage() {
           country: session.customer_details?.address?.country || "US",
         }
 
-        console.log("👤 Extracted customer info:", customerInfo)
-        setCustomer(customerInfo)
-
         // ✅ Enhanced product processing with emoji attributes
-        const products: OrderProduct[] = []
-
-        if (session.line_items?.data) {
-          session.line_items.data.forEach((item: any, index: number) => {
+        const products =
+          session.line_items?.data.map((item: any, index: number) => {
             console.log(`📦 Processing line item ${index}:`, item)
 
-            const baseProduct: OrderProduct = {
-              product_id: item.price?.product || "",
+            const baseProduct = {
+              product_id: item.price.product,
               quantity: item.quantity || 1,
             }
 
-            // ✅ Check for emoji customization metadata
+            // ✅ Check for emoji customizations in metadata
             const teslaEmojiKey = `item_${index}_tesla_emoji`
             const elonEmojiKey = `item_${index}_elon_emoji`
+            const variantKey = `item_${index}_variant`
 
-            if (session.metadata?.[teslaEmojiKey] && session.metadata?.[elonEmojiKey]) {
-              console.log(`🎨 Found emoji metadata for item ${index}`)
+            if (session.metadata?.[teslaEmojiKey] || session.metadata?.[elonEmojiKey]) {
+              console.log(`🎭 Found emoji metadata for item ${index}`)
 
               try {
-                // Parse emoji data from metadata
-                const teslaEmojiData = JSON.parse(session.metadata[teslaEmojiKey])
-                const elonEmojiData = JSON.parse(session.metadata[elonEmojiKey])
+                const attributes = []
 
-                console.log("🎨 Parsed emoji data:", { teslaEmojiData, elonEmojiData })
+                // Extract Tesla emoji (positive)
+                if (session.metadata[teslaEmojiKey]) {
+                  const teslaEmoji = JSON.parse(session.metadata[teslaEmojiKey])
+                  console.log(`🎭 Tesla emoji for item ${index}:`, teslaEmoji)
 
-                // Extract filenames (e.g., "02_smile_sly" from "/emojis/positives/02_smile_sly.png")
-                const teslaEmojiFilename = extractEmojiFilename(teslaEmojiData.path)
-                const elonEmojiFilename = extractEmojiFilename(elonEmojiData.path)
+                  // Extract filename without .png extension
+                  const teslaFilename = teslaEmoji.path
+                    ? teslaEmoji.path.split("/").pop()?.replace(".png", "")
+                    : teslaEmoji.name
 
-                console.log("📝 Extracted emoji filenames:", {
-                  tesla: teslaEmojiFilename,
-                  elon: elonEmojiFilename,
-                })
+                  if (teslaFilename) {
+                    attributes.push({
+                      name: "emoji_good",
+                      value: teslaFilename,
+                    })
+                    console.log(`✅ Added Tesla emoji attribute: ${teslaFilename}`)
+                  }
+                }
 
-                // ✅ Add attributes array as expected by backend
-                baseProduct.attributes = [
-                  { name: "emoji_good", value: teslaEmojiFilename },
-                  { name: "emoji_bad", value: elonEmojiFilename },
-                ]
+                // Extract Elon emoji (negative)
+                if (session.metadata[elonEmojiKey]) {
+                  const elonEmoji = JSON.parse(session.metadata[elonEmojiKey])
+                  console.log(`🎭 Elon emoji for item ${index}:`, elonEmoji)
 
-                console.log(`✅ Added emoji attributes to product ${index}:`, baseProduct.attributes)
-              } catch (parseError) {
-                console.error(`❌ Error parsing emoji metadata for item ${index}:`, parseError)
-                // Continue without attributes if parsing fails
+                  // Extract filename without .png extension
+                  const elonFilename = elonEmoji.path
+                    ? elonEmoji.path.split("/").pop()?.replace(".png", "")
+                    : elonEmoji.name
+
+                  if (elonFilename) {
+                    attributes.push({
+                      name: "emoji_bad",
+                      value: elonFilename,
+                    })
+                    console.log(`✅ Added Elon emoji attribute: ${elonFilename}`)
+                  }
+                }
+
+                // Add attributes to product if we have any
+                if (attributes.length > 0) {
+                  console.log(`🎭 Final attributes for item ${index}:`, attributes)
+                  return {
+                    ...baseProduct,
+                    attributes,
+                  }
+                }
+              } catch (error) {
+                console.error(`❌ Error parsing emoji metadata for item ${index}:`, error)
               }
-            } else {
-              console.log(`ℹ️ No emoji customization found for item ${index}`)
             }
 
-            products.push(baseProduct)
-          })
-        }
-
-        console.log("📦 Final products array for backend:", JSON.stringify(products, null, 2))
+            return baseProduct
+          }) || []
 
         // Prepare order data for backend
-        const orderPayload = {
-          customer: customerInfo,
-          products: products,
-          payment_id: session.payment_intent || "",
+        const orderData = {
+          customer,
+          products,
+          payment_id: session.payment_intent,
           shipping: 0,
           tax: 0,
         }
 
-        console.log("📤 Sending order to backend:", JSON.stringify(orderPayload, null, 2))
+        console.log("📤 Sending order to backend:", orderData)
 
-        // Send to backend
+        // Send to Ed's backend
         const backendResponse = await fetch("/api/orders", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(orderPayload),
+          body: JSON.stringify(orderData),
         })
 
         if (!backendResponse.ok) {
-          const errorText = await backendResponse.text()
-          throw new Error(`Backend error: ${backendResponse.status} - ${errorText}`)
+          throw new Error(`Backend responded with ${backendResponse.status}`)
         }
 
-        const backendResult: OrderResponse = await backendResponse.json()
-        console.log("✅ Backend response:", backendResult)
+        const result = await backendResponse.json()
+        console.log("✅ Backend response:", result)
 
-        // ✅ Set order data including order_number
-        setOrderData(backendResult)
+        setOrderData(result)
       } catch (error) {
         console.error("❌ Error processing order:", error)
         setError(error instanceof Error ? error.message : "Unknown error occurred")
@@ -208,25 +184,23 @@ export default function SuccessPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-dark-400 text-white flex items-center justify-center">
-        <Card className="bg-dark-300 border-red-500 max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="text-red-500 mb-4">
-              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                ></path>
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold mb-2 text-white">Order Processing Error</h2>
-            <p className="text-white/70 mb-4">{error}</p>
-            <Link href="/shop/all">
-              <Button>Continue Shopping</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="text-center max-w-md">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold mb-4">Order Processing Error</h1>
+          <p className="text-white/70 mb-6">{error}</p>
+          <Link href="/shop/all">
+            <Button className="bg-red-600 hover:bg-red-700">Continue Shopping</Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -235,11 +209,11 @@ export default function SuccessPage() {
     <div className="min-h-screen bg-dark-400 text-white">
       <CartClearer />
       <div className="container mx-auto px-6 py-32">
-        <div className="max-w-2xl mx-auto">
-          {/* Success Header */}
-          <div className="text-center mb-12">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-4xl font-bold mb-4">Order Confirmed!</h1>
+        <div className="max-w-2xl mx-auto text-center">
+          {/* Success Icon */}
+          <div className="mb-8">
+            <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
+            <h1 className="text-4xl font-bold mb-2">Order Confirmed!</h1>
             <p className="text-white/70 text-lg">
               Thank you for your purchase. Your order has been successfully processed.
             </p>
@@ -247,79 +221,60 @@ export default function SuccessPage() {
 
           {/* ✅ Order Number Display */}
           {orderData?.order_number && (
-            <Card className="bg-dark-300 border-green-500 mb-8">
-              <CardContent className="p-6 text-center">
-                <h2 className="text-xl font-bold mb-2 text-green-400">Order Number</h2>
-                <p className="text-2xl font-mono font-bold text-white">{orderData.order_number}</p>
-                <p className="text-white/60 text-sm mt-2">
-                  Save this number for your records. A confirmation email has been sent to you.
-                </p>
-              </CardContent>
-            </Card>
+            <div className="bg-dark-300 rounded-lg p-6 mb-8">
+              <div className="flex items-center justify-center mb-4">
+                <Package className="w-6 h-6 text-red-500 mr-2" />
+                <h2 className="text-xl font-semibold">Order Details</h2>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/70">Order Number:</span>
+                  <span className="font-mono text-lg font-bold text-red-400">{orderData.order_number}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/70">Total Amount:</span>
+                  <span className="font-semibold">${orderData.total_cost?.toFixed(2) || "0.00"}</span>
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* Order Details */}
-          <div className="space-y-6">
-            {/* Customer Information */}
-            {customer && (
-              <Card className="bg-dark-300 border-dark-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-4">
-                    <User className="w-5 h-5 text-red-500 mr-2" />
-                    <h3 className="text-lg font-semibold">Customer Information</h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-white/80">
-                    <div>
-                      <p>
-                        <strong>Name:</strong> {customer.firstname} {customer.lastname}
-                      </p>
-                      <p>
-                        <strong>Email:</strong> {customer.email}
-                      </p>
-                    </div>
-                    <div>
-                      <div className="flex items-start">
-                        <MapPin className="w-4 h-4 text-red-500 mr-1 mt-1 flex-shrink-0" />
-                        <div>
-                          <p>{customer.addr1}</p>
-                          {customer.addr2 && <p>{customer.addr2}</p>}
-                          <p>
-                            {customer.city}, {customer.state_prov} {customer.postal_code}
-                          </p>
-                          <p>{customer.country}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Order Summary */}
-            {orderData && (
-              <Card className="bg-dark-300 border-dark-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-4">
-                    <Package className="w-5 h-5 text-red-500 mr-2" />
-                    <h3 className="text-lg font-semibold">Order Summary</h3>
-                  </div>
-                  <div className="space-y-2 text-white/80">
-                    <div className="flex justify-between">
-                      <span>Product Cost:</span>
-                      <span>${orderData.product_cost.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-bold text-lg border-t border-dark-200 pt-2">
-                      <span>Total:</span>
-                      <span>${orderData.total_cost.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          {/* Order Summary */}
+          <div className="bg-dark-300 rounded-lg p-6 mb-8 text-left">
+            <h3 className="text-lg font-semibold mb-4 flex items-center">
+              <CreditCard className="w-5 h-5 mr-2" />
+              What's Next?
+            </h3>
+            <ul className="space-y-3 text-white/80">
+              <li className="flex items-start">
+                <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </span>
+                <span>You'll receive a confirmation email shortly with your order details</span>
+              </li>
+              <li className="flex items-start">
+                <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </span>
+                <span>Your order will be processed and shipped within 1-2 business days</span>
+              </li>
+              <li className="flex items-start">
+                <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </span>
+                <span>You'll receive tracking information once your order ships</span>
+              </li>
+            </ul>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-12 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/shop/all">
               <Button className="bg-red-600 hover:bg-red-700 px-8 py-3">Continue Shopping</Button>
             </Link>
@@ -330,6 +285,14 @@ export default function SuccessPage() {
               >
                 View Orders
               </Button>
+            </Link>
+          </div>
+
+          {/* Support Info */}
+          <div className="mt-12 text-center text-white/60">
+            <p className="mb-2">Need help with your order?</p>
+            <Link href="/contact" className="text-red-400 hover:text-red-300 underline">
+              Contact Support
             </Link>
           </div>
         </div>

@@ -5,6 +5,7 @@ import FallbackImage from "@/components/fallback-image"
 import { getStripeProducts } from "@/lib/stripe-products"
 import { groupProducts } from "@/lib/product-data"
 import AddToCartClient from "@/components/add-to-cart-client"
+import { redirect } from "next/navigation"
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
   try {
@@ -47,8 +48,14 @@ export default async function ProductPage({ params }: { params: { id: string } }
       )
     }
 
-    // ✅ For Tesla vs Elon emoji products, show direct customization buttons
+    // ✅ For Tesla vs Elon emoji products, redirect directly to customize page
     const isEmojiProduct = product.baseId.includes("tesla") && product.baseId.includes("emoji")
+
+    if (isEmojiProduct) {
+      console.log(`🎭 Redirecting emoji product ${product.baseId} to customize page`)
+      // Default to magnet, but user can change on customize page
+      redirect("/product/customize-emoji/magnet")
+    }
 
     // Default to magnet if available, otherwise sticker
     const defaultVariant = product.variants?.magnet ? "magnet" : "sticker"
@@ -127,39 +134,10 @@ export default async function ProductPage({ params }: { params: { id: string } }
                   </p>
                 </div>
 
-                {/* ✅ Direct emoji customization buttons for Tesla vs Elon emoji products */}
-                {isEmojiProduct ? (
-                  <div className="mb-10">
-                    <h3 className="text-xl font-medium mb-4">Customize Your Emojis</h3>
-                    <div className="space-y-4">
-                      {product.variants?.sticker && (
-                        <Link href="/product/customize-emoji/sticker" className="block">
-                          <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-4 text-lg">
-                            Customize Sticker - ${product.variants.sticker.price.toFixed(2)}
-                          </Button>
-                        </Link>
-                      )}
-                      {product.variants?.magnet && (
-                        <Link href="/product/customize-emoji/magnet" className="block">
-                          <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-4 text-lg">
-                            Customize Magnet - ${product.variants.magnet.price.toFixed(2)}
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                    <p className="text-white/60 text-sm mt-3">
-                      Choose your Tesla and Elon emojis to create your custom design
-                    </p>
-                  </div>
-                ) : (
-                  /* Regular add to cart for non-emoji products */
-                  <div className="mb-10">
-                    <AddToCartClient product={product} defaultVariant={defaultVariant} />
-                  </div>
-                )}
+                {/* Add to Cart Component - Client Side */}
+                <AddToCartClient product={product} defaultVariant={defaultVariant} />
 
-                {/* ✅ Features moved below customization/add to cart */}
-                <div className="mb-10">
+                <div className="mt-10 mb-10">
                   <h3 className="text-xl font-medium mb-6">Features</h3>
                   <ul className="space-y-4">
                     {features.map((feature, index) => (

@@ -1,73 +1,76 @@
-// lib/stripe-checkout.ts
+import Stripe from "stripe"
 
-import type Stripe from "stripe"
-import { stripe } from "./stripe"
-import type { CartItem } from "@/hooks/use-cart"
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2024-06-20",
+})
 
-export async function createStripeCheckout(cartItems: CartItem[], successUrl: string, cancelUrl: string) {
+export async function createCheckoutSession(cartItems: any[]) {
   try {
-    console.log("🛒 Creating Stripe checkout with cart items:", JSON.stringify(cartItems, null, 2))
+    console.log("🛒 Creating Stripe checkout session for items:", cartItems)
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = []
+    const lineItems = cartItems.map((item, index) => {
+      console.log(`🛒 Processing cart item ${index}:`, item)
+
+      return {
+        price: item.stripeId,
+        quantity: item.quantity,
+      }
+    })
+
+    // ✅ Enhanced metadata creation with item indexing for emoji products
     const metadata: Record<string, string> = {}
 
     cartItems.forEach((item, index) => {
-      console.log(`📦 Processing cart item ${index}:`, item)
+      console.log(`🎭 Processing metadata for item ${index}:`, item)
 
-      // Add line item
-      lineItems.push({
-        price: item.stripeId,
-        quantity: item.quantity,
-      })
-
-      // ✅ Enhanced emoji metadata extraction with item indexing
-      if (item.customOptions?.teslaEmoji && item.customOptions?.elonEmoji) {
-        console.log(`🎨 Found emoji customization for item ${index}:`, {
-          tesla: item.customOptions.teslaEmoji,
-          elon: item.customOptions.elonEmoji,
-          variant: item.variant,
-        })
+      // Check if this item has emoji customizations
+      if (item.customOptions && (item.customOptions.teslaEmoji || item.customOptions.elonEmoji)) {
+        console.log(`🎭 Found emoji customizations for item ${index}:`, item.customOptions)
 
         try {
           // Store emoji data with item index for multiple emoji products
-          metadata[`item_${index}_tesla_emoji`] = JSON.stringify({
-            name: item.customOptions.teslaEmoji.name,
-            path: item.customOptions.teslaEmoji.path,
-          })
+          if (item.customOptions.teslaEmoji) {
+            metadata[`item_${index}_tesla_emoji`] = JSON.stringify(item.customOptions.teslaEmoji)
+            console.log(`🎭 Stored Tesla emoji for item ${index}:`, item.customOptions.teslaEmoji)
+          }
 
-          metadata[`item_${index}_elon_emoji`] = JSON.stringify({
-            name: item.customOptions.elonEmoji.name,
-            path: item.customOptions.elonEmoji.path,
-          })
+          if (item.customOptions.elonEmoji) {
+            metadata[`item_${index}_elon_emoji`] = JSON.stringify(item.customOptions.elonEmoji)
+            console.log(`🎭 Stored Elon emoji for item ${index}:`, item.customOptions.elonEmoji)
+          }
 
-          metadata[`item_${index}_variant`] = item.variant || "sticker"
-          metadata[`item_${index}_product_id`] = item.productId || ""
-
-          console.log(`✅ Stored emoji metadata for item ${index}`)
+          if (item.customOptions.variant) {
+            metadata[`item_${index}_variant`] = item.customOptions.variant
+            console.log(`🎭 Stored variant for item ${index}:`, item.customOptions.variant)
+          }
         } catch (error) {
           console.error(`❌ Error storing emoji metadata for item ${index}:`, error)
         }
       }
+
+      // Store basic product info for all items
+      metadata[`item_${index}_product_id`] = item.productId || item.id
+      metadata[`item_${index}_custom_id`] = item.customId || item.id
     })
 
-    console.log("📋 Final Stripe session metadata:", JSON.stringify(metadata, null, 2))
+    console.log("🎭 Final metadata for Stripe session:", metadata)
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: metadata,
+      success_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"}/cart`,
+      metadata,
       shipping_address_collection: {
-        allowed_countries: ["US", "CA"],
+        allowed_countries: ["US"],
       },
     })
 
-    console.log("✅ Stripe session created successfully:", session.id)
-    return { url: session.url }
+    console.log("✅ Stripe checkout session created:", session.id)
+    return { sessionId: session.id }
   } catch (error) {
-    console.error("❌ Error creating Stripe checkout:", error)
+    console.error("❌ Error creating Stripe checkout session:", error)
     throw error
   }
 }
