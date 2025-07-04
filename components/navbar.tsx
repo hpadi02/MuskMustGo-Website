@@ -1,141 +1,108 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Menu, X, ShoppingBag } from "lucide-react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Menu, ShoppingCart } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 
-export default function Navbar() {
+export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const { itemCount } = useCart()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const toggleMenu = () => {
-    setIsOpen(!isOpen)
-  }
-
-  const closeMenu = () => {
-    setIsOpen(false)
-  }
+  const navigation = [
+    { name: "Home", href: "/" },
+    { name: "Shop", href: "/shop/all" },
+    { name: "Stories", href: "/stories" },
+    { name: "News", href: "/news" },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
+  ]
 
   return (
-    <nav className="bg-dark-400 text-white fixed w-full z-50 top-0">
-      <div className="container mx-auto px-6">
-        <div className="flex justify-between items-center py-4">
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="text-2xl font-bold tracking-tight" onClick={closeMenu}>
-            MuskMustGo
-          </Link>
+          <div className="flex-shrink-0">
+            <Link href="/" className="text-2xl font-bold text-red-600">
+              MuskMustGo
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="/shop/all" className="hover:text-gray-300 transition-colors">
-              Shop
-            </Link>
-            <Link href="/about" className="hover:text-gray-300 transition-colors">
-              About
-            </Link>
-            <Link href="/stories" className="hover:text-gray-300 transition-colors">
-              Stories
-            </Link>
-            <Link href="/news" className="hover:text-gray-300 transition-colors">
-              News
-            </Link>
-            <Link href="/contact" className="hover:text-gray-300 transition-colors">
-              Contact
-            </Link>
+          <div className="hidden md:block">
+            <div className="ml-10 flex items-baseline space-x-4">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          </div>
 
-            {/* Cart Icon */}
-            <Link href="/cart" className="relative hover:text-gray-300 transition-colors">
-              <ShoppingBag className="h-6 w-6" />
-              {mounted && itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
+          {/* Desktop Right Side */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Link href="/cart">
+              <Button variant="outline" size="sm" className="relative bg-transparent">
+                <ShoppingCart className="h-4 w-4" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </Button>
             </Link>
-
             {/* Login button hidden for now */}
             {/* <Link href="/login">
-              <Button variant="outline" size="sm" className="border-white text-white hover:bg-white hover:text-black bg-transparent">
-                Login
-              </Button>
+              <Button size="sm">Login</Button>
             </Link> */}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-4">
-            {/* Mobile Cart Icon */}
-            <Link href="/cart" className="relative hover:text-gray-300 transition-colors" onClick={closeMenu}>
-              <ShoppingBag className="h-6 w-6" />
-              {mounted && itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
+          <div className="md:hidden flex items-center space-x-2">
+            <Link href="/cart">
+              <Button variant="outline" size="sm" className="relative bg-transparent">
+                <ShoppingCart className="h-4 w-4" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </Button>
             </Link>
-
-            <button onClick={toggleMenu} className="text-white hover:text-gray-300 transition-colors">
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <nav className="flex flex-col space-y-4 mt-8">
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-lg font-medium transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                  {/* Mobile login button hidden for now */}
+                  {/* <Link href="/login" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full mt-4">Login</Button>
+                  </Link> */}
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 border-t border-gray-800">
-              <Link
-                href="/shop/all"
-                className="block px-3 py-2 text-base font-medium hover:text-gray-300 transition-colors"
-                onClick={closeMenu}
-              >
-                Shop
-              </Link>
-              <Link
-                href="/about"
-                className="block px-3 py-2 text-base font-medium hover:text-gray-300 transition-colors"
-                onClick={closeMenu}
-              >
-                About
-              </Link>
-              <Link
-                href="/stories"
-                className="block px-3 py-2 text-base font-medium hover:text-gray-300 transition-colors"
-                onClick={closeMenu}
-              >
-                Stories
-              </Link>
-              <Link
-                href="/news"
-                className="block px-3 py-2 text-base font-medium hover:text-gray-300 transition-colors"
-                onClick={closeMenu}
-              >
-                News
-              </Link>
-              <Link
-                href="/contact"
-                className="block px-3 py-2 text-base font-medium hover:text-gray-300 transition-colors"
-                onClick={closeMenu}
-              >
-                Contact
-              </Link>
-
-              {/* Mobile Login button hidden for now */}
-              {/* <div className="px-3 py-2">
-                <Link href="/login" onClick={closeMenu}>
-                  <Button variant="outline" size="sm" className="border-white text-white hover:bg-white hover:text-black w-full bg-transparent">
-                    Login
-                  </Button>
-                </Link>
-              </div> */}
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   )
