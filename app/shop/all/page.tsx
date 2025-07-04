@@ -65,7 +65,7 @@ export default async function AllProductsPage() {
                 key={product.baseId}
                 className="group bg-dark-300 border border-gray-800 hover:border-gray-700 transition-all duration-300"
               >
-                <Link href={`/product/${product.baseId}`}>
+                <Link href={product.customizable ? `/product/customize-emoji/magnet` : `/product/${product.baseId}`}>
                   <div
                     className="relative overflow-hidden"
                     style={{ aspectRatio: isSquareProduct ? 1.67 : aspectRatio }}
