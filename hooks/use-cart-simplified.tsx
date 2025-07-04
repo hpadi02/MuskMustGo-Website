@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 export type CartItem = {
@@ -74,38 +74,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, isInitialized])
 
   // Listen for storage events (when localStorage is changed from other tabs/components)
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "cart" && !clearingRef.current) {
-        try {
-          const newCart = e.newValue ? JSON.parse(e.newValue) : []
-          console.log("Storage event detected, updating cart:", newCart)
-          setItems(newCart)
-        } catch (error) {
-          console.error("Failed to parse cart from storage event:", error)
-          setItems([])
-        }
+  const handleStorageChange = useCallback((e: StorageEvent) => {
+    if (e.key === "cart" && !clearingRef.current) {
+      try {
+        const newCart = e.newValue ? JSON.parse(e.newValue) : []
+        console.log("Storage event detected, updating cart:", newCart)
+        setItems(newCart)
+      } catch (error) {
+        console.error("Failed to parse cart from storage event:", error)
+        setItems([])
       }
     }
+  }, [])
 
+  const handleCartClear = useCallback(() => {
+    if (!clearingRef.current) {
+      console.log("Cart clear event detected")
+      setItems([])
+    }
+  }, [])
+
+  useEffect(() => {
     // Listen for storage events from other windows/tabs
     window.addEventListener("storage", handleStorageChange)
 
     // Listen for custom cart-clear events
-    const handleCartClear = () => {
-      if (!clearingRef.current) {
-        console.log("Cart clear event detected")
-        setItems([])
-      }
-    }
-
     window.addEventListener("cart-cleared", handleCartClear)
 
     return () => {
       window.removeEventListener("storage", handleStorageChange)
       window.removeEventListener("cart-cleared", handleCartClear)
     }
-  }, [])
+  }, [handleStorageChange, handleCartClear])
 
   // Generate a unique ID for customized products
   const generateCustomId = (item: CartItem) => {
