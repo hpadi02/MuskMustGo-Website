@@ -29,15 +29,9 @@ interface Customer {
   country: string
 }
 
-interface ProductAttribute {
-  name: string
-  value: string
-}
-
 interface OrderProduct {
   product_id: string
   quantity: number
-  attributes?: ProductAttribute[]
 }
 
 function SuccessContent() {
@@ -50,60 +44,6 @@ function SuccessContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Helper function to extract filename from emoji path
-  const extractEmojiFilename = (path: string): string => {
-    try {
-      // Extract filename from path like "/emojis/positives/02_smile_sly.png"
-      const filename = path.split("/").pop() || ""
-      // Remove .png extension
-      return filename.replace(".png", "")
-    } catch (error) {
-      console.error("❌ Error extracting emoji filename from path:", path, error)
-      return "unknown_emoji"
-    }
-  }
-
-  // Helper function to extract emoji metadata for a specific item
-  const extractEmojiMetadata = (metadata: any, itemIndex: number): ProductAttribute[] => {
-    const attributes: ProductAttribute[] = []
-
-    try {
-      const teslaEmojiKey = `item_${itemIndex}_tesla_emoji`
-      const elonEmojiKey = `item_${itemIndex}_elon_emoji`
-
-      console.log(`🎭 Looking for emoji metadata keys: ${teslaEmojiKey}, ${elonEmojiKey}`)
-      console.log("🎭 Available metadata keys:", Object.keys(metadata))
-
-      if (metadata[teslaEmojiKey] && metadata[elonEmojiKey]) {
-        console.log(`✅ Found emoji metadata for item ${itemIndex}`)
-
-        // Parse Tesla emoji
-        const teslaEmojiData = JSON.parse(metadata[teslaEmojiKey])
-        const teslaFilename = extractEmojiFilename(teslaEmojiData.path)
-        attributes.push({
-          name: "emoji_good",
-          value: teslaFilename,
-        })
-
-        // Parse Elon emoji
-        const elonEmojiData = JSON.parse(metadata[elonEmojiKey])
-        const elonFilename = extractEmojiFilename(elonEmojiData.path)
-        attributes.push({
-          name: "emoji_bad",
-          value: elonFilename,
-        })
-
-        console.log(`🎭 Extracted emoji attributes for item ${itemIndex}:`, attributes)
-      } else {
-        console.log(`📦 No emoji metadata found for item ${itemIndex}`)
-      }
-    } catch (error) {
-      console.error(`❌ Error extracting emoji metadata for item ${itemIndex}:`, error)
-    }
-
-    return attributes
-  }
-
   useEffect(() => {
     const processOrder = async () => {
       if (!sessionId) {
@@ -113,7 +53,7 @@ function SuccessContent() {
       }
 
       try {
-        console.log("🔄 Processing order for session:", sessionId)
+        console.log("Processing order for session:", sessionId)
 
         // Fetch session details from Stripe
         const response = await fetch(`/api/stripe/session/${sessionId}`)
@@ -122,8 +62,7 @@ function SuccessContent() {
         }
 
         const session = await response.json()
-        console.log("✅ Retrieved Stripe session:", session)
-        console.log("🎭 Session metadata:", session.metadata)
+        console.log("Retrieved Stripe session:", session)
 
         // Extract customer information
         const customerInfo: Customer = {
@@ -138,30 +77,17 @@ function SuccessContent() {
           country: session.customer_details?.address?.country || "US",
         }
 
-        console.log("👤 Extracted customer info:", customerInfo)
+        console.log("Extracted customer info:", customerInfo)
         setCustomer(customerInfo)
 
-        // Extract products with emoji attributes
+        // Extract products
         const orderProducts: OrderProduct[] =
-          session.line_items?.data.map((item: any, index: number) => {
-            console.log(`📦 Processing line item ${index}:`, item)
+          session.line_items?.data.map((item: any) => ({
+            product_id: item.price.product,
+            quantity: item.quantity || 1,
+          })) || []
 
-            const baseProduct: OrderProduct = {
-              product_id: item.price.product,
-              quantity: item.quantity || 1,
-            }
-
-            // Check for emoji customizations
-            const emojiAttributes = extractEmojiMetadata(session.metadata || {}, index)
-            if (emojiAttributes.length > 0) {
-              baseProduct.attributes = emojiAttributes
-              console.log(`🎭 Added emoji attributes to product ${index}:`, baseProduct)
-            }
-
-            return baseProduct
-          }) || []
-
-        console.log("📦 Final products array:", orderProducts)
+        console.log("Final products array:", orderProducts)
         setProducts(orderProducts)
 
         // Prepare order data for backend
@@ -173,7 +99,7 @@ function SuccessContent() {
           tax: 0,
         }
 
-        console.log("📤 Sending order to backend:", orderData)
+        console.log("Sending order to backend:", orderData)
 
         // Send to backend
         const backendResponse = await fetch("/api/orders", {
@@ -190,11 +116,11 @@ function SuccessContent() {
         }
 
         const backendResult: OrderResponse = await backendResponse.json()
-        console.log("✅ Backend response:", backendResult)
+        console.log("Backend response:", backendResult)
 
         setOrderData(backendResult)
       } catch (error) {
-        console.error("❌ Error processing order:", error)
+        console.error("Error processing order:", error)
         setError(error instanceof Error ? error.message : "Unknown error occurred")
       } finally {
         setLoading(false)
@@ -334,23 +260,6 @@ function SuccessContent() {
                         <p className="text-gray-600">Quantity: {product.quantity}</p>
                       </div>
                     </div>
-
-                    {/* Show emoji customizations if present */}
-                    {product.attributes && product.attributes.length > 0 && (
-                      <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                        <p className="text-sm font-medium text-blue-800 mb-2">Custom Emoji Selection:</p>
-                        <div className="space-y-1">
-                          {product.attributes.map((attr, attrIndex) => (
-                            <div key={attrIndex} className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {attr.name === "emoji_good" ? "🚗 Tesla" : "👤 Elon"}
-                              </Badge>
-                              <span className="text-sm font-mono">{attr.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
