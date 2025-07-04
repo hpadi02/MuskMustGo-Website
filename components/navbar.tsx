@@ -1,104 +1,94 @@
 "use client"
 
-import Link from "next/link"
 import { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, ShoppingCart } from "lucide-react"
-import { useCart } from "@/hooks/use-cart-simplified"
+import { useCartSimplified } from "@/hooks/use-cart-simplified"
 
-export function Navbar() {
+export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const { itemCount } = useCart()
+  const { totalItems } = useCartSimplified()
 
   const navigation = [
-    { name: "Home", href: "/" },
     { name: "Shop", href: "/shop/all" },
     { name: "Stories", href: "/stories" },
-    { name: "News", href: "/news" },
+    { name: "Articles", href: "/articles" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ]
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm border-b border-white/10">
+      <div className="container mx-auto px-6 md:px-10">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-red-600">
-              MuskMustGo
-            </Link>
-          </div>
+          <Link href="/" className="text-xl font-bold text-white">
+            MuskMustGo
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
+          <div className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-white/80 hover:text-white transition-colors text-sm font-medium"
+              >
+                {item.name}
+              </Link>
+            ))}
           </div>
 
-          {/* Desktop Right Side */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link href="/cart">
-              <Button variant="outline" size="sm" className="relative bg-transparent">
-                <ShoppingCart className="h-4 w-4" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {itemCount}
+          {/* Right side - Cart and Login */}
+          <div className="flex items-center space-x-4">
+            {/* Cart */}
+            <Link href="/cart" className="relative">
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+                <ShoppingCart className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
                   </span>
                 )}
               </Button>
             </Link>
-            {/* Login button hidden for now */}
+
+            {/* Login Button - Hidden for now */}
             {/* <Link href="/login">
-              <Button size="sm">Login</Button>
-            </Link> */}
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-2">
-            <Link href="/cart">
-              <Button variant="outline" size="sm" className="relative bg-transparent">
-                <ShoppingCart className="h-4 w-4" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {itemCount}
-                  </span>
-                )}
+              <Button variant="outline" size="sm" className="border-white text-white hover:bg-white/10 bg-transparent">
+                Login
               </Button>
-            </Link>
+            </Link> */}
+
+            {/* Mobile menu trigger */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Menu className="h-4 w-4" />
+              <SheetTrigger asChild className="md:hidden">
+                <Button variant="ghost" size="sm" className="text-white">
+                  <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col space-y-4 mt-8">
+              <SheetContent side="right" className="bg-black border-white/10">
+                <div className="flex flex-col space-y-6 mt-8">
                   {navigation.map((item) => (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-lg font-medium transition-colors"
+                      className="text-white/80 hover:text-white transition-colors text-lg font-medium"
                       onClick={() => setIsOpen(false)}
                     >
                       {item.name}
                     </Link>
                   ))}
-                  {/* Mobile login button hidden for now */}
+
+                  {/* Mobile Login Button - Hidden for now */}
                   {/* <Link href="/login" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full mt-4">Login</Button>
+                    <Button variant="outline" className="border-white text-white hover:bg-white/10 w-full bg-transparent">
+                      Login
+                    </Button>
                   </Link> */}
-                </nav>
+                </div>
               </SheetContent>
             </Sheet>
           </div>

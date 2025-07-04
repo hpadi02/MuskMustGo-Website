@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CheckCircle } from "lucide-react"
 
-export default function Newsletter() {
+export function Newsletter() {
   const [email, setEmail] = useState("")
   const [submitted, setSubmitted] = useState(false)
 
@@ -52,3 +52,5 @@ export default function Newsletter() {
     </div>
   )
 }
+
+export default Newsletter
