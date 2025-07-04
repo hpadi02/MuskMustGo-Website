@@ -5,50 +5,48 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CheckCircle } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export function Newsletter() {
   const [email, setEmail] = useState("")
-  const [submitted, setSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) {
-      // Here you would normally send the email to your API
-      setSubmitted(true)
-      setEmail("")
-      setTimeout(() => setSubmitted(false), 3000)
-    }
+    if (!email) return
+
+    setIsLoading(true)
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    toast({
+      title: "Subscribed!",
+      description: "Thank you for subscribing to our newsletter.",
+    })
+
+    setEmail("")
+    setIsLoading(false)
   }
 
   return (
-    <div className="max-w-3xl mx-auto text-center">
-      <span className="text-red-500 font-medium tracking-wider uppercase mb-4 block">Newsletter</span>
-      <h2 className="text-5xl md:text-6xl font-bold mb-8 tracking-tight">Join Our Community</h2>
-      <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">
-        Subscribe to our newsletter for the latest products, Tesla owner stories, and community updates.
-      </p>
-
-      {submitted ? (
-        <div className="flex items-center justify-center space-x-3 text-xl">
-          <CheckCircle className="h-6 w-6" />
-          <span>Thanks for subscribing!</span>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">
-          <Input
-            type="email"
-            placeholder="Your email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="bg-white/10 border-white/20 text-white placeholder:text-white/60 h-16 text-lg rounded-full px-6"
-          />
-          <Button type="submit" className="bg-red-500 text-white hover:bg-red-600 h-16 text-lg px-10 rounded-full">
-            Subscribe
-          </Button>
-        </form>
-      )}
+    <div className="bg-gray-800 p-6 rounded-lg">
+      <h4 className="text-lg font-semibold mb-2 text-white">Stay Updated</h4>
+      <p className="text-gray-300 text-sm mb-4">Get the latest news and updates delivered to your inbox.</p>
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+        <Input
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="flex-1"
+        />
+        <Button type="submit" disabled={isLoading} className="bg-red-600 hover:bg-red-700">
+          {isLoading ? "Subscribing..." : "Subscribe"}
+        </Button>
+      </form>
     </div>
   )
 }
