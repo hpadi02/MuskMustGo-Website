@@ -1,112 +1,59 @@
-"use client"
-
-import { useState } from "react"
 import Link from "next/link"
+
+import { siteConfig } from "@/config/site"
+import { cn } from "@/lib/utils"
+import { Icons } from "@/components/icons"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, ShoppingCart } from "lucide-react"
-import { useCart } from "@/hooks/use-cart-simplified"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
-export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false)
-  const { itemCount } = useCart()
+interface Props {
+  className?: string
+}
 
-  const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Shop", href: "/shop/all" },
-    { name: "Stories", href: "/stories" },
-    { name: "Articles", href: "/articles" },
-    { name: "About", href: "/about" },
-    { name: "Contact", href: "/contact" },
-  ]
-
+export function Navbar({ className }: Props) {
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold">MuskMustGo</span>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-foreground/60 hover:text-foreground px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link href="/cart">
-              <Button variant="outline" size="sm" className="relative bg-transparent">
-                <ShoppingCart className="h-4 w-4" />
-                {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                    {itemCount}
-                  </span>
-                )}
-              </Button>
-            </Link>
-            {/* Login button hidden as requested */}
-            {/* <Link href="/login">
-              <Button size="sm">Login</Button>
-            </Link> */}
-          </div>
-
-          {/* Mobile menu button */}
+    <div className={cn("border-b", className)}>
+      <div className="container flex h-16 items-center">
+        <Link href="/" className="mr-4 flex items-center space-x-2">
+          <Icons.logo className="h-6 w-6" />
+          <span className="hidden font-bold sm:inline-block">{siteConfig.name}</span>
+        </Link>
+        <div className="flex-1 text-right">
           <div className="md:hidden">
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Menu className="h-4 w-4" />
+                <Button variant="ghost" size="sm">
+                  <Icons.menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col space-y-4 mt-4">
-                  {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="text-foreground/60 hover:text-foreground px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                  <div className="border-t pt-4 space-y-2">
-                    <Link href="/cart" onClick={() => setIsOpen(false)}>
-                      <Button variant="outline" className="w-full justify-start relative bg-transparent">
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Cart
-                        {itemCount > 0 && (
-                          <span className="ml-auto bg-primary text-primary-foreground rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                            {itemCount}
-                          </span>
-                        )}
-                      </Button>
-                    </Link>
-                    {/* Mobile login button hidden as requested */}
-                    {/* <Link href="/login" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full">Login</Button>
-                    </Link> */}
-                  </div>
+              <SheetContent side="left" className="w-full sm:w-3/4 md:w-2/5">
+                <SheetHeader>
+                  <SheetTitle>{siteConfig.name}</SheetTitle>
+                  <SheetDescription>{siteConfig.description}</SheetDescription>
+                </SheetHeader>
+                <div className="grid gap-4 py-4">
+                  <Button variant="ghost" asChild className="w-full">
+                    <Link href="/">Home</Link>
+                  </Button>
+                  {/* Login button - hidden for now */}
+                  {/* <Button variant="outline" size="sm" asChild className="w-full bg-transparent">
+                    <Link href="/login">Log In</Link>
+                  </Button> */}
                 </div>
               </SheetContent>
             </Sheet>
           </div>
+          <div className="hidden md:flex items-center space-x-4">
+            <Button variant="ghost" asChild>
+              <Link href="/">Home</Link>
+            </Button>
+            {/* Login button - hidden for now */}
+            {/* <Button variant="outline" size="sm" asChild>
+              <Link href="/login">Log In</Link>
+            </Button> */}
+          </div>
         </div>
       </div>
-    </nav>
+    </div>
   )
 }
