@@ -85,12 +85,6 @@ export default function Navbar() {
               </Button>
             </Link>
 
-            <Link href="/login" className="hidden md:block">
-              <Button variant="ghost" className="text-white hover:bg-white/10 text-sm font-medium tracking-wide">
-                LOG IN
-              </Button>
-            </Link>
-
             <Link href="/shop/all" className="hidden md:block">
               <Button className="bg-white hover:bg-white/90 text-black text-sm font-medium tracking-wide">
                 SHOP NOW
@@ -158,11 +152,6 @@ export default function Navbar() {
             </Link>
 
             <div className="pt-4 flex flex-col space-y-3">
-              <Link href="/login">
-                <Button variant="outline" className="w-full border-white text-white hover:bg-white/10">
-                  LOG IN
-                </Button>
-              </Link>
               <Link href="/shop/all">
                 <Button className="w-full bg-white hover:bg-white/90 text-black">SHOP NOW</Button>
               </Link>
