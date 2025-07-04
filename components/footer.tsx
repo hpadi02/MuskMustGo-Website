@@ -1,69 +1,80 @@
 import Link from "next/link"
-import {} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
-export default function Footer() {
+export function Footer() {
   return (
-    <footer className="bg-dark-300 text-white">
-      <div className="container mx-auto px-6 md:px-10 py-20">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-          {/* Logo and About */}
-          <div className="space-y-6">
-            <Link href="/" className="inline-block">
-              <span className="font-display text-2xl font-bold">
-                <span className="text-red-500">Musk</span>
-                <span className="text-white">MustGo</span>
-              </span>
-            </Link>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Premium merchandise for Tesla owners who want to express their independence and separate the product from
-              its CEO.
+    <footer className="bg-gray-900 text-white">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Company Info */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-sm">M</span>
+              </div>
+              <span className="font-bold text-xl">MuskMustGo</span>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Express your opinion with our collection of anti-Musk merchandise. Quality products for those who believe
+              in accountability.
             </p>
           </div>
 
-          {/* Shop */}
+          {/* Shop Links */}
           <div>
-            <h3 className="text-sm font-medium tracking-wide text-white/60 mb-6">SHOP</h3>
-            <ul className="space-y-3">
+            <h3 className="font-semibold text-lg mb-4">Shop</h3>
+            <ul className="space-y-2">
               <li>
-                <Link href="/shop/all" className="text-white/80 hover:text-white text-sm">
+                <Link href="/shop/all" className="text-gray-400 hover:text-white text-sm">
                   All Products
+                </Link>
+              </li>
+              <li>
+                <Link href="/product/customize-emoji/sticker" className="text-gray-400 hover:text-white text-sm">
+                  Custom Stickers
+                </Link>
+              </li>
+              <li>
+                <Link href="/product/customize-emoji/magnet" className="text-gray-400 hover:text-white text-sm">
+                  Custom Magnets
+                </Link>
+              </li>
+              <li>
+                <Link href="/cart" className="text-gray-400 hover:text-white text-sm">
+                  Shopping Cart
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Company */}
+          {/* Company Links */}
           <div>
-            <h3 className="text-sm font-medium tracking-wide text-white/60 mb-6">COMPANY</h3>
-            <ul className="space-y-3">
+            <h3 className="font-semibold text-lg mb-4">Company</h3>
+            <ul className="space-y-2">
               <li>
-                <Link href="/about" className="text-white/80 hover:text-white text-sm">
+                <Link href="/about" className="text-gray-400 hover:text-white text-sm">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/stories" className="text-white/80 hover:text-white text-sm">
-                  Tesla Stories
-                </Link>
-              </li>
-              <li>
-                <Link href="/forum" className="text-white/80 hover:text-white text-sm">
-                  Forum
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-white/80 hover:text-white text-sm">
+                <Link href="/contact" className="text-gray-400 hover:text-white text-sm">
                   Contact
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-white/80 hover:text-white text-sm">
-                  FAQ
+                <Link href="/shipping" className="text-gray-400 hover:text-white text-sm">
+                  Shipping Info
                 </Link>
               </li>
               <li>
-                <Link href="/shipping" className="text-white/80 hover:text-white text-sm">
-                  Shipping & Returns
+                <Link href="/privacy" className="text-gray-400 hover:text-white text-sm">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-gray-400 hover:text-white text-sm">
+                  Terms of Service
                 </Link>
               </li>
             </ul>
@@ -71,34 +82,22 @@ export default function Footer() {
 
           {/* Newsletter */}
           <div>
-            <h3 className="text-sm font-medium tracking-wide text-white/60 mb-6">NEWSLETTER</h3>
-            <p className="text-white/70 text-sm mb-4">Subscribe to get special offers, free giveaways, and updates.</p>
-            <form className="space-y-3">
-              <input
+            <h3 className="font-semibold text-lg mb-4">Stay Updated</h3>
+            <p className="text-gray-400 text-sm mb-4">Get the latest news and exclusive offers.</p>
+            <div className="flex space-x-2">
+              <Input
                 type="email"
-                placeholder="Your email address"
-                className="w-full bg-dark-200 border border-dark-100 text-white px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-white/30"
+                placeholder="Enter your email"
+                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400"
               />
-              <button
-                type="submit"
-                className="w-full bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 transition-colors"
-              >
-                SUBSCRIBE
-              </button>
-            </form>
+              <Button className="bg-red-600 hover:bg-red-700">Subscribe</Button>
+            </div>
           </div>
         </div>
 
-        <div className="border-t border-dark-100 mt-16 pt-8 text-center text-white/50 text-sm">
-          <p>© {new Date().getFullYear()} MuskMustGo. All rights reserved.</p>
-          <div className="mt-4 space-x-6">
-            <Link href="/privacy" className="hover:text-white transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-white transition-colors">
-              Terms of Service
-            </Link>
-          </div>
+        {/* Bottom Bar */}
+        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+          <p className="text-gray-400 text-sm">© 2024 MuskMustGo. All rights reserved.</p>
         </div>
       </div>
     </footer>

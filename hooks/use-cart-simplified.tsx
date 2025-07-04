@@ -67,9 +67,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isInitialized || clearingRef.current) return
 
-    if (items.length > 0) {
-      localStorage.setItem("cart", JSON.stringify(items))
-      console.log("Saved cart to localStorage:", items)
+    const cartString = JSON.stringify(items)
+    const savedCart = localStorage.getItem("cart")
+
+    // Only save if the cart has actually changed
+    if (savedCart !== cartString) {
+      if (items.length > 0) {
+        localStorage.setItem("cart", cartString)
+        console.log("Saved cart to localStorage:", items)
+      } else {
+        localStorage.removeItem("cart")
+      }
     }
   }, [items, isInitialized])
 
@@ -80,7 +88,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         try {
           const newCart = e.newValue ? JSON.parse(e.newValue) : []
           console.log("Storage event detected, updating cart:", newCart)
-          setItems(newCart)
+          // Only update if the cart is actually different
+          setItems((prevItems) => {
+            if (JSON.stringify(prevItems) !== JSON.stringify(newCart)) {
+              return newCart
+            }
+            return prevItems
+          })
         } catch (error) {
           console.error("Failed to parse cart from storage event:", error)
           setItems([])
@@ -88,10 +102,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Listen for storage events from other windows/tabs
-    window.addEventListener("storage", handleStorageChange)
-
-    // Listen for custom cart-clear events
     const handleCartClear = () => {
       if (!clearingRef.current) {
         console.log("Cart clear event detected")
@@ -99,6 +109,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    window.addEventListener("storage", handleStorageChange)
     window.addEventListener("cart-cleared", handleCartClear)
 
     return () => {
