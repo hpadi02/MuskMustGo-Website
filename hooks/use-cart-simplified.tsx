@@ -1,15 +1,16 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
+import type React from "react"
+
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { toast } from "sonner"
 
-export interface CartItem {
+interface CartItem {
   id: string
   name: string
   price: number
   quantity: number
   image?: string
-  variant?: string
 }
 
 interface CartContextType {
@@ -24,7 +25,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-export function CartProvider({ children }: { children: ReactNode }) {
+export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [mounted, setMounted] = useState(false)
 
@@ -35,13 +36,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         setItems(JSON.parse(savedCart))
       } catch (error) {
-        console.error("Error loading cart from localStorage:", error)
+        console.error("Error loading cart:", error)
       }
     }
     setMounted(true)
   }, [])
 
-  // Save cart to localStorage whenever items change (but only after mount)
+  // Save cart to localStorage whenever items change
   useEffect(() => {
     if (mounted) {
       localStorage.setItem("cart", JSON.stringify(items))

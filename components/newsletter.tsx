@@ -28,9 +28,9 @@ export function Newsletter() {
   return (
     <div className="bg-gray-50 py-16">
       <div className="container mx-auto px-6 text-center">
-        <h2 className="text-3xl font-bold mb-4">Stay Updated</h2>
+        <h2 className="text-3xl font-bold text-gray-900 mb-4">Stay Updated</h2>
         <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-          Get the latest news about our movement and new products delivered to your inbox.
+          Get the latest news and updates about our mission to hold Elon Musk accountable.
         </p>
         <form onSubmit={handleSubmit} className="max-w-md mx-auto flex gap-4">
           <Input
