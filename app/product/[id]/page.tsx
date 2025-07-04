@@ -5,7 +5,25 @@ import FallbackImage from "@/components/fallback-image"
 import { getStripeProducts } from "@/lib/stripe-products"
 import { groupProducts } from "@/lib/product-data"
 import AddToCartClient from "@/components/add-to-cart-client"
-import { redirect } from "next/navigation"
+
+// Client component for handling redirect
+function EmojiRedirect({ variant }: { variant: string }) {
+  if (typeof window !== "undefined") {
+    window.location.href = `/product/customize-emoji/${variant}`
+  }
+
+  return (
+    <div className="bg-dark-400 text-white min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto mb-4"></div>
+        <p className="mb-4">Redirecting to emoji customization...</p>
+        <Link href={`/product/customize-emoji/${variant}`} className="text-red-400 hover:text-red-300 underline">
+          Click here if not redirected automatically
+        </Link>
+      </div>
+    </div>
+  )
+}
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
   try {
@@ -48,14 +66,14 @@ export default async function ProductPage({ params }: { params: { id: string } }
       )
     }
 
-    // ✅ For Tesla vs Elon emoji products, redirect directly to customization
+    // ✅ For Tesla vs Elon emoji products, show redirect component
     const isEmojiProduct = product.baseId.includes("tesla") && product.baseId.includes("emoji")
 
     if (isEmojiProduct) {
       console.log(`🎭 Redirecting emoji product ${product.baseId} to customize page`)
       // Default to magnet if available, otherwise sticker
       const defaultVariant = product.variants?.magnet ? "magnet" : "sticker"
-      redirect(`/product/customize-emoji/${defaultVariant}`)
+      return <EmojiRedirect variant={defaultVariant} />
     }
 
     // Default to magnet if available, otherwise sticker
