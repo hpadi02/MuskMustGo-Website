@@ -1,10 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import { CheckCircle, Package, CreditCard, MapPin, Clock } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, CreditCard, AlertCircle } from "lucide-react"
+import Link from "next/link"
+import { CartClearer } from "@/components/cart-clearer"
 
 interface OrderResponse {
   customer_id: string
@@ -13,316 +17,389 @@ interface OrderResponse {
   total_cost: number
 }
 
-interface ProcessingState {
-  loading: boolean
-  success: boolean
-  error: string | null
-  orderData: OrderResponse | null
+interface Customer {
+  firstname: string
+  lastname: string
+  email: string
+  addr1: string
+  addr2?: string
+  city: string
+  state_prov: string
+  postal_code: string
+  country: string
 }
 
-export default function SuccessPage() {
+interface ProductAttribute {
+  name: string
+  value: string
+}
+
+interface OrderProduct {
+  product_id: string
+  quantity: number
+  attributes?: ProductAttribute[]
+}
+
+function SuccessContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get("session_id")
-  const [state, setState] = useState<ProcessingState>({
-    loading: true,
-    success: false,
-    error: null,
-    orderData: null,
-  })
+
+  const [orderData, setOrderData] = useState<OrderResponse | null>(null)
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [products, setProducts] = useState<OrderProduct[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Helper function to extract filename from emoji path
+  const extractEmojiFilename = (path: string): string => {
+    try {
+      // Extract filename from path like "/emojis/positives/02_smile_sly.png"
+      const filename = path.split("/").pop() || ""
+      // Remove .png extension
+      return filename.replace(".png", "")
+    } catch (error) {
+      console.error("❌ Error extracting emoji filename from path:", path, error)
+      return "unknown_emoji"
+    }
+  }
+
+  // Helper function to extract emoji metadata for a specific item
+  const extractEmojiMetadata = (metadata: any, itemIndex: number): ProductAttribute[] => {
+    const attributes: ProductAttribute[] = []
+
+    try {
+      const teslaEmojiKey = `item_${itemIndex}_tesla_emoji`
+      const elonEmojiKey = `item_${itemIndex}_elon_emoji`
+
+      console.log(`🎭 Looking for emoji metadata keys: ${teslaEmojiKey}, ${elonEmojiKey}`)
+      console.log("🎭 Available metadata keys:", Object.keys(metadata))
+
+      if (metadata[teslaEmojiKey] && metadata[elonEmojiKey]) {
+        console.log(`✅ Found emoji metadata for item ${itemIndex}`)
+
+        // Parse Tesla emoji
+        const teslaEmojiData = JSON.parse(metadata[teslaEmojiKey])
+        const teslaFilename = extractEmojiFilename(teslaEmojiData.path)
+        attributes.push({
+          name: "emoji_good",
+          value: teslaFilename,
+        })
+
+        // Parse Elon emoji
+        const elonEmojiData = JSON.parse(metadata[elonEmojiKey])
+        const elonFilename = extractEmojiFilename(elonEmojiData.path)
+        attributes.push({
+          name: "emoji_bad",
+          value: elonFilename,
+        })
+
+        console.log(`🎭 Extracted emoji attributes for item ${itemIndex}:`, attributes)
+      } else {
+        console.log(`📦 No emoji metadata found for item ${itemIndex}`)
+      }
+    } catch (error) {
+      console.error(`❌ Error extracting emoji metadata for item ${itemIndex}:`, error)
+    }
+
+    return attributes
+  }
 
   useEffect(() => {
-    if (!sessionId) {
-      setState({
-        loading: false,
-        success: false,
-        error: "No session ID provided",
-        orderData: null,
-      })
-      return
+    const processOrder = async () => {
+      if (!sessionId) {
+        setError("No session ID found")
+        setLoading(false)
+        return
+      }
+
+      try {
+        console.log("🔄 Processing order for session:", sessionId)
+
+        // Fetch session details from Stripe
+        const response = await fetch(`/api/stripe/session/${sessionId}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch session: ${response.status}`)
+        }
+
+        const session = await response.json()
+        console.log("✅ Retrieved Stripe session:", session)
+        console.log("🎭 Session metadata:", session.metadata)
+
+        // Extract customer information
+        const customerInfo: Customer = {
+          firstname: session.customer_details?.name?.split(" ")[0] || "",
+          lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+          email: session.customer_details?.email || "",
+          addr1: session.customer_details?.address?.line1 || "",
+          addr2: session.customer_details?.address?.line2 || "",
+          city: session.customer_details?.address?.city || "",
+          state_prov: session.customer_details?.address?.state || "",
+          postal_code: session.customer_details?.address?.postal_code || "",
+          country: session.customer_details?.address?.country || "US",
+        }
+
+        console.log("👤 Extracted customer info:", customerInfo)
+        setCustomer(customerInfo)
+
+        // Extract products with emoji attributes
+        const orderProducts: OrderProduct[] =
+          session.line_items?.data.map((item: any, index: number) => {
+            console.log(`📦 Processing line item ${index}:`, item)
+
+            const baseProduct: OrderProduct = {
+              product_id: item.price.product,
+              quantity: item.quantity || 1,
+            }
+
+            // Check for emoji customizations
+            const emojiAttributes = extractEmojiMetadata(session.metadata || {}, index)
+            if (emojiAttributes.length > 0) {
+              baseProduct.attributes = emojiAttributes
+              console.log(`🎭 Added emoji attributes to product ${index}:`, baseProduct)
+            }
+
+            return baseProduct
+          }) || []
+
+        console.log("📦 Final products array:", orderProducts)
+        setProducts(orderProducts)
+
+        // Prepare order data for backend
+        const orderData = {
+          customer: customerInfo,
+          products: orderProducts,
+          payment_id: session.payment_intent,
+          shipping: 0,
+          tax: 0,
+        }
+
+        console.log("📤 Sending order to backend:", orderData)
+
+        // Send to backend
+        const backendResponse = await fetch("/api/orders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(orderData),
+        })
+
+        if (!backendResponse.ok) {
+          const errorText = await backendResponse.text()
+          throw new Error(`Backend error: ${backendResponse.status} - ${errorText}`)
+        }
+
+        const backendResult: OrderResponse = await backendResponse.json()
+        console.log("✅ Backend response:", backendResult)
+
+        setOrderData(backendResult)
+      } catch (error) {
+        console.error("❌ Error processing order:", error)
+        setError(error instanceof Error ? error.message : "Unknown error occurred")
+      } finally {
+        setLoading(false)
+      }
     }
 
     processOrder()
   }, [sessionId])
 
-  const processOrder = async () => {
-    try {
-      console.log("🎉 Processing successful order, session:", sessionId)
-
-      // Fetch session data from our API
-      const response = await fetch(`/api/stripe/session/${sessionId}`)
-      if (!response.ok) {
-        throw new Error(`Failed to fetch session: ${response.status}`)
-      }
-
-      const session = await response.json()
-      console.log("📋 Session data received:", {
-        id: session.id,
-        payment_status: session.payment_status,
-        metadata_keys: Object.keys(session.metadata || {}),
-        line_items_count: session.line_items?.data?.length || 0,
-      })
-
-      // Extract customer information
-      const customer = {
-        firstname: session.customer_details?.name?.split(" ")[0] || "",
-        lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-        email: session.customer_details?.email || "",
-        addr1: session.customer_details?.address?.line1 || "",
-        addr2: session.customer_details?.address?.line2 || "",
-        city: session.customer_details?.address?.city || "",
-        state_prov: session.customer_details?.address?.state || "",
-        postal_code: session.customer_details?.address?.postal_code || "",
-        country: session.customer_details?.address?.country || "US",
-      }
-
-      console.log("👤 Customer data extracted:", customer.email)
-
-      // ✅ Enhanced product processing with emoji attributes
-      const products =
-        session.line_items?.data?.map((item: any, index: number) => {
-          const baseProduct = {
-            product_id: item.price?.product || "unknown",
-            quantity: item.quantity || 1,
-          }
-
-          console.log(`📦 Processing product ${index}:`, baseProduct.product_id)
-
-          // Check for emoji metadata for this specific item
-          const teslaEmojiKey = `item_${index}_tesla_emoji`
-          const elonEmojiKey = `item_${index}_elon_emoji`
-          const variantKey = `item_${index}_variant`
-
-          if (session.metadata?.[teslaEmojiKey] && session.metadata?.[elonEmojiKey]) {
-            try {
-              console.log(`🎭 Found emoji metadata for item ${index}`)
-
-              const teslaEmojiData = JSON.parse(session.metadata[teslaEmojiKey])
-              const elonEmojiData = JSON.parse(session.metadata[elonEmojiKey])
-              const variant = session.metadata[variantKey] || "magnet"
-
-              console.log(`🎭 Emoji data for item ${index}:`, {
-                tesla: teslaEmojiData.name,
-                elon: elonEmojiData.name,
-                variant,
-              })
-
-              // Extract filename from path (remove .png extension)
-              const getTeslaEmojiName = (path: string) => {
-                const filename = path.split("/").pop() || ""
-                return filename.replace(".png", "")
-              }
-
-              const getElonEmojiName = (path: string) => {
-                const filename = path.split("/").pop() || ""
-                return filename.replace(".png", "")
-              }
-
-              const teslaEmojiName = getTeslaEmojiName(teslaEmojiData.path || teslaEmojiData.name)
-              const elonEmojiName = getElonEmojiName(elonEmojiData.path || elonEmojiData.name)
-
-              console.log(`✅ Formatted emoji names for item ${index}:`, {
-                emoji_good: teslaEmojiName,
-                emoji_bad: elonEmojiName,
-              })
-
-              return {
-                ...baseProduct,
-                attributes: [
-                  { name: "emoji_good", value: teslaEmojiName },
-                  { name: "emoji_bad", value: elonEmojiName },
-                ],
-              }
-            } catch (error) {
-              console.error(`❌ Error parsing emoji metadata for item ${index}:`, error)
-              return baseProduct
-            }
-          }
-
-          console.log(`📦 No emoji data for item ${index}, using base product`)
-          return baseProduct
-        }) || []
-
-      console.log(
-        "📋 Final products array:",
-        products.map((p) => ({
-          id: p.product_id,
-          hasAttributes: !!p.attributes,
-        })),
-      )
-
-      // Prepare order data for backend
-      const orderData = {
-        customer,
-        products,
-        payment_id: session.payment_intent?.id || session.id,
-        shipping: 0,
-        tax: 0,
-      }
-
-      console.log("📤 Sending order to backend:", {
-        customer_email: orderData.customer.email,
-        products_count: orderData.products.length,
-        has_emoji_products: orderData.products.some((p) => p.attributes),
-      })
-
-      // Send to backend
-      const backendResponse = await fetch("/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderData),
-      })
-
-      if (!backendResponse.ok) {
-        const errorText = await backendResponse.text()
-        throw new Error(`Backend error: ${backendResponse.status} - ${errorText}`)
-      }
-
-      const result: OrderResponse = await backendResponse.json()
-      console.log("✅ Backend response received:", {
-        order_number: result.order_number,
-        customer_id: result.customer_id,
-        total_cost: result.total_cost,
-      })
-
-      setState({
-        loading: false,
-        success: true,
-        error: null,
-        orderData: result,
-      })
-    } catch (error) {
-      console.error("❌ Error processing order:", error)
-      setState({
-        loading: false,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
-        orderData: null,
-      })
-    }
-  }
-
-  if (state.loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-dark-400 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold mb-2">Processing Your Order</h2>
-          <p className="text-white/70">Please wait while we confirm your purchase...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Processing your order...</p>
         </div>
       </div>
     )
   }
 
-  if (state.error) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-dark-400 text-white flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-4">Order Processing Error</h2>
-          <p className="text-white/70 mb-6">{state.error}</p>
-          <div className="space-y-3">
-            <Button onClick={processOrder} className="w-full bg-red-600 hover:bg-red-700">
-              Try Again
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Order Processing Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button asChild>
+              <Link href="/">Return Home</Link>
             </Button>
-            <Link href="/shop/all">
-              <Button variant="outline" className="w-full bg-transparent">
-                Continue Shopping
-              </Button>
-            </Link>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-dark-400 text-white">
-      <div className="container mx-auto px-6 py-20">
-        <div className="max-w-2xl mx-auto text-center">
-          <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-6" />
-          <h1 className="text-4xl font-bold mb-4">Order Confirmed!</h1>
-          <p className="text-xl text-white/80 mb-8">
-            Thank you for your purchase. Your order has been successfully processed.
-          </p>
-
-          {/* ✅ Order Number Display */}
-          {state.orderData?.order_number && (
-            <div className="bg-dark-300 rounded-lg p-6 mb-8">
-              <div className="flex items-center justify-center mb-4">
-                <Package className="h-6 w-6 text-red-500 mr-2" />
-                <h2 className="text-xl font-semibold">Order Details</h2>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">Order Number:</span>
-                  <span className="font-mono text-lg font-bold text-red-400">{state.orderData.order_number}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">Total Amount:</span>
-                  <span className="text-lg font-semibold">${state.orderData.total_cost.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white/70">Customer ID:</span>
-                  <span className="font-mono text-sm text-white/60">{state.orderData.customer_id}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-dark-300 rounded-lg p-6 mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center justify-center">
-              <CreditCard className="h-5 w-5 mr-2" />
-              What's Next?
-            </h3>
-            <div className="space-y-3 text-left">
-              <div className="flex items-start">
-                <div className="bg-red-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium">Confirmation Email</p>
-                  <p className="text-sm text-white/70">
-                    You'll receive an order confirmation email with your order number shortly.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-red-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium">Processing & Shipping</p>
-                  <p className="text-sm text-white/70">
-                    Your order will be processed and shipped within 1-2 business days.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="bg-red-500 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium">Tracking Information</p>
-                  <p className="text-sm text-white/70">You'll receive tracking details once your order ships.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/shop/all">
-              <Button className="bg-red-600 hover:bg-red-700 px-8 py-3">Continue Shopping</Button>
-            </Link>
-            <Link href="/account/orders">
-              <Button variant="outline" className="px-8 py-3 bg-transparent">
-                View Orders
-              </Button>
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12">
+      <CartClearer />
+      <div className="container mx-auto px-4 max-w-4xl">
+        {/* Success Header */}
+        <div className="text-center mb-8">
+          <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Confirmed!</h1>
+          <p className="text-gray-600">Thank you for your purchase. Your order has been successfully processed.</p>
         </div>
+
+        {/* Order Details */}
+        {orderData && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Order Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Order Number</p>
+                  <p className="font-semibold text-lg">{orderData.order_number}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Customer ID</p>
+                  <p className="font-mono text-sm">{orderData.customer_id}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Product Cost</p>
+                  <p className="font-semibold">${orderData.product_cost.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Cost</p>
+                  <p className="font-semibold text-lg">${orderData.total_cost.toFixed(2)}</p>
+                </div>
+                <div>
+                  <Badge variant="secondary" className="w-fit">
+                    <Clock className="h-3 w-3 mr-1" />
+                    Processing
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Customer Information */}
+        {customer && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Shipping Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="font-semibold">
+                  {customer.firstname} {customer.lastname}
+                </p>
+                <p className="text-gray-600">{customer.email}</p>
+                <div className="text-gray-600">
+                  <p>{customer.addr1}</p>
+                  {customer.addr2 && <p>{customer.addr2}</p>}
+                  <p>
+                    {customer.city}, {customer.state_prov} {customer.postal_code}
+                  </p>
+                  <p>{customer.country}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Products */}
+        {products.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Items Ordered
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {products.map((product, index) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-semibold">Product ID: {product.product_id}</p>
+                        <p className="text-gray-600">Quantity: {product.quantity}</p>
+                      </div>
+                    </div>
+
+                    {/* Show emoji customizations if present */}
+                    {product.attributes && product.attributes.length > 0 && (
+                      <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                        <p className="text-sm font-medium text-blue-800 mb-2">Custom Emoji Selection:</p>
+                        <div className="space-y-1">
+                          {product.attributes.map((attr, attrIndex) => (
+                            <div key={attrIndex} className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {attr.name === "emoji_good" ? "🚗 Tesla" : "👤 Elon"}
+                              </Badge>
+                              <span className="text-sm font-mono">{attr.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Next Steps */}
+        <Card>
+          <CardHeader>
+            <CardTitle>What's Next?</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-gray-600">• You'll receive a confirmation email shortly with your order details</p>
+              <p className="text-gray-600">• Your order will be processed and shipped within 2-3 business days</p>
+              <p className="text-gray-600">
+                • You can track your order status using the order number: <strong>{orderData?.order_number}</strong>
+              </p>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button asChild>
+                <Link href="/shop/all">Continue Shopping</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/">Return Home</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
+  )
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <SuccessContent />
+    </Suspense>
   )
 }
