@@ -1,12 +1,24 @@
-import Link from "next/link"
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
 import FallbackImage from "@/components/fallback-image"
 import { getStripeProducts } from "@/lib/stripe-products"
 import { groupProducts } from "@/lib/product-data"
 import AddToCartClient from "@/components/add-to-cart-client"
 
-export default async function ProductPage({ params }: { params: { id: string } }) {
+interface ProductPageProps {
+  params: {
+    id: string
+  }
+}
+
+export default async function ProductPage({ params }: ProductPageProps) {
+  // Redirect Tesla vs Elon Emoji product directly to customization
+  if (params.id === "tesla_vs_elon_emoji") {
+    redirect("/product/customize-emoji/magnet")
+  }
+
   try {
     // Fetch products from Stripe
     const products = await getStripeProducts()
