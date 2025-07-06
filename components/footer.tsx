@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Youtube } from "lucide-react"
 
 export default function Footer() {
   return (
@@ -18,20 +17,6 @@ export default function Footer() {
               Premium merchandise for Tesla owners who want to express their independence and separate the product from
               its CEO.
             </p>
-            <div className="flex space-x-5">
-              <Link href="#" className="text-white/50 hover:text-white transition-colors">
-                <Facebook className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-white/50 hover:text-white transition-colors">
-                <Twitter className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-white/50 hover:text-white transition-colors">
-                <Instagram className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-white/50 hover:text-white transition-colors">
-                <Youtube className="h-5 w-5" />
-              </Link>
-            </div>
           </div>
 
           {/* Shop */}
