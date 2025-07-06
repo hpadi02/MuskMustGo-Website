@@ -1,14 +1,11 @@
-import { redirect, notFound } from "next/navigation"
-import { Suspense } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Star, ArrowLeft, Truck, Shield, RotateCcw } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { ProductGallery } from "@/components/product-gallery"
-import { AddToCartButton } from "@/components/add-to-cart-button"
-import { products } from "@/lib/product-data"
+import FallbackImage from "@/components/fallback-image"
+import { getStripeProducts } from "@/lib/stripe-products"
+import { groupProducts } from "@/lib/product-data"
+import AddToCartClient from "@/components/add-to-cart-client"
 
 interface ProductPageProps {
   params: {
@@ -16,145 +13,233 @@ interface ProductPageProps {
   }
 }
 
-export default function ProductPage({ params }: ProductPageProps) {
-  const { id } = params
-
+export default async function ProductPage({ params }: ProductPageProps) {
   // Redirect Tesla vs Elon Emoji product directly to customization
-  if (id === "tesla_vs_elon_emoji") {
+  if (params.id === "tesla_vs_elon_emoji") {
     redirect("/product/customize-emoji/magnet")
   }
 
-  const product = products.find((p) => p.id === id)
+  try {
+    // Fetch products from Stripe
+    const products = await getStripeProducts()
 
-  if (!product) {
-    notFound()
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-400 via-dark-300 to-dark-200">
-      <div className="container mx-auto px-4 py-8 pt-24">
-        {/* Back Button */}
-        <Link
-          href="/shop/all"
-          className="inline-flex items-center text-white/70 hover:text-white mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Shop
-        </Link>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Images */}
-          <div className="space-y-4">
-            <Suspense fallback={<div className="aspect-square bg-dark-100 rounded-lg animate-pulse" />}>
-              <ProductGallery images={product.images} alt={product.name} />
-            </Suspense>
+    // Ensure we have valid products array
+    if (!products || !Array.isArray(products)) {
+      console.error("Failed to fetch products from Stripe")
+      return (
+        <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+          <div className="container mx-auto px-6">
+            <h1 className="text-4xl font-bold mb-6">Unable to Load Products</h1>
+            <p className="text-white/70 mb-6">There was an issue loading product data. Please try again later.</p>
+            <Link href="/shop/all">
+              <Button>Back to Shop</Button>
+            </Link>
           </div>
+        </div>
+      )
+    }
 
-          {/* Product Info */}
-          <div className="space-y-6">
+    // Group products by base name
+    const groupedProducts = groupProducts(products)
+
+    // Find product by ID
+    const product = groupedProducts.find((p) => p.baseId === params.id)
+
+    if (!product) {
+      return (
+        <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+          <div className="container mx-auto px-6">
+            <h1 className="text-4xl font-bold mb-6">Product Not Found</h1>
+            <p className="text-white/70 mb-6">The product "{params.id}" could not be found.</p>
+            <Link href="/shop/all">
+              <Button>Back to Shop</Button>
+            </Link>
+          </div>
+        </div>
+      )
+    }
+
+    // Default to magnet if available, otherwise sticker
+    const defaultVariant = product.variants?.magnet ? "magnet" : "sticker"
+    const selectedProduct = product.variants?.[defaultVariant]
+
+    if (!selectedProduct) {
+      return (
+        <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+          <div className="container mx-auto px-6">
+            <h1 className="text-4xl font-bold mb-6">Product Variant Not Available</h1>
+            <p className="text-white/70 mb-6">No variants are available for this product.</p>
+            <Link href="/shop/all">
+              <Button>Back to Shop</Button>
+            </Link>
+          </div>
+        </div>
+      )
+    }
+
+    // Calculate aspect ratio based on product dimensions
+    const aspectRatio = (selectedProduct.width || 11.5) / (selectedProduct.height || 3)
+    const getAspectRatioClass = () => {
+      if (aspectRatio > 3) return "aspect-[4/1]" // Very wide (like Deport Elon)
+      if (aspectRatio > 1.5) return "aspect-[3/2]" // Wide (like Tesla Musk Emojis)
+      if (aspectRatio > 1.2) return "aspect-[5/3]" // Slightly wide
+      return "aspect-square" // Square or tall (like No Elon Face)
+    }
+
+    // Check if this is the emoji customizable product
+    const isCustomizable = product.customizable || false
+
+    // Ensure features array exists
+    const features = product.features || [
+      "Weather and UV resistant",
+      "Easy application",
+      "Removable without residue",
+      "Made in USA",
+    ]
+
+    return (
+      <div className="bg-dark-400 text-white min-h-screen">
+        <div className="container mx-auto px-6 md:px-10 py-32">
+          <Link href="/shop/all" className="inline-flex items-center text-white/70 hover:text-white mb-12">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to products
+          </Link>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+            {/* Product Image */}
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
-                  {product.category}
-                </Badge>
-                {product.featured && (
-                  <Badge variant="outline" className="border-yellow-500/30 text-yellow-400">
-                    Featured
-                  </Badge>
-                )}
+              <div
+                className={`relative ${getAspectRatioClass()} bg-dark-300 w-full max-w-lg overflow-hidden rounded-lg`}
+              >
+                <FallbackImage
+                  src={product.image || "/images/no-elon-musk.png"}
+                  alt={product.baseName || "Product"}
+                  fill
+                  className="object-contain p-6"
+                />
               </div>
-              <h1 className="text-3xl font-bold text-white mb-2">{product.name}</h1>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 ${
-                        i < Math.floor(product.rating) ? "text-yellow-400 fill-current" : "text-gray-600"
-                      }`}
-                    />
-                  ))}
+            </div>
+
+            {/* Product Details */}
+            <div className="flex flex-col">
+              <div>
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold tracking-tight mb-6">
+                  {product.baseName || "Product"}
+                </h1>
+
+                <div className="mb-8">
+                  <p className="text-3xl font-medium mb-2">${(selectedProduct.price || 0).toFixed(2)}</p>
+                  <p className="text-lg text-white/70 mb-6">
+                    Dimensions: {selectedProduct.height || 3}" x {selectedProduct.width || 11.5}"
+                  </p>
                 </div>
-                <span className="text-white/70 text-sm">({product.reviews} reviews)</span>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-white">${product.price}</span>
-                {product.originalPrice && (
-                  <span className="text-lg text-white/50 line-through">${product.originalPrice}</span>
-                )}
-              </div>
-              {product.originalPrice && (
-                <div className="text-sm text-green-400">
-                  Save ${(product.originalPrice - product.price).toFixed(2)} (
-                  {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% off)
+                <div className="prose prose-lg mb-10">
+                  <p className="text-white/70 text-lg leading-relaxed">
+                    {product.description || "A great product for Tesla owners who want to express their independence."}
+                  </p>
                 </div>
-              )}
-            </div>
 
-            <Separator className="bg-white/10" />
+                {isCustomizable && (
+                  <div className="mb-8">
+                    <Link href={`/product/customize-emoji/${defaultVariant}`}>
+                      <Button className="w-full bg-red-600 hover:bg-red-700 text-white py-3">Customize Emojis</Button>
+                    </Link>
+                    <p className="text-white/60 text-sm mt-2">
+                      Click above to customize which emojis appear on your {defaultVariant}
+                    </p>
+                  </div>
+                )}
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Description</h3>
-              <p className="text-white/80 leading-relaxed">{product.description}</p>
-            </div>
-
-            {product.features && product.features.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">Features</h3>
-                <ul className="space-y-2">
-                  {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-white/80">
-                      <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-2 flex-shrink-0" />
-                      {feature}
+                <div className="mb-10">
+                  <h3 className="text-xl font-medium mb-6">Features</h3>
+                  <ul className="space-y-4">
+                    {features.map((feature, index) => (
+                      <li key={index} className="flex items-start">
+                        <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                          <svg
+                            className="w-3 h-3 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="3"
+                              d="M5 13l4 4L19 7"
+                            ></path>
+                          </svg>
+                        </span>
+                        <span className="text-white/80">{feature}</span>
+                      </li>
+                    ))}
+                    <li className="flex items-start">
+                      <span className="bg-red-500 rounded-full p-1 mr-3 mt-1">
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </span>
+                      <span className="text-white/80">
+                        Size: {selectedProduct.height || 3}" x {selectedProduct.width || 11.5}"
+                      </span>
                     </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <Separator className="bg-white/10" />
-
-            {/* Add to Cart */}
-            <div className="space-y-4">
-              <AddToCartButton product={product} />
-
-              {product.customizable && (
-                <Link href={`/product/customize/${product.id}`}>
-                  <Button
-                    variant="outline"
-                    className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-                  >
-                    Customize This Product
-                  </Button>
-                </Link>
-              )}
-            </div>
-
-            {/* Product Benefits */}
-            <Card className="bg-dark-100/50 border-white/10">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Truck className="w-4 h-4 text-green-400" />
-                    Free shipping over $50
-                  </div>
-                  <div className="flex items-center gap-2 text-white/80">
-                    <Shield className="w-4 h-4 text-blue-400" />
-                    Quality guaranteed
-                  </div>
-                  <div className="flex items-center gap-2 text-white/80">
-                    <RotateCcw className="w-4 h-4 text-yellow-400" />
-                    30-day returns
-                  </div>
+                  </ul>
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Add to Cart Component - Client Side */}
+                <AddToCartClient product={product} defaultVariant={defaultVariant} />
+
+                <div className="mt-10 text-white/60 space-y-2 text-sm">
+                  <p className="flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Free shipping on orders over $50
+                  </p>
+                  <p className="flex items-center">
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    30-day money-back guarantee
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  } catch (error) {
+    console.error("Error in ProductPage:", error)
+    return (
+      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+        <div className="container mx-auto px-6">
+          <h1 className="text-4xl font-bold mb-6">Error Loading Product</h1>
+          <p className="text-white/70 mb-6">There was an unexpected error loading this product.</p>
+          <Link href="/shop/all">
+            <Button>Back to Shop</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
 }
