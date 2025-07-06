@@ -63,10 +63,10 @@ const emojiOptions = {
 
 // Product data
 const product = {
-  id: "tesla-elon-magnet",
+  id: "tesla-vs-elon-emoji",
   name: "Tesla vs Elon Emoji Magnet",
-  price: 20.0,
-  dimensions: '6" x 10"',
+  price: 19.99,
+  dimensions: '8" x 12"',
   image: "/images/emoji-musk.png",
   description:
     "Show your love for Tesla while making your feelings about its CEO clear with this humorous emoji magnet. Fully customizable with your choice of emojis.",
@@ -148,8 +148,8 @@ export default function CustomizeEmojiMagnetPage() {
   return (
     <div className="bg-dark-400 text-white min-h-screen">
       <div className="container mx-auto px-6 md:px-10 py-32">
-        <Link href={`/product/${product.id}`} className="inline-flex items-center text-white/70 hover:text-white mb-12">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to product
+        <Link href="/shop/all" className="inline-flex items-center text-white/70 hover:text-white mb-12">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to products
         </Link>
 
         <div className="max-w-4xl mx-auto">
@@ -159,7 +159,7 @@ export default function CustomizeEmojiMagnetPage() {
           <p className="text-lg text-white/70 mb-8">Dimensions: {product.dimensions}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Preview with dynamic emoji canvas - removed preview text */}
+            {/* Preview with dynamic emoji canvas */}
             <div className="bg-dark-300 p-8 rounded-lg flex flex-col items-center">
               <EmojiPreviewCanvas
                 teslaEmoji={selectedEmojis.tesla}
@@ -263,7 +263,7 @@ export default function CustomizeEmojiMagnetPage() {
           <div className="mt-12 bg-dark-300 p-8 rounded-lg">
             <h2 className="text-xl font-medium mb-4">About This Customization</h2>
             <p className="text-white/70 mb-4">
-              Our Tesla vs Elon Emoji Magnet (6" x 10") lets you express exactly how you feel about your Tesla and its
+              Our Tesla vs Elon Emoji Magnet (8" x 12") lets you express exactly how you feel about your Tesla and its
               CEO. Choose from Ed's curated collection of custom emoji graphics to create your perfect combination.
             </p>
             <p className="text-white/70">

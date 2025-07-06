@@ -5,9 +5,15 @@ import FallbackImage from "@/components/fallback-image"
 import { getStripeProducts } from "@/lib/stripe-products"
 import { groupProducts } from "@/lib/product-data"
 import AddToCartClient from "@/components/add-to-cart-client"
+import { redirect } from "next/navigation"
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
   try {
+    // Check if this is the customizable emoji product and redirect directly to customization
+    if (params.id === "tesla_vs_elon_emoji") {
+      redirect("/product/customize-emoji-magnet")
+    }
+
     // Fetch products from Stripe
     const products = await getStripeProducts()
 

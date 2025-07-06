@@ -1,175 +1,116 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ShoppingBag, ChevronDown, Menu, X } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Menu, X, ShoppingBag } from "lucide-react"
 import { useCart } from "@/hooks/use-cart-simplified"
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const cart = useCart()
+  const [isOpen, setIsOpen] = useState(false)
+  const { items } = useCart()
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10)
-    }
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
 
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+  const navigation = [
+    { name: "Home", href: "/" },
+    { name: "Shop", href: "/shop/all" },
+    { name: "Stories", href: "/stories" },
+    { name: "News", href: "/news" },
+    { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
+  ]
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-dark-300/95 backdrop-blur-sm py-3" : "bg-transparent py-5"
-      }`}
-    >
-      <div className="container mx-auto px-6 md:px-10">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center z-10">
-            <span className="font-display text-2xl font-bold text-white">
-              <span className="text-red-500">Musk</span>
-              <span>MustGo</span>
-            </span>
-          </Link>
+    <nav className="bg-dark-400 border-b border-white/10 fixed w-full z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link href="/" className="flex-shrink-0">
+              <span className="text-2xl font-bold text-white">MuskMustGo</span>
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/shop/all" className="text-white/90 hover:text-white text-sm font-medium tracking-wide">
-              SHOP
-            </Link>
+          <div className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-white/70 hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="text-white/90 hover:text-white flex items-center text-sm font-medium tracking-wide">
-                  COMMUNITY <ChevronDown className="ml-1 h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-dark-300 border-dark-100 text-white">
-                <DropdownMenuItem className="focus:bg-dark-100 focus:text-white">
-                  <Link href="/stories" className="w-full">
-                    STORIES
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="focus:bg-dark-100 focus:text-white">
-                  <Link href="/forum" className="w-full">
-                    FORUM
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Link href="/about" className="text-white/90 hover:text-white text-sm font-medium tracking-wide">
-              ABOUT
-            </Link>
-
-            <Link href="/contact" className="text-white/90 hover:text-white text-sm font-medium tracking-wide">
-              CONTACT
-            </Link>
-          </nav>
-
-          {/* Right Side - Cart & Mobile Menu */}
-          <div className="flex items-center space-x-4 z-10">
-            <Link href="/cart">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10 rounded-full relative">
+          {/* Right side - Cart and Login (Login hidden) */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Link href="/cart" className="relative">
+              <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-white/10">
                 <ShoppingBag className="h-5 w-5" />
-                {cart.itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {cart.itemCount > 9 ? "9+" : cart.itemCount}
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
                   </span>
                 )}
               </Button>
             </Link>
-
-            {/* <Link href="/login" className="hidden md:block">
-              <Button variant="ghost" className="text-white hover:bg-white/10 text-sm font-medium tracking-wide">
-                LOG IN
+            {/* Login button hidden for now */}
+            {/* <Link href="/login">
+              <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                Log in
               </Button>
             </Link> */}
+          </div>
 
-            <Link href="/shop/all" className="hidden md:block">
-              <Button className="bg-white hover:bg-white/90 text-black text-sm font-medium tracking-wide">
-                SHOP NOW
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center space-x-2">
+            <Link href="/cart" className="relative">
+              <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-white/10">
+                <ShoppingBag className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
               </Button>
             </Link>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden text-white hover:bg-white/10"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-white hover:text-white/80 focus:outline-none focus:text-white"
             >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-dark-300 absolute top-full left-0 right-0 border-t border-dark-100">
-          <div className="container mx-auto px-6 py-6 space-y-6">
-            <Link
-              href="/shop/all"
-              className="block text-white hover:text-red-500 text-sm font-medium tracking-wide"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              SHOP
-            </Link>
-
-            <div className="space-y-4">
-              <h3 className="text-white/60 text-sm font-medium tracking-wide">COMMUNITY</h3>
-              <div className="space-y-3 pl-2">
-                <Link
-                  href="/stories"
-                  className="block text-white hover:text-red-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Stories
-                </Link>
-                <Link
-                  href="/forum"
-                  className="block text-white hover:text-red-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Forum
-                </Link>
-              </div>
-            </div>
-
-            <Link
-              href="/about"
-              className="block text-white hover:text-red-500 text-sm font-medium tracking-wide"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              ABOUT
-            </Link>
-
-            <Link
-              href="/contact"
-              className="block text-white hover:text-red-500 text-sm font-medium tracking-wide"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              CONTACT
-            </Link>
-
-            <div className="pt-4 flex flex-col space-y-3">
-              {/* <Link href="/login">
-                <Button variant="outline" className="w-full border-white text-white hover:bg-white/10 bg-transparent">
-                  LOG IN
-                </Button>
-              </Link> */}
-              <Link href="/shop/all">
-                <Button className="w-full bg-white hover:bg-white/90 text-black">SHOP NOW</Button>
+      {/* Mobile Navigation */}
+      {isOpen && (
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-dark-400 border-t border-white/10">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-white/70 hover:text-white block px-3 py-2 text-base font-medium"
+                onClick={() => setIsOpen(false)}
+              >
+                {item.name}
               </Link>
-            </div>
+            ))}
+            {/* Mobile login button hidden for now */}
+            {/* <Link
+              href="/login"
+              className="text-white/70 hover:text-white block px-3 py-2 text-base font-medium"
+              onClick={() => setIsOpen(false)}
+            >
+              Log in
+            </Link> */}
           </div>
         </div>
       )}
-    </header>
+    </nav>
   )
 }
