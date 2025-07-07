@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, AlertTriangle } from "lucide-react"
+import { CheckCircle, AlertTriangle, Info } from "lucide-react"
 import Link from "next/link"
 
 interface EnvStatus {
   timestamp: string
   environment: Record<string, string>
-  emojiFlow: Record<string, string>
-  testInstructions: string[]
+  emojiFlow: {
+    status: string
+    description: string
+    flow: string[]
+  }
+  testInstructions: Record<string, string>
 }
 
 export default function TestEmojiCheckout() {
@@ -31,20 +34,6 @@ export default function TestEmojiCheckout() {
       })
   }, [])
 
-  const getStatusIcon = (status: string) => {
-    if (status.includes("✅")) return <CheckCircle className="h-4 w-4 text-green-500" />
-    if (status.includes("❌")) return <XCircle className="h-4 w-4 text-red-500" />
-    if (status.includes("⚠️")) return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-    return null
-  }
-
-  const getStatusColor = (status: string) => {
-    if (status.includes("✅")) return "bg-green-100 text-green-800"
-    if (status.includes("❌")) return "bg-red-100 text-red-800"
-    if (status.includes("⚠️")) return "bg-yellow-100 text-yellow-800"
-    return "bg-gray-100 text-gray-800"
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -57,95 +46,94 @@ export default function TestEmojiCheckout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>🧪 Emoji Checkout Test Environment</CardTitle>
-            <CardDescription>Test the emoji attribute flow from customization to backend delivery</CardDescription>
-          </CardHeader>
-        </Card>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Emoji Checkout Test Environment</h1>
+          <p className="text-gray-600">Test the emoji attributes flow before deploying to production</p>
+        </div>
 
         {envStatus && (
           <>
+            {/* Environment Status */}
             <Card>
               <CardHeader>
-                <CardTitle>Environment Variables</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="h-5 w-5" />
+                  Environment Status
+                </CardTitle>
+                <CardDescription>Current environment configuration</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Object.entries(envStatus.environment).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                      <span className="font-mono text-sm">{key}</span>
-                      <Badge className={getStatusColor(value)}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(value)}
-                          {value}
-                        </div>
-                      </Badge>
+                    <div key={key} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <span className="font-medium">{key}:</span>
+                      <span className={value.includes("✅") ? "text-green-600" : "text-red-600"}>{value}</span>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Emoji Flow Status */}
             <Card>
               <CardHeader>
-                <CardTitle>Emoji Flow Status</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Emoji Attributes Flow
+                </CardTitle>
+                <CardDescription>{envStatus.emojiFlow.description}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(envStatus.emojiFlow).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                      <span className="capitalize">{key.replace(/([A-Z])/g, " $1")}</span>
-                      <Badge className={getStatusColor(value)}>
-                        <div className="flex items-center gap-1">
-                          {getStatusIcon(value)}
-                          {value}
-                        </div>
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Test Instructions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="space-y-2">
-                  {envStatus.testInstructions.map((instruction, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
+                <div className="space-y-2">
+                  {envStatus.emojiFlow.flow.map((step, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full min-w-[24px] text-center">
                         {index + 1}
                       </span>
-                      <span>{instruction}</span>
-                    </li>
+                      <span className="text-sm">{step}</span>
+                    </div>
                   ))}
-                </ol>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-3">
-                  <Button asChild>
-                    <Link href="/product/customize-emoji/tesla-vs-elon">Start Emoji Test</Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href="/cart">View Cart</Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href="/test-stripe">Test Stripe Connection</Link>
-                  </Button>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Test Instructions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  Test Instructions
+                </CardTitle>
+                <CardDescription>Follow these steps to test the emoji attributes flow</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Object.entries(envStatus.testInstructions).map(([key, value]) => (
+                    <div key={key} className="flex items-start gap-2">
+                      <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full min-w-[60px] text-center">
+                        {key.replace("step", "Step ")}
+                      </span>
+                      <span className="text-sm">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 justify-center">
+              <Button asChild>
+                <Link href="/product/customize-emoji/tesla-vs-elon">Start Emoji Test</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/cart">View Cart</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/">Back to Home</Link>
+              </Button>
+            </div>
           </>
         )}
       </div>
