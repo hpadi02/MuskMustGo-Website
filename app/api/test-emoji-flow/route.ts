@@ -4,17 +4,17 @@ export async function GET() {
   console.log("🧪 === EMOJI FLOW TEST ENDPOINT ===")
 
   // Check environment variables
-  const envCheck = {
-    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
-    STRIPE_PUBLISHABLE_KEY: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-    API_BASE_URL: process.env.API_BASE_URL || "Not set",
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || "Not set",
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL: process.env.VERCEL || "Not on Vercel",
-    VERCEL_URL: process.env.VERCEL_URL || "Not set",
+  const envStatus = {
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? "✅ Set" : "❌ Missing",
+    STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "✅ Set" : "❌ Missing",
+    API_BASE_URL: process.env.API_BASE_URL || "❌ Not set",
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || "❌ Not set",
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ? "✅ Set" : "❌ Not set (optional for testing)",
+    NODE_ENV: process.env.NODE_ENV || "development",
+    VERCEL: process.env.VERCEL ? "✅ Running on Vercel" : "❌ Not on Vercel",
   }
 
-  console.log("🔧 Environment check:", envCheck)
+  console.log("🔧 Environment check:", envStatus)
 
   // Test data structure that would come from emoji customization
   const testEmojiData = {
@@ -68,9 +68,9 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    status: "✅ Emoji flow test endpoint working",
+    message: "Emoji Flow Environment Check",
+    environment: envStatus,
     timestamp: new Date().toISOString(),
-    environment: envCheck,
     testFlow: {
       step1: "User customizes emoji product",
       step2: "Frontend sends testEmojiData to /api/checkout",
