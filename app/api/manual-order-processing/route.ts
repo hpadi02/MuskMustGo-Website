@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { readFileSync, unlinkSync } from "fs"
-import { join } from "path"
 import Stripe from "stripe"
+import { readFileSync, unlinkSync, existsSync } from "fs"
+import { join } from "path"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -17,47 +17,48 @@ export async function POST(req: NextRequest) {
 
     console.log("🔄 Manual processing for session:", sessionId)
 
-    // Get session details from Stripe
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    // Get the session with line items
+    const sessionWithLineItems = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "line_items.data.price.product"],
     })
 
-    // Try to retrieve saved cart data
+    // Try to retrieve saved cart data - nginx specific path
     let savedCartData = null
     try {
-      const isVercel = process.env.VERCEL === "1"
-      const tempDir = isVercel ? require("os").tmpdir() : join(process.cwd(), "temp")
+      const tempDir = join(process.cwd(), "temp")
       const cartFilePath = join(tempDir, `cart-${sessionId}.json`)
 
       console.log(`🔍 Looking for cart data at: ${cartFilePath}`)
-      const cartDataString = readFileSync(cartFilePath, "utf8")
-      savedCartData = JSON.parse(cartDataString)
-      console.log("📋 Retrieved saved cart data:", savedCartData)
 
-      // Clean up the temporary file
-      unlinkSync(cartFilePath)
-      console.log("🗑️ Cleaned up cart data file")
+      if (existsSync(cartFilePath)) {
+        const cartDataString = readFileSync(cartFilePath, "utf8")
+        savedCartData = JSON.parse(cartDataString)
+        console.log("📋 Retrieved saved cart data:", savedCartData)
+
+        // Clean up the temporary file
+        unlinkSync(cartFilePath)
+        console.log("🗑️ Cleaned up cart data file")
+      }
     } catch (error) {
       console.warn("⚠️ Could not retrieve saved cart data:", error)
-      return NextResponse.json({ error: "Cart data not found" }, { status: 404 })
     }
 
     // Extract customer information
     const customer = {
-      email: session.customer_details?.email || "",
-      firstname: session.customer_details?.name?.split(" ")[0] || "",
-      lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-      addr1: session.customer_details?.address?.line1 || "",
-      addr2: session.customer_details?.address?.line2 || "",
-      city: session.customer_details?.address?.city || "",
-      state_prov: session.customer_details?.address?.state || "",
-      postal_code: session.customer_details?.address?.postal_code || "",
-      country: session.customer_details?.address?.country || "",
+      email: sessionWithLineItems.customer_details?.email || "",
+      firstname: sessionWithLineItems.customer_details?.name?.split(" ")[0] || "",
+      lastname: sessionWithLineItems.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+      addr1: sessionWithLineItems.customer_details?.address?.line1 || "",
+      addr2: sessionWithLineItems.customer_details?.address?.line2 || "",
+      city: sessionWithLineItems.customer_details?.address?.city || "",
+      state_prov: sessionWithLineItems.customer_details?.address?.state || "",
+      postal_code: sessionWithLineItems.customer_details?.address?.postal_code || "",
+      country: sessionWithLineItems.customer_details?.address?.country || "",
     }
 
     // Extract products with emoji attributes
     const products =
-      session.line_items?.data.map((item) => {
+      sessionWithLineItems.line_items?.data.map((item) => {
         const product = item.price?.product as Stripe.Product
         const productData: any = {
           product_id: product.id,
@@ -110,47 +111,81 @@ export async function POST(req: NextRequest) {
     // Prepare order data for backend
     const orderData = {
       customer,
-      payment_id: session.payment_intent as string,
+      payment_id: sessionWithLineItems.payment_intent as string,
       products,
-      shipping: session.shipping_cost?.amount_total || 0,
-      tax: session.total_details?.amount_tax || 0,
+      shipping: sessionWithLineItems.shipping_cost?.amount_total || 0,
+      tax: sessionWithLineItems.total_details?.amount_tax || 0,
     }
 
     console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
-    // Send to backend API
-    const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+    // Send to Ed's backend API using your existing working configuration
+    const backendUrl = process.env.API_BASE_URL
     if (backendUrl) {
       try {
-        const response = await fetch(`${backendUrl}/orders`, {
+        const fullBackendUrl = `${backendUrl}/orders`
+
+        console.log("🌐 Sending to backend URL:", fullBackendUrl)
+
+        const response = await fetch(fullBackendUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
           },
           body: JSON.stringify(orderData),
         })
 
         if (response.ok) {
-          console.log("✅ Order successfully sent to backend with emoji attributes")
+          const responseData = await response.text()
+          console.log("✅ Order successfully sent to Ed's backend with emoji attributes")
           return NextResponse.json({
             success: true,
-            message: "Order processed and sent to backend",
+            message: "Order processed and sent to backend successfully",
             orderData,
+            backendResponse: responseData,
           })
         } else {
-          console.error("❌ Failed to send order to backend:", response.status, response.statusText)
-          return NextResponse.json({ error: "Failed to send to backend" }, { status: 500 })
+          const errorText = await response.text()
+          console.error("❌ Failed to send order to Ed's backend:", response.status, errorText)
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Backend error: ${response.status}`,
+              orderData,
+            },
+            { status: 500 },
+          )
         }
       } catch (error) {
-        console.error("❌ Error sending order to backend:", error)
-        return NextResponse.json({ error: "Backend communication failed" }, { status: 500 })
+        console.error("❌ Error sending order to Ed's backend:", error)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to connect to backend",
+            orderData,
+          },
+          { status: 500 },
+        )
       }
     } else {
-      return NextResponse.json({ error: "No backend URL configured" }, { status: 500 })
+      console.warn("⚠️ No API_BASE_URL configured")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No backend URL configured",
+          orderData,
+        },
+        { status: 500 },
+      )
     }
   } catch (error) {
-    console.error("❌ Error processing manual order:", error)
-    return NextResponse.json({ error: "Processing failed" }, { status: 500 })
+    console.error("❌ Error in manual order processing:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { writeFileSync, mkdirSync } from "fs"
+import { writeFileSync, mkdirSync, existsSync } from "fs"
 import { join } from "path"
 
 export async function POST(req: NextRequest) {
@@ -12,13 +12,13 @@ export async function POST(req: NextRequest) {
 
     console.log("💾 Saving cart data for session:", sessionId)
 
-    // Environment detection - Vercel vs Nginx
-    const isVercel = process.env.VERCEL === "1"
-    const tempDir = isVercel ? require("os").tmpdir() : join(process.cwd(), "temp")
+    // For nginx server - use temp directory in project root
+    const tempDir = join(process.cwd(), "temp")
 
-    // Create temp directory if it doesn't exist (for nginx)
-    if (!isVercel) {
+    // Create temp directory if it doesn't exist
+    if (!existsSync(tempDir)) {
       mkdirSync(tempDir, { recursive: true })
+      console.log("📁 Created temp directory:", tempDir)
     }
 
     // Save cart data to temporary file
