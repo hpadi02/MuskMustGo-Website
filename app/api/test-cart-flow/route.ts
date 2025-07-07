@@ -11,57 +11,72 @@ export async function GET(req: NextRequest) {
     const isVercel = process.env.VERCEL === "1"
     const tempDir = isVercel ? require("os").tmpdir() : join(process.cwd(), "temp")
 
+    console.log(`🔧 Environment: ${isVercel ? "Vercel" : "Nginx"}`)
+    console.log(`📁 Temp directory: ${tempDir}`)
+
     switch (action) {
       case "info":
         return NextResponse.json({
           environment: isVercel ? "Vercel" : "Nginx",
-          tempDir,
-          timestamp: new Date().toISOString(),
+          tempDirectory: tempDir,
+          nodeVersion: process.version,
+          platform: process.platform,
         })
 
       case "save":
-        // Create temp directory if needed
+        // Ensure temp directory exists (for nginx)
         if (!isVercel) {
           mkdirSync(tempDir, { recursive: true })
         }
 
         const testData = {
-          test: true,
-          timestamp: new Date().toISOString(),
-          emoji: { tesla: "cowboy", elon: "angry_face" },
+          sessionId: "test_session_123",
+          cartData: [
+            {
+              id: "test-item",
+              customOptions: {
+                teslaEmoji: { name: "cowboy" },
+                elonEmoji: { name: "angry_face" },
+              },
+            },
+          ],
         }
 
-        const testFile = join(tempDir, "test-cart-data.json")
-        writeFileSync(testFile, JSON.stringify(testData, null, 2))
+        const filePath = join(tempDir, "test-cart-data.json")
+        writeFileSync(filePath, JSON.stringify(testData, null, 2))
 
         return NextResponse.json({
           success: true,
-          message: "Test file saved",
-          filePath: testFile,
+          message: "Test file saved successfully",
+          filePath,
           data: testData,
         })
 
       case "read":
-        const readFile = join(tempDir, "test-cart-data.json")
-        const data = readFileSync(readFile, "utf8")
+        const readPath = join(tempDir, "test-cart-data.json")
+        const fileContent = readFileSync(readPath, "utf8")
+        const parsedData = JSON.parse(fileContent)
+
         return NextResponse.json({
           success: true,
-          message: "Test file read",
-          data: JSON.parse(data),
+          message: "Test file read successfully",
+          data: parsedData,
         })
 
       case "cleanup":
-        const cleanupFile = join(tempDir, "test-cart-data.json")
-        unlinkSync(cleanupFile)
+        const cleanupPath = join(tempDir, "test-cart-data.json")
+        unlinkSync(cleanupPath)
+
         return NextResponse.json({
           success: true,
-          message: "Test file deleted",
+          message: "Test file cleaned up successfully",
         })
 
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
   } catch (error) {
+    console.error("❌ Test cart flow error:", error)
     return NextResponse.json(
       {
         success: false,

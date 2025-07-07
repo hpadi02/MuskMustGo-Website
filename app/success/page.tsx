@@ -1,316 +1,141 @@
-import { Suspense } from "react"
-import { redirect } from "next/navigation"
-import { stripe } from "@/lib/stripe"
-import Link from "next/link"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, ArrowRight } from "lucide-react"
-import { CartClearer } from "@/components/cart-clearer"
+import { CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import Link from "next/link"
 
-interface SuccessPageProps {
-  searchParams: {
-    session_id?: string
-  }
-}
+export default function SuccessPage() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get("session_id")
+  const [orderStatus, setOrderStatus] = useState<"processing" | "success" | "error">("processing")
+  const [orderData, setOrderData] = useState<any>(null)
+  const [error, setError] = useState<string>("")
 
-async function SuccessContent({ sessionId }: { sessionId: string }) {
-  try {
-    console.log("🎉 === SUCCESS PAGE STARTED ===")
-    console.log("⏰ Timestamp:", new Date().toISOString())
-    console.log("🔑 Session ID received:", sessionId)
-
-    // Retrieve the Stripe session with payment intent
-    console.log("💳 Retrieving Stripe session...")
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
-    })
-
-    if (!session) {
-      console.error("❌ No session found for ID:", sessionId)
-      redirect("/cart")
+  useEffect(() => {
+    if (sessionId) {
+      processOrder(sessionId)
     }
+  }, [sessionId])
 
-    console.log("✅ Stripe session retrieved successfully")
-    console.log("📋 Session details:")
-    console.log("  - Session ID:", session.id)
-    console.log("  - Payment status:", session.payment_status)
-    console.log("  - Amount total:", session.amount_total)
-    console.log("  - Currency:", session.currency)
-    console.log("  - Customer email:", session.customer_details?.email)
-    console.log("  - Customer name:", session.customer_details?.name)
-
-    // Get the payment intent ID (this is what Ed needs)
-    const paymentIntentId =
-      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
-
-    console.log("💰 === PAYMENT PROCESSING ===")
-    console.log("💰 Session ID:", session.id)
-    console.log("💰 Payment Intent ID:", paymentIntentId)
-    console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
-
-    // Log line items details
-    console.log("📦 === ORDER ITEMS ===")
-    session.line_items?.data.forEach((item, index) => {
-      console.log(`📦 Item ${index + 1}:`)
-      console.log(`  - Description: ${item.description}`)
-      console.log(`  - Quantity: ${item.quantity}`)
-      console.log(`  - Amount: ${item.amount_total}`)
-      console.log(`  - Price ID: ${item.price?.id}`)
-      console.log(
-        `  - Product ID: ${typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id}`,
-      )
-    })
-
-    // Process the order - send to backend
+  const processOrder = async (sessionId: string) => {
     try {
-      console.log("🏗️ === BUILDING ORDER DATA ===")
+      console.log("🔄 Processing order for session:", sessionId)
 
-      const orderData = {
-        customer: {
-          email: session.customer_details?.email || "",
-          firstname: session.customer_details?.name?.split(" ")[0] || "",
-          lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-          addr1: session.customer_details?.address?.line1 || "",
-          addr2: session.customer_details?.address?.line2 || "",
-          city: session.customer_details?.address?.city || "",
-          state_prov: session.customer_details?.address?.state || "",
-          postal_code: session.customer_details?.address?.postal_code || "",
-          country: session.customer_details?.address?.country || "",
-        },
-        payment_id: paymentIntentId, // ✅ Correct Payment Intent ID
-        products:
-          session.line_items?.data.map((item, itemIndex) => {
-            const product_id =
-              typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || ""
-
-            console.log(`🎭 Processing product ${itemIndex + 1}: ${product_id}`)
-
-            // Check if this is a Tesla vs Elon emoji product and has emoji choices
-            const isEmojiProduct = item.description?.includes("emoji") || product_id.includes("tesla_vs_elon_emoji")
-
-            if (isEmojiProduct) {
-              console.log("🎭 Detected emoji product, checking for emoji choices...")
-
-              // Try multiple metadata keys for emoji choices
-              const possibleKeys = [
-                "emoji_choices",
-                `item_${itemIndex}_emoji_choices`,
-                `item_${itemIndex}_custom_options`,
-              ]
-
-              let emojiChoices = null
-              for (const key of possibleKeys) {
-                if (session.metadata?.[key]) {
-                  console.log(`🎭 Found emoji data in metadata key: ${key}`)
-                  console.log(`🎭 Raw emoji data: ${session.metadata[key]}`)
-                  try {
-                    emojiChoices = JSON.parse(session.metadata[key])
-                    console.log("🎭 Parsed emoji choices:", JSON.stringify(emojiChoices, null, 2))
-                    break
-                  } catch (parseError) {
-                    console.error(`❌ Failed to parse emoji data from ${key}:`, parseError)
-                  }
-                }
-              }
-
-              if (emojiChoices) {
-                // Extract emoji names (remove .png extension)
-                const teslaEmoji = emojiChoices.tesla?.name?.replace(".png", "") || ""
-                const elonEmoji = emojiChoices.elon?.name?.replace(".png", "") || ""
-
-                console.log("🎭 Tesla emoji:", teslaEmoji)
-                console.log("🎭 Elon emoji:", elonEmoji)
-
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "emoji_good", value: teslaEmoji },
-                    { name: "emoji_bad", value: elonEmoji },
-                  ],
-                }
-              } else {
-                console.log("⚠️ Emoji product but no emoji choices found in metadata")
-                // Fallback to generic attributes if parsing fails
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "Type", value: "Custom Emoji" },
-                    { name: "Source", value: "Stripe Checkout" },
-                  ],
-                }
-              }
-            }
-
-            // For non-emoji products, return without attributes
-            console.log("📦 Regular product (no emoji customization)")
-            return {
-              product_id,
-              quantity: item.quantity || 1,
-            }
-          }) || [],
-        shipping: 0,
-        tax: 0,
-      }
-
-      console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
-      console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
-
-      // ✅ URL determination with extensive debugging
-      console.log("🌐 === DETERMINING API URL ===")
-
-      let baseUrl: string
-
-      // Log environment variables
-      console.log("🔧 Environment check:")
-      console.log("  - NODE_ENV:", process.env.NODE_ENV)
-      console.log("  - VERCEL_URL:", process.env.VERCEL_URL)
-      console.log("  - PUBLIC_URL:", process.env.PUBLIC_URL)
-
-      if (process.env.PUBLIC_URL) {
-        baseUrl = process.env.PUBLIC_URL
-        console.log("✅ Using PUBLIC_URL:", baseUrl)
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`
-        console.log("✅ Using Vercel URL:", baseUrl)
-      } else if (process.env.NODE_ENV === "production") {
-        baseUrl = "https://elonmustgo.com" // ✅ Production URL
-        console.log("✅ Using production URL:", baseUrl)
-      } else {
-        baseUrl = "http://localhost:3000" // ✅ Development URL
-        console.log("✅ Using development URL:", baseUrl)
-      }
-
-      const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
-      console.log("🎯 Final API URL:", apiUrl)
-
-      // Send to Ed's backend via your API route
-      console.log("📡 Making API call to backend...")
-      const backendResponse = await fetch(apiUrl, {
+      const response = await fetch("/api/manual-order-processing", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify({ sessionId }),
       })
 
-      console.log("📡 Backend response status:", backendResponse.status)
-      console.log("📡 Backend response headers:", Object.fromEntries(backendResponse.headers.entries()))
-
-      if (!backendResponse.ok) {
-        const errorText = await backendResponse.text()
-        console.error("❌ Failed to send order to backend:")
-        console.error("❌ Status:", backendResponse.status)
-        console.error("❌ Error text:", errorText)
+      if (response.ok) {
+        const result = await response.json()
+        console.log("✅ Order processed successfully:", result)
+        setOrderData(result.orderData)
+        setOrderStatus("success")
       } else {
-        const result = await backendResponse.json()
-        console.log("✅ Order successfully sent to Ed's backend:")
-        console.log("✅ Backend response:", JSON.stringify(result, null, 2))
+        const errorResult = await response.json()
+        console.error("❌ Order processing failed:", errorResult)
+        setError(errorResult.error || "Order processing failed")
+        setOrderStatus("error")
       }
     } catch (error) {
-      console.error("💥 === ORDER PROCESSING ERROR ===")
-      console.error("💥 Error:", error)
-      if (error instanceof Error) {
-        console.error("💥 Error message:", error.message)
-        console.error("💥 Error stack:", error.stack)
-      }
+      console.error("❌ Error processing order:", error)
+      setError("Network error occurred")
+      setOrderStatus("error")
     }
-
-    console.log("🎉 === SUCCESS PAGE RENDERING ===")
-    console.log("🎉 Rendering success page for user")
-
-    return (
-      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-        {/* Clear cart when success page loads */}
-        <CartClearer />
-
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="mb-8">
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-              <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-6">Order Confirmed!</h1>
-              <p className="text-white/70 text-lg">
-                Thank you for your purchase. Your order has been successfully processed.
-              </p>
-            </div>
-
-            <div className="bg-dark-300 p-8 rounded-lg mb-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-medium">Order Details</h2>
-                <Package className="h-6 w-6 text-white/60" />
-              </div>
-
-              <div className="space-y-4 text-left">
-                <div className="flex justify-between">
-                  <span className="text-white/70">Email:</span>
-                  <span>{session.customer_details?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/70">Total:</span>
-                  <span className="font-medium">${((session.amount_total || 0) / 100).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-white/70">
-                You'll receive an email confirmation shortly with your order details and tracking information.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/account/orders">
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                    View Orders
-                  </Button>
-                </Link>
-                <Link href="/shop/all">
-                  <Button className="bg-red-600 hover:bg-red-700 text-white">
-                    Continue Shopping <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  } catch (error) {
-    console.error("💥 === SUCCESS PAGE ERROR ===")
-    console.error("💥 Error retrieving session:", error)
-    if (error instanceof Error) {
-      console.error("💥 Error message:", error.message)
-      console.error("💥 Error stack:", error.stack)
-    }
-    console.error("💥 Redirecting to cart...")
-    redirect("/cart")
   }
-}
 
-export default function SuccessPage({ searchParams }: SuccessPageProps) {
-  const sessionId = searchParams.session_id
-
-  console.log("🚀 === SUCCESS PAGE ENTRY ===")
-  console.log("🚀 Session ID from URL:", sessionId)
-
-  if (!sessionId) {
-    console.error("❌ No session_id in URL parameters")
-    redirect("/cart")
+  const retryProcessing = () => {
+    if (sessionId) {
+      setOrderStatus("processing")
+      setError("")
+      processOrder(sessionId)
+    }
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
-          <div className="container mx-auto px-6 md:px-10">
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
-              <p className="mt-4 text-white/70">Processing your order...</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          {orderStatus === "processing" && (
+            <>
+              <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
+              <CardTitle>Processing Your Order</CardTitle>
+              <CardDescription>Please wait while we process your payment and prepare your order...</CardDescription>
+            </>
+          )}
+
+          {orderStatus === "success" && (
+            <>
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <CardTitle>Payment Successful!</CardTitle>
+              <CardDescription>Your order has been processed and sent to our fulfillment center.</CardDescription>
+            </>
+          )}
+
+          {orderStatus === "error" && (
+            <>
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <CardTitle>Processing Issue</CardTitle>
+              <CardDescription>There was an issue processing your order. Your payment was successful.</CardDescription>
+            </>
+          )}
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {sessionId && (
+            <div className="text-sm text-gray-600">
+              <p>
+                <strong>Session ID:</strong> {sessionId}
+              </p>
             </div>
+          )}
+
+          {orderStatus === "success" && orderData && (
+            <div className="space-y-2">
+              <h4 className="font-semibold">Order Details:</h4>
+              <div className="text-sm space-y-1">
+                <p>
+                  <strong>Email:</strong> {orderData.customer.email}
+                </p>
+                <p>
+                  <strong>Products:</strong> {orderData.products.length} item(s)
+                </p>
+                {orderData.products.some((p: any) => p.attributes) && (
+                  <div className="mt-2 p-2 bg-green-50 rounded">
+                    <p className="text-green-700 font-medium">✅ Custom emoji choices included!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {orderStatus === "error" && (
+            <div className="space-y-2">
+              <p className="text-red-600 text-sm">{error}</p>
+              <Button onClick={retryProcessing} variant="outline" className="w-full bg-transparent">
+                Retry Processing
+              </Button>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button asChild className="flex-1">
+              <Link href="/">Continue Shopping</Link>
+            </Button>
+            {orderStatus === "success" && (
+              <Button asChild variant="outline" className="flex-1 bg-transparent">
+                <Link href="/account/orders">View Orders</Link>
+              </Button>
+            )}
           </div>
-        </div>
-      }
-    >
-      <SuccessContent sessionId={sessionId} />
-    </Suspense>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
