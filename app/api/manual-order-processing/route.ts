@@ -5,39 +5,38 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 })
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { sessionId } = await request.json()
-
-    if (!sessionId) {
-      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
-    }
-
+    const { sessionId } = await req.json()
     console.log("🔄 Manual processing for session:", sessionId)
 
+    if (!sessionId) {
+      return NextResponse.json({ error: "Session ID required" }, { status: 400 })
+    }
+
     // Get the session with line items
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    const sessionWithLineItems = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "line_items.data.price.product"],
     })
 
-    console.log("📋 Session metadata:", JSON.stringify(session.metadata, null, 2))
+    console.log("📋 Session metadata:", JSON.stringify(sessionWithLineItems.metadata, null, 2))
 
     // Extract customer information
     const customer = {
-      email: session.customer_details?.email || "",
-      firstname: session.customer_details?.name?.split(" ")[0] || "",
-      lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-      addr1: session.customer_details?.address?.line1 || "",
-      addr2: session.customer_details?.address?.line2 || "",
-      city: session.customer_details?.address?.city || "",
-      state_prov: session.customer_details?.address?.state || "",
-      postal_code: session.customer_details?.address?.postal_code || "",
-      country: session.customer_details?.address?.country || "",
+      email: sessionWithLineItems.customer_details?.email || "",
+      firstname: sessionWithLineItems.customer_details?.name?.split(" ")[0] || "",
+      lastname: sessionWithLineItems.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+      addr1: sessionWithLineItems.customer_details?.address?.line1 || "",
+      addr2: sessionWithLineItems.customer_details?.address?.line2 || "",
+      city: sessionWithLineItems.customer_details?.address?.city || "",
+      state_prov: sessionWithLineItems.customer_details?.address?.state || "",
+      postal_code: sessionWithLineItems.customer_details?.address?.postal_code || "",
+      country: sessionWithLineItems.customer_details?.address?.country || "",
     }
 
     // Extract products with emoji attributes from Stripe metadata
     const products =
-      session.line_items?.data.map((item, index) => {
+      sessionWithLineItems.line_items?.data.map((item, index) => {
         const product = item.price?.product as Stripe.Product
         const productData: any = {
           product_id: product.id,
@@ -45,8 +44,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Check for emoji attributes in metadata
-        const emojiGood = session.metadata?.[`item_${index}_emoji_good`]
-        const emojiBad = session.metadata?.[`item_${index}_emoji_bad`]
+        const emojiGood = sessionWithLineItems.metadata?.[`item_${index}_emoji_good`]
+        const emojiBad = sessionWithLineItems.metadata?.[`item_${index}_emoji_bad`]
 
         if (emojiGood || emojiBad) {
           const attributes = []
@@ -79,15 +78,15 @@ export async function POST(request: NextRequest) {
     // Prepare order data for backend
     const orderData = {
       customer,
-      payment_id: session.payment_intent as string,
+      payment_id: sessionWithLineItems.payment_intent as string,
       products,
-      shipping: session.shipping_cost?.amount_total || 0,
-      tax: session.total_details?.amount_tax || 0,
+      shipping: sessionWithLineItems.shipping_cost?.amount_total || 0,
+      tax: sessionWithLineItems.total_details?.amount_tax || 0,
     }
 
     console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
-    // Try to send to backend if URL is configured
+    // Try to send to backend (optional for testing)
     const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
     if (backendUrl) {
       try {
@@ -128,7 +127,8 @@ export async function POST(request: NextRequest) {
     console.error("❌ Error in manual order processing:", error)
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to process order",
+        error: error instanceof Error ? error.message : "Processing failed",
+        details: error instanceof Error ? error.stack : undefined,
       },
       { status: 500 },
     )

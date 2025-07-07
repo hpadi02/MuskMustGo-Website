@@ -2,31 +2,24 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   const envStatus = {
-    stripe: {
-      secret_key: process.env.STRIPE_SECRET_KEY ? "✅ Set" : "❌ Missing",
-      publishable_key: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "✅ Set" : "❌ Missing",
-      webhook_secret: process.env.STRIPE_WEBHOOK_SECRET ? "✅ Set" : "❌ Missing",
-    },
-    backend: {
-      api_base_url: process.env.API_BASE_URL || "❌ Not set",
-      public_api_base_url: process.env.NEXT_PUBLIC_API_BASE_URL || "❌ Not set",
-    },
-    environment: {
-      node_env: process.env.NODE_ENV || "unknown",
-      vercel: process.env.VERCEL ? "✅ Running on Vercel" : "❌ Not on Vercel",
-    },
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: process.env.VERCEL,
+    API_BASE_URL: process.env.API_BASE_URL,
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? "✅ Set" : "❌ Missing",
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ? "✅ Set" : "❌ Missing",
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "✅ Set" : "❌ Missing",
   }
 
   return NextResponse.json({
-    status: "Emoji flow test endpoint",
-    timestamp: new Date().toISOString(),
+    message: "Emoji Flow Test Endpoint",
     environment: envStatus,
+    timestamp: new Date().toISOString(),
     instructions: {
-      "1": "Check environment variables above",
-      "2": "Go to /product/customize-emoji/tesla-vs-elon to test emoji selection",
-      "3": "Complete checkout with test card 4242424242424242",
-      "4": "Check Vercel function logs for emoji data",
-      "5": "Look for 'Added Tesla emoji' and 'Added Elon emoji' in logs",
+      step1: "Go to /product/customize-emoji/tesla-vs-elon",
+      step2: "Select Tesla and Elon emojis",
+      step3: "Add to cart and checkout",
+      step4: "Check logs for emoji attributes",
     },
   })
 }
