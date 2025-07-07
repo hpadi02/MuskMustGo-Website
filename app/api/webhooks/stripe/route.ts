@@ -113,8 +113,8 @@ export async function POST(req: NextRequest) {
 
       console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
-      // Send to Ed's backend API using your existing working configuration
-      const backendUrl = process.env.API_BASE_URL
+      // Send to backend API - will work on both Vercel and nginx
+      const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
       if (backendUrl) {
         try {
           const fullBackendUrl = `${backendUrl}/orders`
@@ -130,19 +130,20 @@ export async function POST(req: NextRequest) {
 
           if (response.ok) {
             const responseData = await response.text()
-            console.log("✅ Order successfully sent to Ed's backend with emoji attributes")
+            console.log("✅ Order successfully sent to backend with emoji attributes")
             console.log("✅ Backend response:", responseData)
           } else {
             const errorText = await response.text()
-            console.error("❌ Failed to send order to Ed's backend:")
+            console.error("❌ Failed to send order to backend:")
             console.error("❌ Status:", response.status)
             console.error("❌ Error:", errorText)
           }
         } catch (error) {
-          console.error("❌ Error sending order to Ed's backend:", error)
+          console.error("❌ Error sending order to backend:", error)
         }
       } else {
-        console.warn("⚠️ No API_BASE_URL configured, order not sent to backend")
+        console.warn("⚠️ No backend URL configured, order not sent to backend")
+        console.warn("⚠️ Set API_BASE_URL or NEXT_PUBLIC_API_BASE_URL in environment variables")
       }
     } catch (error) {
       console.error("❌ Error processing webhook:", error)
