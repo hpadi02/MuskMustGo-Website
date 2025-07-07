@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
           tempDirectory: tempDir,
           nodeVersion: process.version,
           platform: process.platform,
+          message: "Cart flow test endpoint ready",
         })
 
       case "save":
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest) {
           action: "save",
           filePath: testFilePath,
           data: testData,
+          environment: isVercel ? "Vercel" : "Nginx",
         })
 
       case "read":
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
           action: "read",
           filePath: readFilePath,
           data: parsedData,
+          environment: isVercel ? "Vercel" : "Nginx",
         })
 
       case "cleanup":
@@ -68,10 +71,22 @@ export async function GET(req: NextRequest) {
           success: true,
           action: "cleanup",
           message: "Test file deleted successfully",
+          environment: isVercel ? "Vercel" : "Nginx",
         })
 
       default:
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+        return NextResponse.json(
+          {
+            error: "Invalid action",
+            usage: {
+              info: "/api/test-cart-flow?action=info",
+              save: "/api/test-cart-flow?action=save",
+              read: "/api/test-cart-flow?action=read",
+              cleanup: "/api/test-cart-flow?action=cleanup",
+            },
+          },
+          { status: 400 },
+        )
     }
   } catch (error) {
     return NextResponse.json(
@@ -79,6 +94,7 @@ export async function GET(req: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
         action,
+        environment: process.env.VERCEL === "1" ? "Vercel" : "Nginx",
       },
       { status: 500 },
     )
