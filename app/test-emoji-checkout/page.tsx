@@ -3,32 +3,37 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 
-export default function TestEmojiCheckout() {
-  const [envStatus, setEnvStatus] = useState<any>(null)
+export default function TestEmojiCheckoutPage() {
+  const [testResult, setTestResult] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/test-emoji-flow")
-      .then((res) => res.json())
-      .then((data) => {
-        setEnvStatus(data.environment)
-        setLoading(false)
-      })
-      .catch((error) => {
-        console.error("Failed to fetch environment status:", error)
-        setLoading(false)
-      })
+    testEnvironment()
   }, [])
+
+  const testEnvironment = async () => {
+    try {
+      const response = await fetch("/api/test-emoji-flow")
+      const result = await response.json()
+      setTestResult(result)
+    } catch (error) {
+      setTestResult({ error: "Failed to test environment" })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-2xl">
           <CardHeader className="text-center">
-            <CardTitle>Loading Environment Status...</CardTitle>
+            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
+            <CardTitle>Testing Environment</CardTitle>
+            <CardDescription>Checking emoji flow configuration...</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -36,77 +41,64 @@ export default function TestEmojiCheckout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Emoji Checkout Flow Test</CardTitle>
-            <CardDescription>Environment status and testing instructions</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold">Environment Variables</h3>
-                <div className="space-y-1 text-sm">
-                  <div className="flex items-center gap-2">
-                    {envStatus?.stripe_secret ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    <span>Stripe Secret Key</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {envStatus?.stripe_public ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    <span>Stripe Public Key</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {envStatus?.api_base_url && envStatus.api_base_url !== "Not set" ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    )}
-                    <span>Backend URL: {envStatus?.api_base_url}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {envStatus?.webhook_secret ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    )}
-                    <span>Webhook Secret</span>
-                  </div>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl">
+        <CardHeader className="text-center">
+          {testResult?.success ? (
+            <>
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <CardTitle>Emoji Flow Test Ready</CardTitle>
+              <CardDescription>Environment configured for emoji attribute testing</CardDescription>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <CardTitle>Configuration Issues</CardTitle>
+              <CardDescription>Some environment variables may be missing</CardDescription>
+            </>
+          )}
+        </CardHeader>
 
-              <div className="space-y-2">
-                <h3 className="font-semibold">Test Instructions</h3>
-                <ol className="text-sm space-y-1 list-decimal list-inside">
-                  <li>Go to Tesla vs Elon emoji product</li>
-                  <li>Select Tesla emoji (positive)</li>
-                  <li>Select Elon emoji (negative)</li>
-                  <li>Add to cart</li>
-                  <li>Complete checkout with test card</li>
-                  <li>Check logs for emoji attributes</li>
-                </ol>
+        <CardContent className="space-y-6">
+          {testResult?.environment && (
+            <div className="space-y-2">
+              <h4 className="font-semibold">Environment Status:</h4>
+              <div className="text-sm space-y-1 font-mono bg-gray-100 p-3 rounded">
+                <p>NODE_ENV: {testResult.environment.NODE_ENV}</p>
+                <p>API_BASE_URL: {testResult.environment.API_BASE_URL || "Not set"}</p>
+                <p>STRIPE_SECRET_KEY: {testResult.environment.STRIPE_SECRET_KEY}</p>
+                <p>STRIPE_PUBLISHABLE_KEY: {testResult.environment.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}</p>
+                <p>STRIPE_WEBHOOK_SECRET: {testResult.environment.STRIPE_WEBHOOK_SECRET}</p>
+                <p>BACKEND_API_KEY: {testResult.environment.BACKEND_API_KEY}</p>
               </div>
             </div>
+          )}
 
-            <div className="flex gap-4">
-              <Button asChild>
-                <Link href="/product/customize-emoji/tesla-vs-elon">Start Emoji Test</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/cart">View Cart</Link>
-              </Button>
+          {testResult?.instructions && (
+            <div className="space-y-2">
+              <h4 className="font-semibold">Test Instructions:</h4>
+              <ol className="text-sm space-y-1 list-decimal list-inside">
+                {testResult.instructions.map((instruction: string, index: number) => (
+                  <li key={index}>{instruction}</li>
+                ))}
+              </ol>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button asChild className="flex-1">
+              <Link href="/product/customize-emoji/tesla-vs-elon">Start Emoji Test</Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1 bg-transparent">
+              <Link href="/cart">View Cart</Link>
+            </Button>
+          </div>
+
+          <div className="text-center text-xs text-gray-500">
+            <p>Check Vercel function logs during the test to see emoji attributes being processed.</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

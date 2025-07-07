@@ -7,19 +7,25 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("🔄 Manual processing started")
+
     const { sessionId } = await request.json()
     console.log("🔄 Manual processing for session:", sessionId)
 
+    if (!sessionId) {
+      return NextResponse.json({ error: "Session ID required" }, { status: 400 })
+    }
+
     // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "payment_intent"],
+      expand: ["line_items", "customer", "payment_intent"],
     })
 
     console.log("📋 Session metadata:", session.metadata)
 
     // Extract customer information
     const customer = {
-      email: session.customer_details?.email || "",
+      email: (session.customer_details?.email || session.customer_email) ?? "",
       firstname: session.customer_details?.name?.split(" ")[0] || "",
       lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
       addr1: session.customer_details?.address?.line1 || "",
@@ -31,14 +37,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract payment information
-    const paymentIntent = session.payment_intent as Stripe.PaymentIntent
-    const payment_id = paymentIntent?.id || ""
+    const paymentIntent = session.payment_intent as any
+    const payment_id = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id || ""
 
     // Process line items and add emoji attributes from metadata
-    const products =
-      session.line_items?.data.map((lineItem, index) => {
+    const products: any[] = []
+
+    if (session.line_items?.data) {
+      session.line_items.data.forEach((lineItem, index) => {
         const product: any = {
-          product_id: lineItem.price?.product as string,
+          product_id: lineItem.price?.product || "",
           quantity: lineItem.quantity || 1,
         }
 
@@ -66,8 +74,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        return product
-      }) || []
+        products.push(product)
+      })
+    }
 
     // Create order data
     const orderData = {
@@ -84,7 +93,7 @@ export async function POST(request: NextRequest) {
     const backendUrl = process.env.API_BASE_URL
     if (backendUrl) {
       try {
-        console.log("📤 Sending order to backend:", backendUrl)
+        console.log("📤 Sending to backend:", `${backendUrl}/orders`)
 
         const backendResponse = await fetch(`${backendUrl}/orders`, {
           method: "POST",
@@ -98,15 +107,15 @@ export async function POST(request: NextRequest) {
         })
 
         if (backendResponse.ok) {
-          console.log("✅ Order sent to backend successfully")
+          console.log("✅ Successfully sent to backend")
         } else {
           console.error("❌ Backend response error:", backendResponse.status)
         }
       } catch (backendError) {
-        console.error("❌ Failed to send to backend:", backendError)
+        console.error("❌ Backend request failed:", backendError)
       }
     } else {
-      console.log("⚠️ No backend URL configured, skipping backend send")
+      console.log("⚠️ No backend URL configured, skipping backend request")
     }
 
     return NextResponse.json({
@@ -118,7 +127,6 @@ export async function POST(request: NextRequest) {
     console.error("❌ Manual processing error:", error)
     return NextResponse.json(
       {
-        success: false,
         error: error instanceof Error ? error.message : "Processing failed",
       },
       { status: 500 },
