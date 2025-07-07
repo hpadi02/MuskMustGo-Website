@@ -1,36 +1,96 @@
 import { NextResponse } from "next/server"
 
 export async function GET() {
-  return NextResponse.json({
-    message: "✅ Test emoji flow endpoint ready",
-    environment: {
-      NODE_ENV: process.env.NODE_ENV,
-      VERCEL: process.env.VERCEL,
-      API_BASE_URL: process.env.API_BASE_URL,
-      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-      hasWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
-    },
-    testInstructions: [
-      "1. Go to /product/customize-emoji/tesla-vs-elon",
-      "2. Select Tesla emoji (positive)",
-      "3. Select Elon emoji (negative)",
-      "4. Add to cart",
-      "5. Go to checkout",
-      "6. Complete payment with test card: 4242424242424242",
-      "7. Check Vercel function logs for emoji attributes",
-      "8. Verify backend receives the attributes",
+  console.log("🧪 === EMOJI FLOW TEST ENDPOINT ===")
+
+  // Check environment variables
+  const envCheck = {
+    STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+    STRIPE_PUBLISHABLE_KEY: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    API_BASE_URL: process.env.API_BASE_URL || "Not set",
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || "Not set",
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: process.env.VERCEL || "Not on Vercel",
+    VERCEL_URL: process.env.VERCEL_URL || "Not set",
+  }
+
+  console.log("🔧 Environment check:", envCheck)
+
+  // Test data structure that would come from emoji customization
+  const testEmojiData = {
+    items: [
+      {
+        id: "tesla-vs-elon-emoji",
+        productId: "tesla-vs-elon-emoji",
+        price: "price_test_example",
+        quantity: 1,
+        customOptions: {
+          teslaEmoji: {
+            name: "happy_face_heart_eyes",
+            path: "/emojis/positives/03_happy_face_heart_eyes.png",
+          },
+          elonEmoji: {
+            name: "angry_smiley_face",
+            path: "/emojis/negatives/04_angry_smiley_face.png",
+          },
+        },
+      },
     ],
-    expectedFlow: {
-      step1: "Emoji choices stored in Stripe metadata during checkout",
-      step2: "Webhook receives payment completion",
-      step3: "Metadata converted to product attributes",
-      step4: "Order sent to backend with emoji_good and emoji_bad attributes",
+  }
+
+  // Simulate what would be stored in Stripe metadata
+  const expectedMetadata = {
+    item_0_emoji_good: "happy_face_heart_eyes",
+    item_0_emoji_bad: "angry_smiley_face",
+    item_0_product_id: "tesla-vs-elon-emoji",
+  }
+
+  // Expected final order data structure
+  const expectedOrderData = {
+    customer: {
+      email: "test@example.com",
+      firstname: "Test",
+      lastname: "User",
     },
-    logLocations: {
-      vercel: "Vercel Dashboard → Functions → View Function Logs",
-      checkout: "Look for '🎭 Item emoji choices' in checkout logs",
-      webhook: "Look for '✅ Added Tesla/Elon emoji attribute' in webhook logs",
+    payment_id: "pi_test_example",
+    products: [
+      {
+        product_id: "prod_test_example",
+        quantity: 1,
+        attributes: [
+          { name: "emoji_good", value: "happy_face_heart_eyes" },
+          { name: "emoji_bad", value: "angry_smiley_face" },
+        ],
+      },
+    ],
+    shipping: 0,
+    tax: 0,
+  }
+
+  return NextResponse.json({
+    status: "✅ Emoji flow test endpoint working",
+    timestamp: new Date().toISOString(),
+    environment: envCheck,
+    testFlow: {
+      step1: "User customizes emoji product",
+      step2: "Frontend sends testEmojiData to /api/checkout",
+      step3: "Checkout API stores emoji choices in Stripe metadata",
+      step4: "User completes payment with Stripe",
+      step5: "Webhook receives session with metadata",
+      step6: "Webhook converts metadata to product attributes",
+      step7: "Order data sent to backend with emoji attributes",
     },
+    testData: {
+      inputFromFrontend: testEmojiData,
+      stripeMetadata: expectedMetadata,
+      finalOrderData: expectedOrderData,
+    },
+    nextSteps: [
+      "1. Go to /product/customize-emoji/tesla-vs-elon",
+      "2. Select Tesla and Elon emojis",
+      "3. Add to cart and checkout",
+      "4. Use test card: 4242424242424242",
+      "5. Check Vercel function logs for emoji attributes",
+    ],
   })
 }
