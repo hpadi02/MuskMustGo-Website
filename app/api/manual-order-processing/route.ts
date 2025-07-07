@@ -7,25 +7,23 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔄 Manual processing started")
-
     const { sessionId } = await request.json()
     console.log("🔄 Manual processing for session:", sessionId)
 
     if (!sessionId) {
-      return NextResponse.json({ error: "Session ID required" }, { status: 400 })
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
-    // Retrieve the session from Stripe
+    // Retrieve the checkout session with expanded data
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "customer", "payment_intent"],
+      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
     })
 
     console.log("📋 Session metadata:", session.metadata)
 
     // Extract customer information
     const customer = {
-      email: (session.customer_details?.email || session.customer_email) ?? "",
+      email: session.customer_details?.email || "",
       firstname: session.customer_details?.name?.split(" ")[0] || "",
       lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
       addr1: session.customer_details?.address?.line1 || "",
@@ -89,7 +87,7 @@ export async function POST(request: NextRequest) {
 
     console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
-    // Try to send to backend if configured
+    // Send to backend if configured
     const backendUrl = process.env.API_BASE_URL
     if (backendUrl) {
       try {
@@ -115,7 +113,7 @@ export async function POST(request: NextRequest) {
         console.error("❌ Backend request failed:", backendError)
       }
     } else {
-      console.log("⚠️ No backend URL configured, skipping backend request")
+      console.log("⚠️ No backend URL configured")
     }
 
     return NextResponse.json({
