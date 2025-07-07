@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     console.log("📋 Final session metadata:", JSON.stringify(sessionMetadata, null, 2))
 
-    // ===== URL DETECTION (keeping your existing logic) =====
+    // ===== URL DETECTION =====
     console.log("🌐 === URL DETECTION DEBUG ===")
 
     const getBaseUrl = () => {
