@@ -15,25 +15,33 @@ export async function POST(req: NextRequest) {
     const isVercel = process.env.VERCEL === "1"
     const tempDir = isVercel ? tmpdir() : join(process.cwd(), "temp")
 
-    // Ensure temp directory exists (only needed for nginx)
+    // Create temp directory if it doesn't exist (for nginx)
     if (!isVercel) {
-      try {
-        mkdirSync(tempDir, { recursive: true })
-      } catch (error) {
-        // Directory might already exist, that's fine
-      }
+      mkdirSync(tempDir, { recursive: true })
     }
 
-    // Save cart data to temporary file
     const filePath = join(tempDir, `cart-${sessionId}.json`)
+
+    // Save cart data to file
     writeFileSync(filePath, JSON.stringify(cartData, null, 2))
 
     console.log(`💾 Cart data saved for session: ${sessionId} at ${filePath}`)
-    console.log(`📋 Cart data preview:`, JSON.stringify(cartData, null, 2))
+    console.log("📋 Cart data preview:", JSON.stringify(cartData, null, 2))
 
-    return NextResponse.json({ success: true, filePath })
+    return NextResponse.json({
+      success: true,
+      message: "Cart data saved successfully",
+      sessionId,
+      filePath,
+    })
   } catch (error) {
     console.error("❌ Error saving cart data:", error)
-    return NextResponse.json({ error: "Failed to save cart data" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
