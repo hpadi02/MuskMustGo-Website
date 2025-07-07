@@ -1,4 +1,6 @@
 import { loadStripe } from "@stripe/stripe-js"
+import { writeFileSync, mkdirSync } from "fs"
+import { join } from "path"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -31,42 +33,7 @@ export async function createCheckoutSession(items: CartItem[]) {
       }
     }
 
-    // Extract emoji choices for metadata
-    const metadata: Record<string, string> = {}
-
-    items.forEach((item, index) => {
-      console.log(`Processing item ${index + 1}:`, {
-        id: item.id,
-        name: item.name,
-        customOptions: item.customOptions,
-      })
-
-      // ✅ FIXED: Check if this is the Tesla vs Elon emoji product using the product ID
-      if (item.id?.includes("tesla_vs_elon_emoji") && item.customOptions) {
-        console.log("Found Tesla vs Elon emoji product with customOptions:", item.customOptions)
-
-        // ✅ FIXED: Extract Tesla and Elon emoji choices with correct property names
-        if (item.customOptions.teslaEmoji) {
-          metadata.tesla_emoji = JSON.stringify(item.customOptions.teslaEmoji)
-          console.log("Added Tesla emoji to metadata:", item.customOptions.teslaEmoji)
-        }
-
-        if (item.customOptions.elonEmoji) {
-          metadata.elon_emoji = JSON.stringify(item.customOptions.elonEmoji)
-          console.log("Added Elon emoji to metadata:", item.customOptions.elonEmoji)
-        }
-
-        // Also add the variant info
-        if (item.customOptions.variant) {
-          metadata.variant = item.customOptions.variant
-          console.log("Added variant to metadata:", item.customOptions.variant)
-        }
-      }
-    })
-
-    console.log("Final metadata for Stripe session:", metadata)
-
-    // Create checkout session
+    // Create checkout session first to get session ID
     const response = await fetch("/api/checkout", {
       method: "POST",
       headers: {
@@ -77,7 +44,6 @@ export async function createCheckoutSession(items: CartItem[]) {
           price: item.stripeId,
           quantity: item.quantity,
         })),
-        metadata: metadata, // ✅ Include emoji choices in session metadata
         success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${window.location.origin}/cart`,
       }),
@@ -95,6 +61,24 @@ export async function createCheckoutSession(items: CartItem[]) {
 
     const { sessionId } = await response.json()
     console.log("Created session ID:", sessionId)
+
+    // Save cart data using session ID for webhook retrieval
+    try {
+      await fetch("/api/save-cart-data", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          cartData: items, // Save complete cart data including customizations
+        }),
+      })
+      console.log("Cart data saved for session:", sessionId)
+    } catch (error) {
+      console.error("Failed to save cart data:", error)
+      // Continue with checkout even if cart data saving fails
+    }
 
     // Redirect to Stripe Checkout
     const stripe = await stripePromise

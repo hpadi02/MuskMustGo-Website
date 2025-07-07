@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { headers } from "next/headers"
+import { readFileSync, unlinkSync } from "fs"
+import { join } from "path"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -35,6 +37,21 @@ export async function POST(req: NextRequest) {
 
       console.log("📦 Processing completed checkout session:", session.id)
 
+      // Try to retrieve saved cart data
+      let savedCartData = null
+      try {
+        const cartFilePath = join(process.cwd(), "temp", `cart-${session.id}.json`)
+        const cartDataString = readFileSync(cartFilePath, "utf8")
+        savedCartData = JSON.parse(cartDataString)
+        console.log("📋 Retrieved saved cart data:", savedCartData)
+        
+        // Clean up the temporary file
+        unlinkSync(cartFilePath)
+        console.log("🗑️ Cleaned up cart data file")
+      } catch (error) {
+        console.warn("⚠️ Could not retrieve saved cart data:", error)
+      }
+
       // Extract customer information
       const customer = {
         email: session.customer_details?.email || "",
@@ -48,7 +65,7 @@ export async function POST(req: NextRequest) {
         country: session.customer_details?.address?.country || "",
       }
 
-      // Extract products with potential emoji attributes
+      // Extract products with emoji attributes
       const products =
         sessionWithLineItems.line_items?.data.map((item) => {
           const product = item.price?.product as Stripe.Product
@@ -57,33 +74,43 @@ export async function POST(req: NextRequest) {
             quantity: item.quantity || 1,
           }
 
-          // Check if this is a Tesla vs Elon emoji product and extract emoji choices
-          const productName = product.name?.toLowerCase() || ""
-          if (productName.includes("tesla") && productName.includes("emoji")) {
-            // Extract emoji choices from session metadata
-            const metadata = session.metadata || {}
-            const teslaEmoji = metadata.tesla_emoji
-            const elonEmoji = metadata.elon_emoji
+          // Find matching cart item with customizations
+          if (savedCartData) {
+            const cartItem = savedCartData.find((cartItem: any) => 
+              cartItem.stripeId === item.price?.id || 
+              cartItem.productId === product.id
+            )
 
-            if (teslaEmoji || elonEmoji) {
-              productData.attributes = []
+            if (cartItem && cartItem.customOptions) {
+              console.log("🎨 Found cart item with customizations:", cartItem.customOptions)
 
-              if (teslaEmoji) {
-                // Remove .png extension and path if present
-                const cleanTeslaEmoji = teslaEmoji.replace(/^.*\//, "").replace(/\.png$/, "")
-                productData.attributes.push({
-                  name: "emoji_good",
-                  value: cleanTeslaEmoji,
-                })
-              }
+              // Check if this is a Tesla vs Elon emoji product
+              const productName = product.name?.toLowerCase() || ""
+              if (productName.includes("tesla") && productName.includes("emoji")) {
+                const attributes = []
 
-              if (elonEmoji) {
-                // Remove .png extension and path if present
-                const cleanElonEmoji = elonEmoji.replace(/^.*\//, "").replace(/\.png$/, "")
-                productData.attributes.push({
-                  name: "emoji_bad",
-                  value: cleanElonEmoji,
-                })
+                // Add Tesla emoji as 'emoji_good'
+                if (cartItem.customOptions.teslaEmoji && cartItem.customOptions.teslaEmoji.name) {
+                  attributes.push({
+                    name: "emoji_good",
+                    value: cartItem.customOptions.teslaEmoji.name,
+                  })
+                  console.log("✅ Added Tesla emoji attribute:", cartItem.customOptions.teslaEmoji.name)
+                }
+
+                // Add Elon emoji as 'emoji_bad'
+                if (cartItem.customOptions.elonEmoji && cartItem.customOptions.elonEmoji.name) {
+                  attributes.push({
+                    name: "emoji_bad",
+                    value: cartItem.customOptions.elonEmoji.name,
+                  })
+                  console.log("✅ Added Elon emoji attribute:", cartItem.customOptions.elonEmoji.name)
+                }
+
+                if (attributes.length > 0) {
+                  productData.attributes = attributes
+                  console.log("🎯 Final product attributes:", productData.attributes)
+                }
               }
             }
           }
@@ -100,7 +127,7 @@ export async function POST(req: NextRequest) {
         tax: session.total_details?.amount_tax || 0,
       }
 
-      console.log("📋 Order data:", JSON.stringify(orderData, null, 2))
+      console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
       // Send to backend API
       const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
@@ -116,7 +143,7 @@ export async function POST(req: NextRequest) {
           })
 
           if (response.ok) {
-            console.log("✅ Order successfully sent to backend")
+            console.log("✅ Order successfully sent to backend with emoji attributes")
           } else {
             console.error("❌ Failed to send order to backend:", response.status, response.statusText)
           }
