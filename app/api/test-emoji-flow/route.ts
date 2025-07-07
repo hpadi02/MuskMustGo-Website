@@ -1,25 +1,18 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const envStatus = {
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL: process.env.VERCEL,
-    API_BASE_URL: process.env.API_BASE_URL,
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? "✅ Set" : "❌ Missing",
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ? "✅ Set" : "❌ Missing",
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? "✅ Set" : "❌ Missing",
+    stripe_secret: !!process.env.STRIPE_SECRET_KEY,
+    stripe_public: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    api_base_url: process.env.API_BASE_URL || "Not set",
+    backend_api_key: !!process.env.BACKEND_API_KEY,
+    webhook_secret: !!process.env.STRIPE_WEBHOOK_SECRET,
+    node_env: process.env.NODE_ENV,
   }
 
   return NextResponse.json({
-    message: "Emoji Flow Test Endpoint",
+    message: "Emoji flow test endpoint",
     environment: envStatus,
     timestamp: new Date().toISOString(),
-    instructions: {
-      step1: "Go to /product/customize-emoji/tesla-vs-elon",
-      step2: "Select Tesla and Elon emojis",
-      step3: "Add to cart and checkout",
-      step4: "Check logs for emoji attributes",
-    },
   })
 }

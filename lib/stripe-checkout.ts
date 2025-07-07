@@ -1,6 +1,4 @@
 import { loadStripe } from "@stripe/stripe-js"
-import { writeFileSync, mkdirSync } from "fs"
-import { join } from "path"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -33,7 +31,7 @@ export async function createCheckoutSession(items: CartItem[]) {
       }
     }
 
-    // Create checkout session first to get session ID
+    // Create checkout session with FULL item data including customOptions
     const response = await fetch("/api/checkout", {
       method: "POST",
       headers: {
@@ -43,6 +41,11 @@ export async function createCheckoutSession(items: CartItem[]) {
         items: stripeItems.map((item) => ({
           price: item.stripeId,
           quantity: item.quantity,
+          // PASS THROUGH THE CUSTOM OPTIONS AND OTHER DATA
+          id: item.id,
+          productId: item.productId,
+          customOptions: item.customOptions, // This is the key fix!
+          name: item.name,
         })),
         success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${window.location.origin}/cart`,
@@ -61,24 +64,6 @@ export async function createCheckoutSession(items: CartItem[]) {
 
     const { sessionId } = await response.json()
     console.log("Created session ID:", sessionId)
-
-    // Save cart data using session ID for webhook retrieval
-    try {
-      await fetch("/api/save-cart-data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sessionId,
-          cartData: items, // Save complete cart data including customizations
-        }),
-      })
-      console.log("Cart data saved for session:", sessionId)
-    } catch (error) {
-      console.error("Failed to save cart data:", error)
-      // Continue with checkout even if cart data saving fails
-    }
 
     // Redirect to Stripe Checkout
     const stripe = await stripePromise
