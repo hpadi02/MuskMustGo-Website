@@ -7,24 +7,19 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("🔄 === MANUAL ORDER PROCESSING STARTED ===")
-
-    const body = await request.json()
-    const { sessionId } = body
+    const { sessionId } = await request.json()
 
     if (!sessionId) {
-      console.error("❌ No session ID provided")
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
-    console.log("🔍 Processing session:", sessionId)
+    console.log("🔄 Manual processing for session:", sessionId)
 
     // Get the session with line items
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "line_items.data.price.product"],
     })
 
-    console.log("📦 Retrieved session:", session.id)
     console.log("📋 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
     // Extract customer information
@@ -92,11 +87,8 @@ export async function POST(request: NextRequest) {
 
     console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
-    // Try to send to backend - but don't fail if no backend URL
+    // Try to send to backend if URL is configured
     const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
-    let backendSuccess = false
-    let backendError = null
-
     if (backendUrl) {
       try {
         const fullBackendUrl = `${backendUrl}/orders`
@@ -114,39 +106,29 @@ export async function POST(request: NextRequest) {
           const responseData = await response.text()
           console.log("✅ Order successfully sent to backend with emoji attributes")
           console.log("✅ Backend response:", responseData)
-          backendSuccess = true
         } else {
           const errorText = await response.text()
           console.error("❌ Failed to send order to backend:")
           console.error("❌ Status:", response.status)
           console.error("❌ Error:", errorText)
-          backendError = `Backend error: ${response.status} - ${errorText}`
         }
       } catch (error) {
         console.error("❌ Error sending order to backend:", error)
-        backendError = `Network error: ${error}`
       }
     } else {
-      console.warn("⚠️ No backend URL configured - order processed but not sent to backend")
-      console.warn("⚠️ This is normal for Vercel testing without backend integration")
+      console.warn("⚠️ No backend URL configured, order not sent to backend")
     }
 
-    // Return success even if backend fails (payment was successful)
     return NextResponse.json({
       success: true,
-      message: "Order processed successfully",
       orderData,
-      backendSuccess,
-      backendError,
-      sessionId: session.id,
-      hasEmojiAttributes: products.some((p) => p.attributes && p.attributes.length > 0),
+      message: "Order processed successfully",
     })
   } catch (error) {
     console.error("❌ Error in manual order processing:", error)
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Processing failed",
-        details: error instanceof Error ? error.stack : undefined,
+        error: error instanceof Error ? error.message : "Failed to process order",
       },
       { status: 500 },
     )

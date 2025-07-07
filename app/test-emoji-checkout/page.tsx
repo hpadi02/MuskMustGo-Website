@@ -25,11 +25,12 @@ export default function TestEmojiCheckout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>Checking environment...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>Loading Environment Status...</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
     )
   }
@@ -45,69 +46,93 @@ export default function TestEmojiCheckout() {
       <div className="max-w-4xl mx-auto space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>🧪 Emoji Checkout Test Environment</CardTitle>
-            <CardDescription>Environment status for emoji attribute testing</CardDescription>
+            <CardTitle>Emoji Flow Test Environment</CardTitle>
+            <CardDescription>
+              Check your environment configuration and test the emoji customization flow
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {envStatus && (
-              <div className="space-y-3">
-                {Object.entries(envStatus.environment).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                    <span className="font-medium">{key}:</span>
+        </Card>
+
+        {envStatus && (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Environment Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Stripe Configuration</h4>
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      {getStatusIcon(value as string)}
-                      <span className="text-sm">{value as string}</span>
+                      {getStatusIcon(envStatus.environment.stripe?.secret_key)}
+                      <span>Secret Key: {envStatus.environment.stripe?.secret_key}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(envStatus.environment.stripe?.publishable_key)}
+                      <span>Publishable Key: {envStatus.environment.stripe?.publishable_key}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(envStatus.environment.stripe?.webhook_secret)}
+                      <span>Webhook Secret: {envStatus.environment.stripe?.webhook_secret}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>🎯 Test Flow</CardTitle>
-            <CardDescription>Follow these steps to test emoji attributes</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <h4 className="font-semibold">Step 1: Customize Emoji Product</h4>
-              <Button asChild>
-                <Link href="/product/customize-emoji/tesla-vs-elon">Go to Tesla vs Elon Emoji Product</Link>
-              </Button>
-            </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Backend Configuration</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(envStatus.environment.backend?.api_base_url)}
+                      <span>API Base URL: {envStatus.environment.backend?.api_base_url}</span>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <h4 className="font-semibold">Step 2: Select Your Emojis</h4>
-              <p className="text-sm text-gray-600">Choose a Tesla emoji (positive) and an Elon emoji (negative)</p>
-            </div>
+                <div>
+                  <h4 className="font-semibold mb-2">Environment Info</h4>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(envStatus.environment.environment?.vercel)}
+                      <span>{envStatus.environment.environment?.vercel}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-blue-500" />
+                      <span>Node Environment: {envStatus.environment.environment?.node_env}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="space-y-2">
-              <h4 className="font-semibold">Step 3: Add to Cart & Checkout</h4>
-              <p className="text-sm text-gray-600">Use test card: 4242424242424242</p>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Test Instructions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Step-by-Step Testing:</h4>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Go to the emoji customization page</li>
+                    <li>Select your Tesla emoji (positive) and Elon emoji (negative)</li>
+                    <li>Add to cart and proceed to checkout</li>
+                    <li>Use test card: 4242424242424242</li>
+                    <li>Complete the payment</li>
+                    <li>Check Vercel function logs for emoji data</li>
+                  </ol>
+                </div>
 
-            <div className="space-y-2">
-              <h4 className="font-semibold">Step 4: Check Success Page</h4>
-              <p className="text-sm text-gray-600">You should see confirmation that emoji attributes were processed</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>🔍 What to Look For</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <p>✅ Checkout logs should show: "Added Tesla emoji" and "Added Elon emoji"</p>
-              <p>✅ Webhook logs should show: "Session metadata" with emoji data</p>
-              <p>✅ Success page should confirm emoji attributes were processed</p>
-              <p>⚠️ Backend integration will show "No backend URL configured" on Vercel (this is normal)</p>
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex gap-2">
+                  <Button asChild>
+                    <Link href="/product/customize-emoji/tesla-vs-elon">Start Emoji Test</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href="/cart">View Cart</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   )
