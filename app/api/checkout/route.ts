@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     console.log("📋 Line items for Stripe:", JSON.stringify(lineItems, null, 2))
 
-    // Create metadata for custom options (emoji choices)
+    // Create metadata for custom options (emoji choices) - SIMPLIFIED
     const sessionMetadata: Record<string, string> = {}
 
     // Add any metadata passed from the frontend
@@ -51,50 +51,32 @@ export async function POST(request: NextRequest) {
       console.log("📝 Frontend metadata added:", JSON.stringify(metadata, null, 2))
     }
 
-    // Process item-specific metadata
+    // Process emoji choices directly into metadata
     items.forEach((item: any, index: number) => {
-      if (item.metadata?.customOptions) {
-        sessionMetadata[`item_${index}_custom_options`] = item.metadata.customOptions
-        console.log(`📝 Item ${index} custom options:`, item.metadata.customOptions)
-      }
-
-      // Handle emoji choices specifically
       if (item.customOptions) {
         console.log(`🎭 Item ${index} emoji choices:`, JSON.stringify(item.customOptions, null, 2))
-        sessionMetadata[`item_${index}_emoji_choices`] = JSON.stringify(item.customOptions)
+
+        // For Tesla vs Elon emoji products, store the emoji choices directly
+        if (item.customOptions.teslaEmoji) {
+          sessionMetadata[`item_${index}_emoji_good`] = item.customOptions.teslaEmoji.name
+          console.log(`✅ Added Tesla emoji: ${item.customOptions.teslaEmoji.name}`)
+        }
+
+        if (item.customOptions.elonEmoji) {
+          sessionMetadata[`item_${index}_emoji_bad`] = item.customOptions.elonEmoji.name
+          console.log(`✅ Added Elon emoji: ${item.customOptions.elonEmoji.name}`)
+        }
+
+        // Store product ID for matching in webhook
+        sessionMetadata[`item_${index}_product_id`] = item.id || item.productId || ""
       }
     })
 
     console.log("📋 Final session metadata:", JSON.stringify(sessionMetadata, null, 2))
 
-    // ===== COMPREHENSIVE URL DETECTION WITH EXTENSIVE DEBUGGING =====
+    // ===== URL DETECTION (keeping your existing logic) =====
     console.log("🌐 === URL DETECTION DEBUG ===")
 
-    // Log the problematic original method
-    console.log("❌ request.nextUrl.origin (problematic):", request.nextUrl.origin)
-    console.log("🔍 request.nextUrl.href:", request.nextUrl.href)
-    console.log("🔍 request.nextUrl.host:", request.nextUrl.host)
-    console.log("🔍 request.nextUrl.hostname:", request.nextUrl.hostname)
-    console.log("🔍 request.nextUrl.protocol:", request.nextUrl.protocol)
-
-    // Log all request headers for debugging
-    console.log("📋 === ALL REQUEST HEADERS ===")
-    const headers: Record<string, string> = {}
-    request.headers.forEach((value, key) => {
-      headers[key] = value
-      console.log(`  ${key}: ${value}`)
-    })
-
-    // Log environment variables
-    console.log("🔧 === ENVIRONMENT VARIABLES ===")
-    console.log("  NODE_ENV:", process.env.NODE_ENV)
-    console.log("  API_BASE_URL:", process.env.API_BASE_URL)
-    console.log("  PUBLIC_URL:", process.env.PUBLIC_URL)
-    console.log("  VERCEL_URL:", process.env.VERCEL_URL)
-    console.log("  HOSTNAME:", process.env.HOSTNAME)
-    console.log("  PORT:", process.env.PORT)
-
-    // Comprehensive URL detection with multiple fallback methods
     const getBaseUrl = () => {
       console.log("🧪 === TESTING URL DETECTION METHODS ===")
 
@@ -139,24 +121,12 @@ export async function POST(request: NextRequest) {
       }
       console.log("❌ Method 4 - API_BASE_URL not suitable:", process.env.API_BASE_URL)
 
-      // Method 5: Try to construct from other headers
-      const xForwardedHost = request.headers.get("x-forwarded-host")
-      const xOriginalHost = request.headers.get("x-original-host")
-      const alternativeHost = xForwardedHost || xOriginalHost
-
-      if (alternativeHost && !alternativeHost.includes("localhost") && !alternativeHost.includes("127.0.0.1")) {
-        const alternativeUrl = `${protocol}://${alternativeHost}`
-        console.log("✅ Method 5 - Alternative headers:", alternativeUrl)
-        return alternativeUrl
-      }
-      console.log("❌ Method 5 - Alternative headers not suitable")
-
-      // Method 6: Environment-based fallback
+      // Method 5: Environment-based fallback
       if (process.env.NODE_ENV === "production") {
-        console.log("✅ Method 6 - Production fallback: https://elonmustgo.com")
+        console.log("✅ Method 5 - Production fallback: https://elonmustgo.com")
         return "https://elonmustgo.com"
       } else {
-        console.log("✅ Method 6 - Development fallback: http://localhost:3000")
+        console.log("✅ Method 5 - Development fallback: http://localhost:3000")
         return "http://localhost:3000"
       }
     }

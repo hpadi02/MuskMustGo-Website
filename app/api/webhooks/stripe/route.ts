@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 import { headers } from "next/headers"
-import { readFileSync, unlinkSync, existsSync } from "fs"
-import { join } from "path"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
@@ -48,30 +46,7 @@ export async function POST(req: NextRequest) {
       })
 
       console.log("📦 Processing completed checkout session:", session.id)
-
-      // Try to retrieve saved cart data - nginx specific path
-      let savedCartData = null
-      try {
-        const tempDir = join(process.cwd(), "temp")
-        const cartFilePath = join(tempDir, `cart-${session.id}.json`)
-
-        console.log(`🔍 Looking for cart data at: ${cartFilePath}`)
-
-        if (existsSync(cartFilePath)) {
-          const cartDataString = readFileSync(cartFilePath, "utf8")
-          savedCartData = JSON.parse(cartDataString)
-          console.log("📋 Retrieved saved cart data:", savedCartData)
-
-          // Clean up the temporary file
-          unlinkSync(cartFilePath)
-          console.log("🗑️ Cleaned up cart data file")
-        } else {
-          console.log("📋 No cart data file found - this is normal for non-customized products")
-        }
-      } catch (error) {
-        console.warn("⚠️ Could not retrieve saved cart data:", error)
-        console.warn("⚠️ This might be normal if no customizations were made")
-      }
+      console.log("📋 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
       // Extract customer information
       const customer = {
@@ -86,52 +61,41 @@ export async function POST(req: NextRequest) {
         country: session.customer_details?.address?.country || "",
       }
 
-      // Extract products with emoji attributes
+      // Extract products with emoji attributes from Stripe metadata
       const products =
-        sessionWithLineItems.line_items?.data.map((item) => {
+        sessionWithLineItems.line_items?.data.map((item, index) => {
           const product = item.price?.product as Stripe.Product
           const productData: any = {
             product_id: product.id,
             quantity: item.quantity || 1,
           }
 
-          // Find matching cart item with customizations
-          if (savedCartData) {
-            const cartItem = savedCartData.find(
-              (cartItem: any) => cartItem.stripeId === item.price?.id || cartItem.productId === product.id,
-            )
+          // Check for emoji attributes in metadata
+          const emojiGood = session.metadata?.[`item_${index}_emoji_good`]
+          const emojiBad = session.metadata?.[`item_${index}_emoji_bad`]
 
-            if (cartItem && cartItem.customOptions) {
-              console.log("🎨 Found cart item with customizations:", cartItem.customOptions)
+          if (emojiGood || emojiBad) {
+            const attributes = []
 
-              // Check if this is a Tesla vs Elon emoji product
-              const productName = product.name?.toLowerCase() || ""
-              if (productName.includes("tesla") && productName.includes("emoji")) {
-                const attributes = []
+            if (emojiGood) {
+              attributes.push({
+                name: "emoji_good",
+                value: emojiGood,
+              })
+              console.log(`✅ Added Tesla emoji attribute: ${emojiGood}`)
+            }
 
-                // Add Tesla emoji as 'emoji_good'
-                if (cartItem.customOptions.teslaEmoji && cartItem.customOptions.teslaEmoji.name) {
-                  attributes.push({
-                    name: "emoji_good",
-                    value: cartItem.customOptions.teslaEmoji.name,
-                  })
-                  console.log("✅ Added Tesla emoji attribute:", cartItem.customOptions.teslaEmoji.name)
-                }
+            if (emojiBad) {
+              attributes.push({
+                name: "emoji_bad",
+                value: emojiBad,
+              })
+              console.log(`✅ Added Elon emoji attribute: ${emojiBad}`)
+            }
 
-                // Add Elon emoji as 'emoji_bad'
-                if (cartItem.customOptions.elonEmoji && cartItem.customOptions.elonEmoji.name) {
-                  attributes.push({
-                    name: "emoji_bad",
-                    value: cartItem.customOptions.elonEmoji.name,
-                  })
-                  console.log("✅ Added Elon emoji attribute:", cartItem.customOptions.elonEmoji.name)
-                }
-
-                if (attributes.length > 0) {
-                  productData.attributes = attributes
-                  console.log("🎯 Final product attributes:", productData.attributes)
-                }
-              }
+            if (attributes.length > 0) {
+              productData.attributes = attributes
+              console.log("🎯 Final product attributes:", productData.attributes)
             }
           }
 
@@ -153,9 +117,7 @@ export async function POST(req: NextRequest) {
       const backendUrl = process.env.API_BASE_URL
       if (backendUrl) {
         try {
-          // Use your existing backend URL format that was working
           const fullBackendUrl = `${backendUrl}/orders`
-
           console.log("🌐 Sending to backend URL:", fullBackendUrl)
 
           const response = await fetch(fullBackendUrl, {
