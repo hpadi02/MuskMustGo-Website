@@ -40,16 +40,22 @@ export async function POST(req: NextRequest) {
       // Try to retrieve saved cart data
       let savedCartData = null
       try {
-        const cartFilePath = join(process.cwd(), "temp", `cart-${session.id}.json`)
+        // Use /tmp for Vercel, temp for nginx
+        const isVercel = process.env.VERCEL === "1"
+        const tempDir = isVercel ? require("os").tmpdir() : join(process.cwd(), "temp")
+        const cartFilePath = join(tempDir, `cart-${session.id}.json`)
+
+        console.log(`🔍 Looking for cart data at: ${cartFilePath}`)
         const cartDataString = readFileSync(cartFilePath, "utf8")
         savedCartData = JSON.parse(cartDataString)
         console.log("📋 Retrieved saved cart data:", savedCartData)
-        
+
         // Clean up the temporary file
         unlinkSync(cartFilePath)
         console.log("🗑️ Cleaned up cart data file")
       } catch (error) {
         console.warn("⚠️ Could not retrieve saved cart data:", error)
+        console.warn("⚠️ This might be normal if no customizations were made")
       }
 
       // Extract customer information
@@ -76,9 +82,8 @@ export async function POST(req: NextRequest) {
 
           // Find matching cart item with customizations
           if (savedCartData) {
-            const cartItem = savedCartData.find((cartItem: any) => 
-              cartItem.stripeId === item.price?.id || 
-              cartItem.productId === product.id
+            const cartItem = savedCartData.find(
+              (cartItem: any) => cartItem.stripeId === item.price?.id || cartItem.productId === product.id,
             )
 
             if (cartItem && cartItem.customOptions) {
