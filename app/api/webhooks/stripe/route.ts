@@ -134,29 +134,49 @@ export async function POST(req: NextRequest) {
 
       console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
 
-      // Send to backend API
-      const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+      // Send to Ed's backend API
+      const backendUrl = process.env.API_BASE_URL
       if (backendUrl) {
         try {
-          const response = await fetch(`${backendUrl}/orders`, {
+          // Build complete URL - handle different backend URL formats
+          let fullBackendUrl = backendUrl
+          if (!backendUrl.includes("/orders")) {
+            fullBackendUrl = backendUrl.endsWith("/") ? `${backendUrl}orders` : `${backendUrl}/orders`
+          }
+
+          console.log("🌐 Sending to backend URL:", fullBackendUrl)
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          }
+
+          // Add authentication if provided
+          if (process.env.BACKEND_API_KEY) {
+            headers["Authorization"] = `Bearer ${process.env.BACKEND_API_KEY}`
+          }
+
+          const response = await fetch(fullBackendUrl, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
-            },
+            headers,
             body: JSON.stringify(orderData),
           })
 
           if (response.ok) {
-            console.log("✅ Order successfully sent to backend with emoji attributes")
+            const responseData = await response.text()
+            console.log("✅ Order successfully sent to Ed's backend with emoji attributes")
+            console.log("✅ Backend response:", responseData)
           } else {
-            console.error("❌ Failed to send order to backend:", response.status, response.statusText)
+            const errorText = await response.text()
+            console.error("❌ Failed to send order to Ed's backend:")
+            console.error("❌ Status:", response.status)
+            console.error("❌ Error:", errorText)
           }
         } catch (error) {
-          console.error("❌ Error sending order to backend:", error)
+          console.error("❌ Error sending order to Ed's backend:", error)
         }
       } else {
-        console.warn("⚠️ No backend URL configured, order not sent")
+        console.warn("⚠️ No API_BASE_URL configured, order not sent to backend")
+        console.warn("⚠️ Please set API_BASE_URL in your environment variables")
       }
     } catch (error) {
       console.error("❌ Error processing webhook:", error)
