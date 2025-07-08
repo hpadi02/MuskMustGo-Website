@@ -7,14 +7,14 @@ export async function POST(request: NextRequest) {
     console.log("⏰ Timestamp:", new Date().toISOString())
 
     const { sessionId } = await request.json()
-    console.log("🔑 Processing session ID:", sessionId)
+    console.log("🔑 Session ID received:", sessionId)
 
     if (!sessionId) {
       console.error("❌ No session ID provided")
-      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "No session ID provided" }, { status: 400 })
     }
 
-    // Retrieve the Stripe session
+    // Retrieve the Stripe session with payment intent
     console.log("💳 Retrieving Stripe session...")
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "line_items.data.price.product", "payment_intent"],
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     if (!session) {
       console.error("❌ No session found for ID:", sessionId)
-      return NextResponse.json({ error: "Session not found" }, { status: 404 })
+      return NextResponse.json({ success: false, error: "Session not found" }, { status: 404 })
     }
 
     console.log("✅ Stripe session retrieved successfully")
@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
     console.log("  - Session ID:", session.id)
     console.log("  - Payment status:", session.payment_status)
     console.log("  - Amount total:", session.amount_total)
+    console.log("  - Currency:", session.currency)
     console.log("  - Customer email:", session.customer_details?.email)
+    console.log("  - Customer name:", session.customer_details?.name)
 
     // Get the payment intent ID
     const paymentIntentId =
@@ -66,9 +68,9 @@ export async function POST(request: NextRequest) {
           const emojiBad = session.metadata?.[`item_${itemIndex}_emoji_bad`]
 
           if (emojiGood && emojiBad) {
-            console.log(`✅ Found emoji attributes for item ${itemIndex}:`)
-            console.log(`  - Tesla emoji: ${emojiGood}`)
-            console.log(`  - Elon emoji: ${emojiBad}`)
+            console.log(`🎭 Found emoji attributes for item ${itemIndex}:`)
+            console.log(`  - emoji_good: ${emojiGood}`)
+            console.log(`  - emoji_bad: ${emojiBad}`)
 
             return {
               product_id,
@@ -80,39 +82,27 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Regular product without attributes
           return {
             product_id,
             quantity: item.quantity || 1,
           }
         }) || [],
-      shipping: 0,
-      tax: 0,
       total: ((session.amount_total || 0) / 100).toFixed(2),
       currency: session.currency || "usd",
-      sessionId: session.id,
+      shipping: 0,
+      tax: 0,
     }
 
     console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
     console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
 
-    // Determine API URL
-    let baseUrl: string
-    if (process.env.PUBLIC_URL) {
-      baseUrl = process.env.PUBLIC_URL
-    } else if (process.env.VERCEL_URL) {
-      baseUrl = `https://${process.env.VERCEL_URL}`
-    } else if (process.env.NODE_ENV === "production") {
-      baseUrl = "https://elonmustgo.com"
-    } else {
-      baseUrl = "http://localhost:3000"
-    }
-
-    const apiUrl = `${baseUrl}/api/orders`
-    console.log("🎯 Final API URL:", apiUrl)
-
     // Send to Ed's backend
-    const backendResponse = await fetch(apiUrl, {
+    const API_BASE_URL = process.env.API_BASE_URL || "https://elonmustgo.com"
+    const backendUrl = `${API_BASE_URL}/api/orders`
+
+    console.log("🎯 Backend URL:", backendUrl)
+
+    const backendResponse = await fetch(backendUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -124,23 +114,32 @@ export async function POST(request: NextRequest) {
 
     if (!backendResponse.ok) {
       const errorText = await backendResponse.text()
-      console.error("❌ Failed to send order to backend:", errorText)
-      return NextResponse.json({ error: "Failed to process order", details: errorText }, { status: 500 })
+      console.error("❌ Failed to send order to backend:")
+      console.error("❌ Status:", backendResponse.status)
+      console.error("❌ Error text:", errorText)
+      return NextResponse.json(
+        { success: false, error: "Failed to process order with backend", orderData },
+        { status: 500 },
+      )
     }
 
     const result = await backendResponse.json()
-    console.log("✅ Order successfully sent to Ed's backend:", result)
+    console.log("✅ Order successfully sent to Ed's backend:")
+    console.log("✅ Backend response:", JSON.stringify(result, null, 2))
 
     return NextResponse.json({
       success: true,
-      orderData,
-      backendResponse: result,
+      orderData: {
+        sessionId: session.id,
+        customer: orderData.customer,
+        products: orderData.products,
+        total: orderData.total,
+        currency: orderData.currency,
+      },
     })
   } catch (error) {
-    console.error("💥 === ORDER PROCESSING ERROR ===", error)
-    return NextResponse.json(
-      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
-    )
+    console.error("💥 === ORDER PROCESSING ERROR ===")
+    console.error("💥 Error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

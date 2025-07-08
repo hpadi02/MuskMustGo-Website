@@ -83,61 +83,22 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
             console.log(`🎭 Processing product ${itemIndex + 1}: ${product_id}`)
 
-            // Check if this is a Tesla vs Elon emoji product and has emoji choices
-            const isEmojiProduct = item.description?.includes("emoji") || product_id.includes("tesla_vs_elon_emoji")
+            // Check for emoji attributes in metadata
+            const emojiGood = session.metadata?.[`item_${itemIndex}_emoji_good`]
+            const emojiBad = session.metadata?.[`item_${itemIndex}_emoji_bad`]
 
-            if (isEmojiProduct) {
-              console.log("🎭 Detected emoji product, checking for emoji choices...")
+            if (emojiGood && emojiBad) {
+              console.log(`🎭 Found emoji attributes for item ${itemIndex}:`)
+              console.log(`  - emoji_good: ${emojiGood}`)
+              console.log(`  - emoji_bad: ${emojiBad}`)
 
-              // Try multiple metadata keys for emoji choices
-              const possibleKeys = [
-                "emoji_choices",
-                `item_${itemIndex}_emoji_choices`,
-                `item_${itemIndex}_custom_options`,
-              ]
-
-              let emojiChoices = null
-              for (const key of possibleKeys) {
-                if (session.metadata?.[key]) {
-                  console.log(`🎭 Found emoji data in metadata key: ${key}`)
-                  console.log(`🎭 Raw emoji data: ${session.metadata[key]}`)
-                  try {
-                    emojiChoices = JSON.parse(session.metadata[key])
-                    console.log("🎭 Parsed emoji choices:", JSON.stringify(emojiChoices, null, 2))
-                    break
-                  } catch (parseError) {
-                    console.error(`❌ Failed to parse emoji data from ${key}:`, parseError)
-                  }
-                }
-              }
-
-              if (emojiChoices) {
-                // Extract emoji names (remove .png extension)
-                const teslaEmoji = emojiChoices.tesla?.name?.replace(".png", "") || ""
-                const elonEmoji = emojiChoices.elon?.name?.replace(".png", "") || ""
-
-                console.log("🎭 Tesla emoji:", teslaEmoji)
-                console.log("🎭 Elon emoji:", elonEmoji)
-
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "emoji_good", value: teslaEmoji },
-                    { name: "emoji_bad", value: elonEmoji },
-                  ],
-                }
-              } else {
-                console.log("⚠️ Emoji product but no emoji choices found in metadata")
-                // Fallback to generic attributes if parsing fails
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "Type", value: "Custom Emoji" },
-                    { name: "Source", value: "Stripe Checkout" },
-                  ],
-                }
+              return {
+                product_id,
+                quantity: item.quantity || 1,
+                attributes: [
+                  { name: "emoji_good", value: emojiGood },
+                  { name: "emoji_bad", value: emojiBad },
+                ],
               }
             }
 
@@ -222,36 +183,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         {/* Clear cart when success page loads */}
         <CartClearer />
 
-        {/* Navbar */}
-        <nav className="border-b border-gray-800">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <Link href="/" className="text-2xl font-bold">
-                <span className="text-red-500">Musk</span>
-                <span className="text-white">MustGo</span>
-              </Link>
-
-              <div className="flex items-center space-x-8">
-                <Link href="/shop" className="text-white hover:text-red-500 transition-colors">
-                  SHOP
-                </Link>
-                <div className="relative">
-                  <Link href="/community" className="text-white hover:text-red-500 transition-colors">
-                    COMMUNITY
-                  </Link>
-                </div>
-                <Link href="/about" className="text-white hover:text-red-500 transition-colors">
-                  ABOUT
-                </Link>
-                <Link href="/contact" className="text-white hover:text-red-500 transition-colors">
-                  CONTACT
-                </Link>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Main Content */}
+        {/* Main Content - NO NAVBAR HERE since layout.tsx provides it */}
         <div className="max-w-4xl mx-auto px-6 py-20">
           <div className="text-center">
             <div className="mb-8">
@@ -262,7 +194,8 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               </p>
             </div>
 
-            <div className="bg-gray-900 p-8 rounded-lg mb-8">
+            {/* Order Details - Black with White Border */}
+            <div className="bg-black border-2 border-white rounded-lg p-8 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-medium">Order Details</h2>
                 <Package className="h-6 w-6 text-white/60" />

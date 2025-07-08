@@ -1,21 +1,23 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function GET() {
   try {
     console.log("🧪 === EMOJI FLOW TEST STARTED ===")
 
+    // Test data with emoji attributes
     const testOrderData = {
       customer: {
         email: "test@example.com",
         firstname: "Test",
         lastname: "User",
         addr1: "123 Test St",
+        addr2: "",
         city: "Test City",
         state_prov: "TS",
         postal_code: "12345",
         country: "US",
       },
-      payment_id: "pi_test_1234567890",
+      payment_id: "pi_test_12345",
       products: [
         {
           product_id: "prod_test_emoji_magnet",
@@ -34,6 +36,8 @@ export async function POST(request: NextRequest) {
           ],
         },
       ],
+      total: "28.98",
+      currency: "usd",
       shipping: 0,
       tax: 0,
     }
@@ -41,21 +45,12 @@ export async function POST(request: NextRequest) {
     console.log("📤 Test order data:", JSON.stringify(testOrderData, null, 2))
 
     // Send to Ed's backend
-    let baseUrl: string
-    if (process.env.PUBLIC_URL) {
-      baseUrl = process.env.PUBLIC_URL
-    } else if (process.env.VERCEL_URL) {
-      baseUrl = `https://${process.env.VERCEL_URL}`
-    } else if (process.env.NODE_ENV === "production") {
-      baseUrl = "https://elonmustgo.com"
-    } else {
-      baseUrl = "http://localhost:3000"
-    }
+    const API_BASE_URL = process.env.API_BASE_URL || "https://elonmustgo.com"
+    const backendUrl = `${API_BASE_URL}/api/orders`
 
-    const apiUrl = `${baseUrl}/api/orders`
-    console.log("🎯 Sending to:", apiUrl)
+    console.log("🎯 Backend URL:", backendUrl)
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(backendUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -63,17 +58,33 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(testOrderData),
     })
 
-    const result = await response.json()
-    console.log("📡 Backend response:", result)
+    console.log("📡 Backend response status:", response.status)
 
-    return NextResponse.json({
-      success: true,
-      testData: testOrderData,
-      backendResponse: result,
-      status: response.status,
-    })
+    if (response.ok) {
+      const result = await response.json()
+      console.log("✅ Test successful:", result)
+      return NextResponse.json({
+        success: true,
+        message: "Emoji flow test completed successfully",
+        testData: testOrderData,
+        backendResponse: result,
+      })
+    } else {
+      const errorText = await response.text()
+      console.error("❌ Test failed:", errorText)
+      return NextResponse.json({
+        success: false,
+        error: "Backend request failed",
+        status: response.status,
+        errorText,
+      })
+    }
   } catch (error) {
     console.error("💥 Test error:", error)
-    return NextResponse.json({ error: "Test failed" }, { status: 500 })
+    return NextResponse.json({
+      success: false,
+      error: "Test failed with exception",
+      details: error instanceof Error ? error.message : "Unknown error",
+    })
   }
 }

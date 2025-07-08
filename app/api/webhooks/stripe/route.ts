@@ -16,43 +16,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No signature" }, { status: 400 })
     }
 
-    if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+    if (!webhookSecret) {
       console.error("❌ No webhook secret configured")
       return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 })
     }
 
-    // Verify the webhook signature
     let event
     try {
-      event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET)
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
       console.log("✅ Webhook signature verified")
+      console.log("📋 Event type:", event.type)
     } catch (err) {
       console.error("❌ Webhook signature verification failed:", err)
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
-    console.log("📨 Webhook event type:", event.type)
-
-    // Handle checkout.session.completed event
     if (event.type === "checkout.session.completed") {
-      const session = event.data.object as any
-      console.log("🎉 Checkout session completed:", session.id)
+      const session = event.data.object
+      console.log("💳 Checkout session completed:", session.id)
 
-      // Retrieve full session details with line items
+      // Retrieve full session with line items
       const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
         expand: ["line_items", "line_items.data.price.product", "payment_intent"],
       })
 
-      console.log("📋 Full session retrieved for webhook processing")
-      console.log("💰 Payment Intent ID:", fullSession.payment_intent)
-      console.log("💰 Session metadata:", JSON.stringify(fullSession.metadata, null, 2))
-
-      // Build order data for Ed's backend
+      // Get payment intent ID
       const paymentIntentId =
         typeof fullSession.payment_intent === "string"
           ? fullSession.payment_intent
           : fullSession.payment_intent?.id || fullSession.id
 
+      console.log("💰 Payment Intent ID:", paymentIntentId)
+      console.log("💰 Session metadata:", JSON.stringify(fullSession.metadata, null, 2))
+
+      // Build order data
       const orderData = {
         customer: {
           email: fullSession.customer_details?.email || "",
@@ -71,12 +69,11 @@ export async function POST(request: NextRequest) {
             const product_id =
               typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || ""
 
-            // Check for emoji attributes in metadata
+            // Check for emoji attributes
             const emojiGood = fullSession.metadata?.[`item_${itemIndex}_emoji_good`]
             const emojiBad = fullSession.metadata?.[`item_${itemIndex}_emoji_bad`]
 
             if (emojiGood && emojiBad) {
-              console.log(`🎭 Webhook: Found emoji attributes for item ${itemIndex}`)
               return {
                 product_id,
                 quantity: item.quantity || 1,
@@ -92,25 +89,21 @@ export async function POST(request: NextRequest) {
               quantity: item.quantity || 1,
             }
           }) || [],
+        total: ((fullSession.amount_total || 0) / 100).toFixed(2),
+        currency: fullSession.currency || "usd",
         shipping: 0,
         tax: 0,
       }
 
-      console.log("📤 Webhook: Sending order to Ed's backend")
+      console.log("📤 Sending order to Ed's backend via webhook...")
+      console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
 
       // Send to Ed's backend
-      try {
-        let baseUrl: string
-        if (process.env.PUBLIC_URL) {
-          baseUrl = process.env.PUBLIC_URL
-        } else if (process.env.VERCEL_URL) {
-          baseUrl = `https://${process.env.VERCEL_URL}`
-        } else {
-          baseUrl = "https://elonmustgo.com"
-        }
+      const API_BASE_URL = process.env.API_BASE_URL || "https://elonmustgo.com"
+      const backendUrl = `${API_BASE_URL}/api/orders`
 
-        const apiUrl = `${baseUrl}/api/orders`
-        const backendResponse = await fetch(apiUrl, {
+      try {
+        const backendResponse = await fetch(backendUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -120,18 +113,18 @@ export async function POST(request: NextRequest) {
 
         if (backendResponse.ok) {
           const result = await backendResponse.json()
-          console.log("✅ Webhook: Order successfully sent to Ed's backend")
+          console.log("✅ Order sent to backend via webhook:", result)
         } else {
-          console.error("❌ Webhook: Failed to send order to backend")
+          console.error("❌ Failed to send order to backend via webhook:", backendResponse.status)
         }
       } catch (error) {
-        console.error("💥 Webhook: Error sending to backend:", error)
+        console.error("❌ Error sending to backend via webhook:", error)
       }
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error("💥 === WEBHOOK ERROR ===", error)
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 })
+    console.error("💥 Webhook error:", error)
+    return NextResponse.json({ error: "Webhook error" }, { status: 500 })
   }
 }
