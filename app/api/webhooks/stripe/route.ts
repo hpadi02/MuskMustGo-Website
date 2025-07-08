@@ -5,141 +5,129 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 })
 
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
 export async function POST(request: NextRequest) {
   try {
-    console.log("🎣 === STRIPE WEBHOOK RECEIVED ===")
-    console.log("⏰ Timestamp:", new Date().toISOString())
-
     const body = await request.text()
-    const signature = request.headers.get("stripe-signature")
-
-    if (!signature) {
-      console.error("❌ No Stripe signature found")
-      return NextResponse.json({ error: "No signature" }, { status: 400 })
-    }
+    const signature = request.headers.get("stripe-signature")!
 
     let event: Stripe.Event
 
     try {
-      // For webhook verification, you'd need STRIPE_WEBHOOK_SECRET
-      // For now, we'll parse the event directly for testing
-      event = JSON.parse(body)
-      console.log("📋 Event type:", event.type)
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
       console.error("❌ Webhook signature verification failed:", err)
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
-    // Handle the checkout.session.completed event
+    console.log("🎣 Webhook received:", event.type)
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session
-      console.log("✅ Checkout session completed:", session.id)
-      console.log("📋 Session metadata:", session.metadata)
 
-      // Retrieve full session details with line items
+      console.log("💳 Checkout session completed:", {
+        id: session.id,
+        customer_email: session.customer_details?.email,
+        amount_total: session.amount_total,
+        metadata: session.metadata,
+      })
+
+      // Retrieve full session with line items
       const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
-        expand: ["line_items", "customer", "payment_intent"],
+        expand: ["line_items", "line_items.data.price.product"],
       })
 
       // Extract customer information
       const customer = {
-        email: (fullSession.customer_details?.email || fullSession.customer_email) ?? "",
+        email: fullSession.customer_details?.email || "",
         firstname: fullSession.customer_details?.name?.split(" ")[0] || "",
         lastname: fullSession.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-        addr1: fullSession.customer_details?.address?.line1 || "",
-        addr2: fullSession.customer_details?.address?.line2 || "",
-        city: fullSession.customer_details?.address?.city || "",
-        state_prov: fullSession.customer_details?.address?.state || "",
-        postal_code: fullSession.customer_details?.address?.postal_code || "",
-        country: fullSession.customer_details?.address?.country || "",
+        address: fullSession.customer_details?.address
+          ? {
+              line1: fullSession.customer_details.address.line1 || "",
+              line2: fullSession.customer_details.address.line2 || "",
+              city: fullSession.customer_details.address.city || "",
+              state: fullSession.customer_details.address.state || "",
+              postal_code: fullSession.customer_details.address.postal_code || "",
+              country: fullSession.customer_details.address.country || "",
+            }
+          : {},
       }
 
-      // Extract payment information
-      const paymentIntent = fullSession.payment_intent as any
-      const payment_id = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id || ""
+      // Process line items and extract emoji attributes
+      const products = []
+      const lineItems = fullSession.line_items?.data || []
 
-      // Process line items and add emoji attributes from metadata
-      const products: any[] = []
+      for (let i = 0; i < lineItems.length; i++) {
+        const item = lineItems[i]
+        const product = item.price?.product as Stripe.Product
 
-      if (fullSession.line_items?.data) {
-        fullSession.line_items.data.forEach((lineItem, index) => {
-          const product: any = {
-            product_id: lineItem.price?.product || "",
-            quantity: lineItem.quantity || 1,
-          }
+        // Extract emoji attributes from session metadata
+        const emojiGood = fullSession.metadata?.[`item_${i}_emoji_good`]
+        const emojiBad = fullSession.metadata?.[`item_${i}_emoji_bad`]
 
-          // Check for emoji attributes in session metadata
-          const emojiGood = fullSession.metadata?.[`item_${index}_emoji_good`]
-          const emojiBad = fullSession.metadata?.[`item_${index}_emoji_bad`]
+        const attributes = []
+        if (emojiGood) {
+          attributes.push({ name: "emoji_good", value: emojiGood })
+        }
+        if (emojiBad) {
+          attributes.push({ name: "emoji_bad", value: emojiBad })
+        }
 
-          if (emojiGood || emojiBad) {
-            product.attributes = []
-
-            if (emojiGood) {
-              product.attributes.push({
-                name: "emoji_good",
-                value: emojiGood,
-              })
-              console.log(`✅ Added Tesla/Good emoji attribute: ${emojiGood}`)
-            }
-
-            if (emojiBad) {
-              product.attributes.push({
-                name: "emoji_bad",
-                value: emojiBad,
-              })
-              console.log(`✅ Added Elon/Bad emoji attribute: ${emojiBad}`)
-            }
-          }
-
-          products.push(product)
+        products.push({
+          product_id: typeof product === "string" ? product : product?.id || "",
+          name: typeof product === "string" ? "Product" : product?.name || "Unknown Product",
+          quantity: item.quantity || 1,
+          price: ((item.amount_total || 0) / 100).toFixed(2),
+          attributes: attributes.length > 0 ? attributes : undefined,
         })
       }
 
-      // Create order data
+      // Prepare order data for backend
       const orderData = {
+        sessionId: fullSession.id,
+        payment_id: fullSession.payment_intent as string,
         customer,
-        payment_id,
         products,
-        shipping: 0,
-        tax: 0,
+        total: ((fullSession.amount_total || 0) / 100).toFixed(2),
+        currency: fullSession.currency || "usd",
+        created_at: new Date().toISOString(),
       }
 
-      console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
+      console.log("📤 Webhook sending order data to backend:", JSON.stringify(orderData, null, 2))
 
       // Send to backend
-      const backendUrl = process.env.API_BASE_URL
-      if (backendUrl) {
-        try {
-          console.log("📤 Sending to backend:", `${backendUrl}/orders`)
+      const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
 
-          const backendResponse = await fetch(`${backendUrl}/orders`, {
+      if (API_BASE_URL) {
+        try {
+          const backendResponse = await fetch(`${API_BASE_URL}/orders`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...(process.env.BACKEND_API_KEY && {
-                Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
-              }),
             },
             body: JSON.stringify(orderData),
           })
 
           if (backendResponse.ok) {
-            console.log("✅ Successfully sent to backend")
+            const result = await backendResponse.json()
+            console.log("✅ Webhook: Backend response:", result)
           } else {
-            console.error("❌ Backend response error:", backendResponse.status)
+            const errorText = await backendResponse.text()
+            console.error("❌ Webhook: Backend error:", errorText)
           }
-        } catch (backendError) {
-          console.error("❌ Backend request failed:", backendError)
+        } catch (error) {
+          console.error("❌ Webhook: Error sending to backend:", error)
         }
       } else {
-        console.log("⚠️ No backend URL configured")
+        console.warn("⚠️ Webhook: No API_BASE_URL configured")
       }
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error("💥 Webhook error:", error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Webhook failed" }, { status: 500 })
+    console.error("❌ Webhook error:", error)
+    return NextResponse.json({ error: "Webhook error" }, { status: 500 })
   }
 }

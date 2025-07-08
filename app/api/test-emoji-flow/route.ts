@@ -2,116 +2,98 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    console.log("🧪 Testing emoji flow...")
-
-    // Mock order data that matches what we send to Ed's backend
-    const testOrderData = {
+    // Mock order data with emoji attributes
+    const mockOrderData = {
+      sessionId: "cs_test_mock_session_id",
+      payment_id: "pi_mock_payment_intent",
       customer: {
         email: "test@example.com",
-        firstname: "John",
-        lastname: "Doe",
-        addr1: "123 Test St",
-        addr2: "",
-        city: "Test City",
-        state_prov: "CA",
-        postal_code: "12345",
-        country: "US",
+        firstname: "Test",
+        lastname: "User",
+        address: {
+          line1: "123 Test St",
+          city: "Test City",
+          state: "TS",
+          postal_code: "12345",
+          country: "US",
+        },
       },
-      payment_id: "pi_test_123456789",
       products: [
         {
-          product_id: "prod_SMOn24zhjeCmXm",
+          product_id: "prod_test_magnet",
+          name: "Tesla vs Elon Emoji (magnet)",
           quantity: 1,
+          price: "14.99",
           attributes: [
-            {
-              name: "emoji_good",
-              value: "cowboy",
-            },
-            {
-              name: "emoji_bad",
-              value: "crazy_shit",
-            },
+            { name: "emoji_good", value: "cowboy" },
+            { name: "emoji_bad", value: "crazy_shit" },
           ],
         },
         {
-          product_id: "prod_SMOquwq3mLZSDE",
+          product_id: "prod_test_sticker",
+          name: "Tesla vs Elon Emoji (sticker)",
           quantity: 1,
+          price: "9.99",
           attributes: [
-            {
-              name: "emoji_good",
-              value: "heart",
-            },
-            {
-              name: "emoji_bad",
-              value: "orange_sad_face",
-            },
+            { name: "emoji_good", value: "heart" },
+            { name: "emoji_bad", value: "orange_sad_face" },
           ],
         },
       ],
-      shipping: 0,
-      tax: 0,
+      total: "24.98",
+      currency: "usd",
+      created_at: new Date().toISOString(),
     }
 
-    console.log("📋 Test order data:", JSON.stringify(testOrderData, null, 2))
+    console.log("🧪 Test emoji flow - Mock order data:", JSON.stringify(mockOrderData, null, 2))
 
-    // Test sending to backend
-    const backendUrl = process.env.API_BASE_URL
-    if (backendUrl) {
-      try {
-        console.log("📤 Testing backend connection:", `${backendUrl}/orders`)
+    // Test backend submission
+    const API_BASE_URL = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
 
-        const response = await fetch(`${backendUrl}/orders`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(process.env.BACKEND_API_KEY && {
-              Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
-            }),
-          },
-          body: JSON.stringify(testOrderData),
-        })
+    if (!API_BASE_URL) {
+      return NextResponse.json({
+        success: true,
+        message: "Test completed (no backend configured)",
+        mockData: mockOrderData,
+      })
+    }
 
-        if (response.ok) {
-          const result = await response.text()
-          console.log("✅ Backend test successful:", result)
-          return NextResponse.json({
-            success: true,
-            message: "Backend connection test successful",
-            testData: testOrderData,
-            backendResponse: result,
-          })
-        } else {
-          const errorText = await response.text()
-          console.error("❌ Backend test failed:", response.status, errorText)
-          return NextResponse.json({
-            success: false,
-            error: `Backend returned ${response.status}`,
-            testData: testOrderData,
-            backendError: errorText,
-          })
-        }
-      } catch (error) {
-        console.error("❌ Backend connection failed:", error)
-        return NextResponse.json({
-          success: false,
-          error: "Failed to connect to backend",
-          testData: testOrderData,
-          connectionError: error instanceof Error ? error.message : "Unknown error",
-        })
-      }
+    const response = await fetch(`${API_BASE_URL}/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(mockOrderData),
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      console.log("✅ Test backend response:", result)
+
+      return NextResponse.json({
+        success: true,
+        message: "Test completed successfully",
+        mockData: mockOrderData,
+        backendResponse: result,
+      })
     } else {
+      const errorText = await response.text()
+      console.error("❌ Test backend error:", errorText)
+
       return NextResponse.json({
         success: false,
-        error: "No backend URL configured",
-        testData: testOrderData,
-        note: "Set API_BASE_URL environment variable",
+        error: `Backend error: ${response.status}`,
+        mockData: mockOrderData,
       })
     }
   } catch (error) {
     console.error("❌ Test error:", error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : "Test failed",
-    })
+    return NextResponse.json(
+      {
+        error: "Test failed",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

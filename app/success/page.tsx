@@ -34,7 +34,6 @@ export default function SuccessPage() {
 
   useEffect(() => {
     if (sessionId) {
-      // Process the order automatically
       processOrder(sessionId)
     } else {
       setError("No session ID found")
@@ -57,7 +56,6 @@ export default function SuccessPage() {
       const result = await response.json()
 
       if (result.success && result.orderData) {
-        // Transform the order data for display
         const transformedData: OrderData = {
           sessionId: result.orderData.sessionId || sessionId,
           customer: {
@@ -94,9 +92,9 @@ export default function SuccessPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white">
-        {/* Navbar */}
+        {/* Clean Navbar */}
         <nav className="border-b border-gray-800">
-          <div className="container mx-auto px-4 py-4">
+          <div className="container mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-2xl font-bold">
                 <span className="text-red-500">Musk</span>
@@ -115,19 +113,12 @@ export default function SuccessPage() {
                 <Link href="/contact" className="hover:text-red-500 transition-colors">
                   CONTACT
                 </Link>
-                <Button
-                  variant="outline"
-                  className="border-white text-white hover:bg-white hover:text-black bg-transparent"
-                >
-                  SHOP NOW
-                </Button>
               </div>
             </div>
           </div>
         </nav>
 
-        {/* Loading Content */}
-        <div className="container mx-auto px-4 py-20">
+        <div className="container mx-auto px-6 py-20">
           <div className="max-w-2xl mx-auto text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-8"></div>
             <h1 className="text-4xl font-bold mb-4">Processing Your Order...</h1>
@@ -141,9 +132,9 @@ export default function SuccessPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-black text-white">
-        {/* Navbar */}
+        {/* Clean Navbar */}
         <nav className="border-b border-gray-800">
-          <div className="container mx-auto px-4 py-4">
+          <div className="container mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <Link href="/" className="text-2xl font-bold">
                 <span className="text-red-500">Musk</span>
@@ -162,19 +153,12 @@ export default function SuccessPage() {
                 <Link href="/contact" className="hover:text-red-500 transition-colors">
                   CONTACT
                 </Link>
-                <Button
-                  variant="outline"
-                  className="border-white text-white hover:bg-white hover:text-black bg-transparent"
-                >
-                  SHOP NOW
-                </Button>
               </div>
             </div>
           </div>
         </nav>
 
-        {/* Error Content */}
-        <div className="container mx-auto px-4 py-20">
+        <div className="container mx-auto px-6 py-20">
           <div className="max-w-2xl mx-auto text-center">
             <div className="text-red-500 text-6xl mb-8">⚠️</div>
             <h1 className="text-4xl font-bold mb-4">Order Processing Error</h1>
@@ -202,9 +186,9 @@ export default function SuccessPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Navbar */}
+      {/* Clean Navbar - No Duplication */}
       <nav className="border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-2xl font-bold">
               <span className="text-red-500">Musk</span>
@@ -223,19 +207,13 @@ export default function SuccessPage() {
               <Link href="/contact" className="hover:text-red-500 transition-colors">
                 CONTACT
               </Link>
-              <Button
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-black bg-transparent"
-              >
-                SHOP NOW
-              </Button>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Success Content */}
-      <div className="container mx-auto px-4 py-20">
+      <div className="container mx-auto px-6 py-20">
         <div className="max-w-4xl mx-auto text-center">
           {/* Success Icon */}
           <div className="mb-8">
