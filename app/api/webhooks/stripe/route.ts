@@ -50,8 +50,10 @@ export async function POST(request: NextRequest) {
       console.log("💰 Payment Intent ID:", paymentIntentId)
       console.log("💰 Session metadata:", JSON.stringify(fullSession.metadata, null, 2))
 
-      // Build order data
+      // Build order data with emoji attributes
       const orderData = {
+        sessionId: fullSession.id,
+        payment_id: paymentIntentId,
         customer: {
           email: fullSession.customer_details?.email || "",
           firstname: fullSession.customer_details?.name?.split(" ")[0] || "",
@@ -63,20 +65,27 @@ export async function POST(request: NextRequest) {
           postal_code: fullSession.customer_details?.address?.postal_code || "",
           country: fullSession.customer_details?.address?.country || "",
         },
-        payment_id: paymentIntentId,
         products:
           fullSession.line_items?.data.map((item, itemIndex) => {
             const product_id =
               typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || ""
+
+            console.log(`🎭 Webhook processing product ${itemIndex + 1}: ${product_id}`)
 
             // Check for emoji attributes
             const emojiGood = fullSession.metadata?.[`item_${itemIndex}_emoji_good`]
             const emojiBad = fullSession.metadata?.[`item_${itemIndex}_emoji_bad`]
 
             if (emojiGood && emojiBad) {
+              console.log(`🎭 Webhook found emoji attributes for item ${itemIndex}:`)
+              console.log(`  - emoji_good: ${emojiGood}`)
+              console.log(`  - emoji_bad: ${emojiBad}`)
+
               return {
                 product_id,
+                name: item.description || "Unknown Product",
                 quantity: item.quantity || 1,
+                price: ((item.amount_total || 0) / 100).toFixed(2),
                 attributes: [
                   { name: "emoji_good", value: emojiGood },
                   { name: "emoji_bad", value: emojiBad },
@@ -84,18 +93,22 @@ export async function POST(request: NextRequest) {
               }
             }
 
+            // For non-emoji products
             return {
               product_id,
+              name: item.description || "Unknown Product",
               quantity: item.quantity || 1,
+              price: ((item.amount_total || 0) / 100).toFixed(2),
             }
           }) || [],
         total: ((fullSession.amount_total || 0) / 100).toFixed(2),
         currency: fullSession.currency || "usd",
+        status: fullSession.payment_status,
         shipping: 0,
         tax: 0,
       }
 
-      console.log("📤 Sending order to Ed's backend via webhook...")
+      console.log("📤 Webhook sending order to Ed's backend...")
       console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
 
       // Send to Ed's backend
@@ -113,12 +126,15 @@ export async function POST(request: NextRequest) {
 
         if (backendResponse.ok) {
           const result = await backendResponse.json()
-          console.log("✅ Order sent to backend via webhook:", result)
+          console.log("✅ Webhook: Order sent to backend successfully")
+          console.log("✅ Backend response:", result)
         } else {
-          console.error("❌ Failed to send order to backend via webhook:", backendResponse.status)
+          const errorText = await backendResponse.text()
+          console.error("❌ Webhook: Failed to send order to backend:", backendResponse.status)
+          console.error("❌ Error:", errorText)
         }
       } catch (error) {
-        console.error("❌ Error sending to backend via webhook:", error)
+        console.error("❌ Webhook: Error sending to backend:", error)
       }
     }
 
