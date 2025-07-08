@@ -1,104 +1,79 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
-    // Test data with emoji attributes
+    console.log("🧪 === EMOJI FLOW TEST STARTED ===")
+
     const testOrderData = {
-      sessionId: "cs_test_example123",
-      payment_id: "pi_test_example123",
       customer: {
         email: "test@example.com",
         firstname: "Test",
         lastname: "User",
-        address: {
-          line1: "123 Test St",
-          city: "Test City",
-          state: "TS",
-          postal_code: "12345",
-          country: "US",
-        },
+        addr1: "123 Test St",
+        city: "Test City",
+        state_prov: "TS",
+        postal_code: "12345",
+        country: "US",
       },
+      payment_id: "pi_test_1234567890",
       products: [
         {
-          product_id: "prod_test123",
-          name: "Tesla vs Elon Emoji Magnet",
+          product_id: "prod_test_emoji_magnet",
           quantity: 1,
-          price: "14.99",
           attributes: [
-            {
-              name: "emoji_good",
-              value: "cowboy",
-            },
-            {
-              name: "emoji_bad",
-              value: "crazy_shit",
-            },
+            { name: "emoji_good", value: "cowboy" },
+            { name: "emoji_bad", value: "crazy_shit" },
           ],
         },
         {
-          product_id: "prod_test456",
-          name: "Tesla vs Elon Emoji Sticker",
+          product_id: "prod_test_emoji_sticker",
           quantity: 1,
-          price: "13.99",
           attributes: [
-            {
-              name: "emoji_good",
-              value: "heart",
-            },
-            {
-              name: "emoji_bad",
-              value: "orange_sad_face",
-            },
+            { name: "emoji_good", value: "heart" },
+            { name: "emoji_bad", value: "orange_sad_face" },
           ],
         },
       ],
-      total: "28.98",
-      currency: "usd",
-      status: "paid",
+      shipping: 0,
+      tax: 0,
     }
 
-    console.log("🧪 Test emoji flow data:", JSON.stringify(testOrderData, null, 2))
+    console.log("📤 Test order data:", JSON.stringify(testOrderData, null, 2))
 
-    // Send to backend
-    const API_BASE_URL = process.env.API_BASE_URL || "https://your-backend-api.com"
-
-    try {
-      const backendResponse = await fetch(`${API_BASE_URL}/api/orders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(testOrderData),
-      })
-
-      const responseText = await backendResponse.text()
-
-      return NextResponse.json({
-        success: true,
-        message: "Test emoji flow completed",
-        testData: testOrderData,
-        backendResponse: {
-          status: backendResponse.status,
-          statusText: backendResponse.statusText,
-          body: responseText,
-        },
-      })
-    } catch (backendError) {
-      return NextResponse.json({
-        success: false,
-        message: "Backend connection failed",
-        testData: testOrderData,
-        error: String(backendError),
-      })
+    // Send to Ed's backend
+    let baseUrl: string
+    if (process.env.PUBLIC_URL) {
+      baseUrl = process.env.PUBLIC_URL
+    } else if (process.env.VERCEL_URL) {
+      baseUrl = `https://${process.env.VERCEL_URL}`
+    } else if (process.env.NODE_ENV === "production") {
+      baseUrl = "https://elonmustgo.com"
+    } else {
+      baseUrl = "http://localhost:3000"
     }
-  } catch (error) {
-    console.error("❌ Test emoji flow error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Test failed",
+
+    const apiUrl = `${baseUrl}/api/orders`
+    console.log("🎯 Sending to:", apiUrl)
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      { status: 500 },
-    )
+      body: JSON.stringify(testOrderData),
+    })
+
+    const result = await response.json()
+    console.log("📡 Backend response:", result)
+
+    return NextResponse.json({
+      success: true,
+      testData: testOrderData,
+      backendResponse: result,
+      status: response.status,
+    })
+  } catch (error) {
+    console.error("💥 Test error:", error)
+    return NextResponse.json({ error: "Test failed" }, { status: 500 })
   }
 }

@@ -1,120 +1,145 @@
 import { type NextRequest, NextResponse } from "next/server"
-import Stripe from "stripe"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-})
+import { stripe } from "@/lib/stripe"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("🔄 === MANUAL ORDER PROCESSING STARTED ===")
+    console.log("⏰ Timestamp:", new Date().toISOString())
+
     const { sessionId } = await request.json()
+    console.log("🔑 Processing session ID:", sessionId)
 
     if (!sessionId) {
-      return NextResponse.json({ success: false, error: "Session ID is required" }, { status: 400 })
+      console.error("❌ No session ID provided")
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
-    console.log("🔄 Manual processing for session:", sessionId)
-
-    // Retrieve the checkout session
+    // Retrieve the Stripe session
+    console.log("💳 Retrieving Stripe session...")
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "customer"],
+      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
     })
 
     if (!session) {
-      return NextResponse.json({ success: false, error: "Session not found" }, { status: 404 })
+      console.error("❌ No session found for ID:", sessionId)
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
-    // Extract customer info
-    const customer = session.customer as Stripe.Customer
-    const customerEmail = customer?.email || session.customer_details?.email || "Unknown"
+    console.log("✅ Stripe session retrieved successfully")
+    console.log("📋 Session details:")
+    console.log("  - Session ID:", session.id)
+    console.log("  - Payment status:", session.payment_status)
+    console.log("  - Amount total:", session.amount_total)
+    console.log("  - Customer email:", session.customer_details?.email)
 
-    // Extract line items
-    const lineItems = session.line_items?.data || []
+    // Get the payment intent ID
+    const paymentIntentId =
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    // Build products array with emoji attributes
-    const products = []
+    console.log("💰 Payment Intent ID:", paymentIntentId)
+    console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
-    for (let i = 0; i < lineItems.length; i++) {
-      const item = lineItems[i]
-      const product: any = {
-        product_id: session.metadata?.[`item_${i}_product_id`] || item.price?.product || "unknown",
-        name: item.description || "Unknown Product",
-        quantity: item.quantity || 1,
-        price: ((item.amount_total || 0) / 100).toFixed(2),
-        attributes: [],
-      }
-
-      // Add emoji attributes if they exist
-      const emojiGood = session.metadata?.[`item_${i}_emoji_good`]
-      const emojiBad = session.metadata?.[`item_${i}_emoji_bad`]
-
-      if (emojiGood) {
-        product.attributes.push({
-          name: "emoji_good",
-          value: emojiGood,
-        })
-      }
-
-      if (emojiBad) {
-        product.attributes.push({
-          name: "emoji_bad",
-          value: emojiBad,
-        })
-      }
-
-      products.push(product)
-    }
-
-    // Prepare order data for backend
+    // Build order data for Ed's backend
+    console.log("🏗️ === BUILDING ORDER DATA ===")
     const orderData = {
-      sessionId: sessionId,
-      payment_id: session.payment_intent,
       customer: {
-        email: customerEmail,
-        firstname: customer?.name?.split(" ")[0] || "Unknown",
-        lastname: customer?.name?.split(" ").slice(1).join(" ") || "",
-        address: session.customer_details?.address || {},
+        email: session.customer_details?.email || "",
+        firstname: session.customer_details?.name?.split(" ")[0] || "",
+        lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+        addr1: session.customer_details?.address?.line1 || "",
+        addr2: session.customer_details?.address?.line2 || "",
+        city: session.customer_details?.address?.city || "",
+        state_prov: session.customer_details?.address?.state || "",
+        postal_code: session.customer_details?.address?.postal_code || "",
+        country: session.customer_details?.address?.country || "",
       },
-      products: products,
+      payment_id: paymentIntentId,
+      products:
+        session.line_items?.data.map((item, itemIndex) => {
+          const product_id =
+            typeof item.price?.product === "string" ? item.price.product : item.price?.product?.id || ""
+
+          console.log(`🎭 Processing product ${itemIndex + 1}: ${product_id}`)
+
+          // Check for emoji attributes in metadata
+          const emojiGood = session.metadata?.[`item_${itemIndex}_emoji_good`]
+          const emojiBad = session.metadata?.[`item_${itemIndex}_emoji_bad`]
+
+          if (emojiGood && emojiBad) {
+            console.log(`✅ Found emoji attributes for item ${itemIndex}:`)
+            console.log(`  - Tesla emoji: ${emojiGood}`)
+            console.log(`  - Elon emoji: ${emojiBad}`)
+
+            return {
+              product_id,
+              quantity: item.quantity || 1,
+              attributes: [
+                { name: "emoji_good", value: emojiGood },
+                { name: "emoji_bad", value: emojiBad },
+              ],
+            }
+          }
+
+          // Regular product without attributes
+          return {
+            product_id,
+            quantity: item.quantity || 1,
+          }
+        }) || [],
+      shipping: 0,
+      tax: 0,
       total: ((session.amount_total || 0) / 100).toFixed(2),
       currency: session.currency || "usd",
-      status: session.payment_status,
+      sessionId: session.id,
     }
 
-    console.log("📦 Prepared order data:", JSON.stringify(orderData, null, 2))
+    console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
+    console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
 
-    // Send to backend
-    const API_BASE_URL = process.env.API_BASE_URL || "https://your-backend-api.com"
-
-    try {
-      const backendResponse = await fetch(`${API_BASE_URL}/api/orders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderData),
-      })
-
-      if (backendResponse.ok) {
-        console.log("✅ Successfully sent to backend")
-      } else {
-        console.log("⚠️ Backend response not OK, but continuing...")
-      }
-    } catch (backendError) {
-      console.log("⚠️ Backend error, but continuing:", backendError)
+    // Determine API URL
+    let baseUrl: string
+    if (process.env.PUBLIC_URL) {
+      baseUrl = process.env.PUBLIC_URL
+    } else if (process.env.VERCEL_URL) {
+      baseUrl = `https://${process.env.VERCEL_URL}`
+    } else if (process.env.NODE_ENV === "production") {
+      baseUrl = "https://elonmustgo.com"
+    } else {
+      baseUrl = "http://localhost:3000"
     }
+
+    const apiUrl = `${baseUrl}/api/orders`
+    console.log("🎯 Final API URL:", apiUrl)
+
+    // Send to Ed's backend
+    const backendResponse = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(orderData),
+    })
+
+    console.log("📡 Backend response status:", backendResponse.status)
+
+    if (!backendResponse.ok) {
+      const errorText = await backendResponse.text()
+      console.error("❌ Failed to send order to backend:", errorText)
+      return NextResponse.json({ error: "Failed to process order", details: errorText }, { status: 500 })
+    }
+
+    const result = await backendResponse.json()
+    console.log("✅ Order successfully sent to Ed's backend:", result)
 
     return NextResponse.json({
       success: true,
-      orderData: orderData,
+      orderData,
+      backendResponse: result,
     })
   } catch (error) {
-    console.error("❌ Manual processing error:", error)
+    console.error("💥 === ORDER PROCESSING ERROR ===", error)
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to process order",
-      },
+      { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },
     )
   }
