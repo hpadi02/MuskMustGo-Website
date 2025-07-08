@@ -63,7 +63,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     // Process the order - send to backend
     try {
       console.log("🏗️ === BUILDING ORDER DATA ===")
-
       const orderData = {
         customer: {
           email: session.customer_details?.email || "",
@@ -84,61 +83,22 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
             console.log(`🎭 Processing product ${itemIndex + 1}: ${product_id}`)
 
-            // Check if this is a Tesla vs Elon emoji product and has emoji choices
-            const isEmojiProduct = item.description?.includes("emoji") || product_id.includes("tesla_vs_elon_emoji")
+            // Check for emoji attributes in metadata
+            const emojiGood = session.metadata?.[`item_${itemIndex}_emoji_good`]
+            const emojiBad = session.metadata?.[`item_${itemIndex}_emoji_bad`]
 
-            if (isEmojiProduct) {
-              console.log("🎭 Detected emoji product, checking for emoji choices...")
+            if (emojiGood && emojiBad) {
+              console.log(`🎭 Found emoji attributes for item ${itemIndex}:`)
+              console.log(`  - emoji_good: ${emojiGood}`)
+              console.log(`  - emoji_bad: ${emojiBad}`)
 
-              // Try multiple metadata keys for emoji choices
-              const possibleKeys = [
-                "emoji_choices",
-                `item_${itemIndex}_emoji_choices`,
-                `item_${itemIndex}_custom_options`,
-              ]
-
-              let emojiChoices = null
-              for (const key of possibleKeys) {
-                if (session.metadata?.[key]) {
-                  console.log(`🎭 Found emoji data in metadata key: ${key}`)
-                  console.log(`🎭 Raw emoji data: ${session.metadata[key]}`)
-                  try {
-                    emojiChoices = JSON.parse(session.metadata[key])
-                    console.log("🎭 Parsed emoji choices:", JSON.stringify(emojiChoices, null, 2))
-                    break
-                  } catch (parseError) {
-                    console.error(`❌ Failed to parse emoji data from ${key}:`, parseError)
-                  }
-                }
-              }
-
-              if (emojiChoices) {
-                // Extract emoji names (remove .png extension)
-                const teslaEmoji = emojiChoices.tesla?.name?.replace(".png", "") || ""
-                const elonEmoji = emojiChoices.elon?.name?.replace(".png", "") || ""
-
-                console.log("🎭 Tesla emoji:", teslaEmoji)
-                console.log("🎭 Elon emoji:", elonEmoji)
-
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "emoji_good", value: teslaEmoji },
-                    { name: "emoji_bad", value: elonEmoji },
-                  ],
-                }
-              } else {
-                console.log("⚠️ Emoji product but no emoji choices found in metadata")
-                // Fallback to generic attributes if parsing fails
-                return {
-                  product_id,
-                  quantity: item.quantity || 1,
-                  attributes: [
-                    { name: "Type", value: "Custom Emoji" },
-                    { name: "Source", value: "Stripe Checkout" },
-                  ],
-                }
+              return {
+                product_id,
+                quantity: item.quantity || 1,
+                attributes: [
+                  { name: "emoji_good", value: emojiGood },
+                  { name: "emoji_bad", value: emojiBad },
+                ],
               }
             }
 
@@ -158,7 +118,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
       // ✅ URL determination with extensive debugging
       console.log("🌐 === DETERMINING API URL ===")
-
       let baseUrl: string
 
       // Log environment variables
@@ -220,26 +179,27 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     console.log("🎉 Rendering success page for user")
 
     return (
-      <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+      <div className="bg-black text-white min-h-screen">
         {/* Clear cart when success page loads */}
         <CartClearer />
 
-        <div className="container mx-auto px-6 md:px-10">
-          <div className="max-w-2xl mx-auto text-center">
+        {/* Main Content - NO NAVBAR HERE since layout.tsx provides it */}
+        <div className="max-w-4xl mx-auto px-6 py-20">
+          <div className="text-center">
             <div className="mb-8">
               <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-              <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight mb-6">Order Confirmed!</h1>
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">Order Confirmed!</h1>
               <p className="text-white/70 text-lg">
                 Thank you for your purchase. Your order has been successfully processed.
               </p>
             </div>
 
-            <div className="bg-dark-300 p-8 rounded-lg mb-8">
+            {/* Order Details - Black with White Border */}
+            <div className="bg-black border-2 border-white rounded-lg p-8 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-medium">Order Details</h2>
                 <Package className="h-6 w-6 text-white/60" />
               </div>
-
               <div className="space-y-4 text-left">
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
@@ -256,7 +216,6 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               <p className="text-white/70">
                 You'll receive an email confirmation shortly with your order details and tracking information.
               </p>
-
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/account/orders">
                   <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
@@ -300,7 +259,7 @@ export default function SuccessPage({ searchParams }: SuccessPageProps) {
   return (
     <Suspense
       fallback={
-        <div className="bg-dark-400 text-white min-h-screen pt-32 pb-20">
+        <div className="bg-black text-white min-h-screen pt-32 pb-20">
           <div className="container mx-auto px-6 md:px-10">
             <div className="max-w-2xl mx-auto text-center">
               <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>

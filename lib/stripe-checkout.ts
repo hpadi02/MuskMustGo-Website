@@ -31,42 +31,7 @@ export async function createCheckoutSession(items: CartItem[]) {
       }
     }
 
-    // Extract emoji choices for metadata
-    const metadata: Record<string, string> = {}
-
-    items.forEach((item, index) => {
-      console.log(`Processing item ${index + 1}:`, {
-        id: item.id,
-        name: item.name,
-        customOptions: item.customOptions,
-      })
-
-      // ✅ FIXED: Check if this is the Tesla vs Elon emoji product using the product ID
-      if (item.id?.includes("tesla_vs_elon_emoji") && item.customOptions) {
-        console.log("Found Tesla vs Elon emoji product with customOptions:", item.customOptions)
-
-        // ✅ FIXED: Extract Tesla and Elon emoji choices with correct property names
-        if (item.customOptions.teslaEmoji) {
-          metadata.tesla_emoji = JSON.stringify(item.customOptions.teslaEmoji)
-          console.log("Added Tesla emoji to metadata:", item.customOptions.teslaEmoji)
-        }
-
-        if (item.customOptions.elonEmoji) {
-          metadata.elon_emoji = JSON.stringify(item.customOptions.elonEmoji)
-          console.log("Added Elon emoji to metadata:", item.customOptions.elonEmoji)
-        }
-
-        // Also add the variant info
-        if (item.customOptions.variant) {
-          metadata.variant = item.customOptions.variant
-          console.log("Added variant to metadata:", item.customOptions.variant)
-        }
-      }
-    })
-
-    console.log("Final metadata for Stripe session:", metadata)
-
-    // Create checkout session
+    // Create checkout session with FULL item data including customOptions
     const response = await fetch("/api/checkout", {
       method: "POST",
       headers: {
@@ -76,8 +41,12 @@ export async function createCheckoutSession(items: CartItem[]) {
         items: stripeItems.map((item) => ({
           price: item.stripeId,
           quantity: item.quantity,
+          // PASS THROUGH THE CUSTOM OPTIONS AND OTHER DATA
+          id: item.id,
+          productId: item.productId,
+          customOptions: item.customOptions, // This is the key fix!
+          name: item.name,
         })),
-        metadata: metadata, // ✅ Include emoji choices in session metadata
         success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${window.location.origin}/cart`,
       }),
