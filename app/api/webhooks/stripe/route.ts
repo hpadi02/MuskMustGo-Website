@@ -26,45 +26,30 @@ export async function POST(request: NextRequest) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session
 
-      console.log("💳 Processing completed checkout session:", session.id)
+      console.log("🎉 Checkout session completed:", session.id)
 
-      // Retrieve full session with line items
-      const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
-        expand: ["line_items", "line_items.data.price.product"],
-      })
+      // Extract customer info
+      const customerEmail = session.customer_details?.email || "Unknown"
 
-      // Extract customer information
-      const customer = {
-        email: fullSession.customer_details?.email || "",
-        firstname: fullSession.customer_details?.name?.split(" ")[0] || "",
-        lastname: fullSession.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-        address: {
-          line1: fullSession.customer_details?.address?.line1 || "",
-          line2: fullSession.customer_details?.address?.line2 || "",
-          city: fullSession.customer_details?.address?.city || "",
-          state: fullSession.customer_details?.address?.state || "",
-          postal_code: fullSession.customer_details?.address?.postal_code || "",
-          country: fullSession.customer_details?.address?.country || "",
-        },
-      }
+      // Retrieve line items
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
 
-      // Process products with emoji attributes
+      // Build products array with emoji attributes
       const products = []
-      const lineItems = fullSession.line_items?.data || []
 
-      for (let i = 0; i < lineItems.length; i++) {
-        const item = lineItems[i]
+      for (let i = 0; i < lineItems.data.length; i++) {
+        const item = lineItems.data[i]
         const product: any = {
-          product_id: item.price?.product?.id || "",
-          name: item.description || "",
+          product_id: session.metadata?.[`item_${i}_product_id`] || item.price?.product || "unknown",
+          name: item.description || "Unknown Product",
           quantity: item.quantity || 1,
           price: ((item.amount_total || 0) / 100).toFixed(2),
           attributes: [],
         }
 
-        // Extract emoji attributes from session metadata
-        const emojiGood = fullSession.metadata?.[`item_${i}_emoji_good`]
-        const emojiBad = fullSession.metadata?.[`item_${i}_emoji_bad`]
+        // Add emoji attributes if they exist
+        const emojiGood = session.metadata?.[`item_${i}_emoji_good`]
+        const emojiBad = session.metadata?.[`item_${i}_emoji_bad`]
 
         if (emojiGood) {
           product.attributes.push({
@@ -85,46 +70,47 @@ export async function POST(request: NextRequest) {
 
       // Prepare order data for backend
       const orderData = {
-        sessionId: fullSession.id,
-        payment_id: fullSession.payment_intent,
-        customer: customer,
+        sessionId: session.id,
+        payment_id: session.payment_intent,
+        customer: {
+          email: customerEmail,
+          firstname: session.customer_details?.name?.split(" ")[0] || "Unknown",
+          lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
+          address: session.customer_details?.address || {},
+        },
         products: products,
-        total: ((fullSession.amount_total || 0) / 100).toFixed(2),
-        currency: fullSession.currency || "usd",
-        status: fullSession.payment_status,
+        total: ((session.amount_total || 0) / 100).toFixed(2),
+        currency: session.currency || "usd",
+        status: session.payment_status,
       }
 
       console.log("📦 Webhook order data:", JSON.stringify(orderData, null, 2))
 
       // Send to backend
-      const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+      const API_BASE_URL = process.env.API_BASE_URL || "https://your-backend-api.com"
 
-      if (backendUrl) {
-        try {
-          console.log("🚀 Webhook sending to backend:", backendUrl)
+      try {
+        const backendResponse = await fetch(`${API_BASE_URL}/api/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(orderData),
+        })
 
-          const backendResponse = await fetch(`${backendUrl}/orders`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(orderData),
-          })
-
-          if (backendResponse.ok) {
-            console.log("✅ Webhook successfully sent to backend")
-          } else {
-            console.error("❌ Webhook backend response error:", await backendResponse.text())
-          }
-        } catch (backendError) {
-          console.error("❌ Webhook error sending to backend:", backendError)
+        if (backendResponse.ok) {
+          console.log("✅ Successfully sent to backend via webhook")
+        } else {
+          console.log("⚠️ Backend response not OK via webhook")
         }
+      } catch (backendError) {
+        console.log("⚠️ Backend error via webhook:", backendError)
       }
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error("❌ Webhook error:", error)
-    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 })
+    return NextResponse.json({ error: "Webhook error" }, { status: 500 })
   }
 }

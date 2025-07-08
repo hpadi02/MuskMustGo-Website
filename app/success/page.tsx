@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CheckCircle } from "lucide-react"
+import { CheckCircle, Package, ArrowRight, ShoppingBag } from "lucide-react"
 
 export default function SuccessPage() {
   const searchParams = useSearchParams()
@@ -13,6 +13,16 @@ export default function SuccessPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Clear the cart immediately when success page loads
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("cart")
+      localStorage.removeItem("checkoutId")
+
+      // Also clear any cart state in session storage
+      sessionStorage.removeItem("cart")
+      sessionStorage.removeItem("cartItems")
+    }
+
     if (sessionId) {
       processOrder(sessionId)
     } else {
@@ -46,7 +56,7 @@ export default function SuccessPage() {
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <p>Processing your order...</p>
+          <p className="text-gray-400">Processing your order...</p>
         </div>
       </div>
     )
@@ -54,80 +64,96 @@ export default function SuccessPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Clean Single Navbar */}
+      {/* Clean Navbar */}
       <nav className="border-b border-gray-800">
-        <div className="container mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-2xl font-bold">
               <span className="text-red-500">Musk</span>
               <span className="text-white">MustGo</span>
             </Link>
+
             <div className="flex items-center space-x-8">
-              <Link href="/shop" className="hover:text-red-500 transition-colors">
+              <Link href="/shop" className="text-white hover:text-red-500 transition-colors">
                 SHOP
               </Link>
-              <Link href="/community" className="hover:text-red-500 transition-colors">
-                COMMUNITY
-              </Link>
-              <Link href="/about" className="hover:text-red-500 transition-colors">
+              <div className="relative">
+                <Link href="/community" className="text-white hover:text-red-500 transition-colors">
+                  COMMUNITY
+                </Link>
+              </div>
+              <Link href="/about" className="text-white hover:text-red-500 transition-colors">
                 ABOUT
               </Link>
-              <Link href="/contact" className="hover:text-red-500 transition-colors">
+              <Link href="/contact" className="text-white hover:text-red-500 transition-colors">
                 CONTACT
               </Link>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <ShoppingBag className="h-5 w-5 text-white" />
+              <Button
+                asChild
+                variant="outline"
+                className="border-white text-white hover:bg-white hover:text-black bg-transparent"
+              >
+                <Link href="/shop">SHOP NOW</Link>
+              </Button>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-20">
-        <div className="max-w-4xl mx-auto text-center">
+      <div className="max-w-4xl mx-auto px-6 py-20">
+        <div className="text-center">
           {/* Success Icon */}
           <CheckCircle className="h-20 w-20 text-green-500 mx-auto mb-8" />
 
           {/* Main Heading */}
           <h1 className="text-5xl font-bold mb-6">Order Confirmed!</h1>
-          <p className="text-xl text-gray-400 mb-12">
+          <p className="text-xl text-gray-400 mb-16">
             Thank you for your purchase. Your order has been successfully processed.
           </p>
 
-          {/* Order Details - Black with White Border */}
-          <div className="bg-black border-2 border-white rounded-lg p-8 mb-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+          {/* Order Details */}
+          <div className="mb-16">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-semibold">Order Details</h2>
+              <Package className="h-6 w-6 text-gray-400" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left max-w-2xl mx-auto">
               <div>
-                <h3 className="text-lg font-semibold mb-2 text-gray-300">Email:</h3>
-                <p className="text-white">{orderData?.customer?.email || "Processing..."}</p>
+                <p className="text-gray-400 mb-2">Email:</p>
+                <p className="text-white text-lg">{orderData?.customer?.email || "Processing..."}</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold mb-2 text-gray-300">Total:</h3>
-                <p className="text-white text-xl font-bold">${orderData?.total || "0.00"} USD</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2 text-gray-300">Status:</h3>
-                <p className="text-green-400 font-semibold">Confirmed</p>
+                <p className="text-gray-400 mb-2">Total:</p>
+                <p className="text-white text-lg font-bold">${orderData?.total || "0.00"}</p>
               </div>
             </div>
           </div>
 
-          {/* Additional Info */}
-          <p className="text-gray-400 mb-8">
+          {/* Email Confirmation Message */}
+          <p className="text-gray-400 mb-12 max-w-2xl mx-auto">
             You'll receive an email confirmation shortly with your order details and tracking information.
           </p>
 
           {/* Action Buttons */}
           <div className="flex gap-4 justify-center">
-            <Link href="/account/orders">
-              <Button
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-black bg-transparent"
-              >
-                View Orders
-              </Button>
-            </Link>
-            <Link href="/shop">
-              <Button className="bg-red-600 hover:bg-red-700 text-white">Continue Shopping →</Button>
-            </Link>
+            <Button
+              asChild
+              variant="outline"
+              className="border-gray-600 text-white hover:bg-gray-800 bg-transparent px-8 py-3"
+            >
+              <Link href="/account/orders">View Orders</Link>
+            </Button>
+            <Button asChild className="bg-red-600 hover:bg-red-700 text-white px-8 py-3">
+              <Link href="/shop">
+                Continue Shopping <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

@@ -8,13 +8,12 @@ export async function GET() {
       payment_id: "pi_test_example123",
       customer: {
         email: "test@example.com",
-        firstname: "John",
-        lastname: "Doe",
+        firstname: "Test",
+        lastname: "User",
         address: {
           line1: "123 Test St",
-          line2: "",
           city: "Test City",
-          state: "CA",
+          state: "TS",
           postal_code: "12345",
           country: "US",
         },
@@ -40,7 +39,7 @@ export async function GET() {
           product_id: "prod_test456",
           name: "Tesla vs Elon Emoji Sticker",
           quantity: 1,
-          price: "12.99",
+          price: "13.99",
           attributes: [
             {
               name: "emoji_good",
@@ -53,58 +52,53 @@ export async function GET() {
           ],
         },
       ],
-      total: "27.98",
+      total: "28.98",
       currency: "usd",
       status: "paid",
     }
 
     console.log("🧪 Test emoji flow data:", JSON.stringify(testOrderData, null, 2))
 
-    // Send to backend if configured
-    const backendUrl = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+    // Send to backend
+    const API_BASE_URL = process.env.API_BASE_URL || "https://your-backend-api.com"
 
-    if (backendUrl) {
-      try {
-        console.log("🚀 Test sending to backend:", backendUrl)
+    try {
+      const backendResponse = await fetch(`${API_BASE_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(testOrderData),
+      })
 
-        const backendResponse = await fetch(`${backendUrl}/orders`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(testOrderData),
-        })
+      const responseText = await backendResponse.text()
 
-        const responseText = await backendResponse.text()
-
-        return NextResponse.json({
-          success: true,
-          message: "Test emoji flow completed",
-          testData: testOrderData,
-          backendResponse: {
-            status: backendResponse.status,
-            statusText: backendResponse.statusText,
-            body: responseText,
-          },
-        })
-      } catch (backendError) {
-        console.error("❌ Test backend error:", backendError)
-        return NextResponse.json({
-          success: false,
-          message: "Backend connection failed",
-          testData: testOrderData,
-          error: String(backendError),
-        })
-      }
-    } else {
       return NextResponse.json({
         success: true,
-        message: "Test emoji flow completed (no backend configured)",
+        message: "Test emoji flow completed",
         testData: testOrderData,
+        backendResponse: {
+          status: backendResponse.status,
+          statusText: backendResponse.statusText,
+          body: responseText,
+        },
+      })
+    } catch (backendError) {
+      return NextResponse.json({
+        success: false,
+        message: "Backend connection failed",
+        testData: testOrderData,
+        error: String(backendError),
       })
     }
   } catch (error) {
     console.error("❌ Test emoji flow error:", error)
-    return NextResponse.json({ error: "Test failed" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Test failed",
+      },
+      { status: 500 },
+    )
   }
 }
