@@ -5,129 +5,134 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2024-06-20",
 })
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const { sessionId } = await req.json()
-    console.log("🔄 Manual processing for session:", sessionId)
+    const { sessionId } = await request.json()
 
     if (!sessionId) {
-      return NextResponse.json({ error: "Session ID required" }, { status: 400 })
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
 
-    // Retrieve the session with expanded data
+    console.log("🔄 Processing order for session:", sessionId)
+
+    // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["line_items", "line_items.data.price.product", "payment_intent"],
+      expand: ["line_items", "line_items.data.price.product"],
     })
 
-    console.log("📋 Session metadata:", session.metadata)
-
-    // Extract customer information
-    const customer = {
-      email: session.customer_details?.email || "",
-      firstname: session.customer_details?.name?.split(" ")[0] || "",
-      lastname: session.customer_details?.name?.split(" ").slice(1).join(" ") || "",
-      addr1: session.customer_details?.address?.line1 || "",
-      addr2: session.customer_details?.address?.line2 || "",
-      city: session.customer_details?.address?.city || "",
-      state_prov: session.customer_details?.address?.state || "",
-      postal_code: session.customer_details?.address?.postal_code || "",
-      country: session.customer_details?.address?.country || "",
+    if (!session) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 })
     }
 
-    // Extract payment information
-    const paymentIntent = session.payment_intent as any
-    const payment_id = typeof paymentIntent === "string" ? paymentIntent : paymentIntent?.id || ""
+    // Extract order data
+    const orderData = {
+      sessionId: session.id,
+      customer: {
+        email: session.customer_details?.email || "unknown@email.com",
+        name: session.customer_details?.name || "Unknown Customer",
+      },
+      products: [],
+      total: session.amount_total ? (session.amount_total / 100).toFixed(2) : "0.00",
+      currency: session.currency || "usd",
+      metadata: session.metadata || {},
+    }
 
-    // Process line items and add emoji attributes from metadata
-    const products: any[] = []
-
+    // Process line items and extract emoji data from metadata
     if (session.line_items?.data) {
-      session.line_items.data.forEach((lineItem, index) => {
-        const product: any = {
-          product_id: lineItem.price?.product || "",
-          quantity: lineItem.quantity || 1,
+      session.line_items.data.forEach((item: any, index: number) => {
+        const product = item.price?.product
+        const productData: any = {
+          product_id: product?.id || `unknown_${index}`,
+          name: product?.name || item.description || "Unknown Product",
+          quantity: item.quantity || 1,
+          price: item.price?.unit_amount ? (item.price.unit_amount / 100).toFixed(2) : "0.00",
         }
 
-        // Check for emoji attributes in session metadata
-        const emojiGood = session.metadata?.[`item_${index}_emoji_good`]
-        const emojiBad = session.metadata?.[`item_${index}_emoji_bad`]
+        // Extract emoji attributes from session metadata
+        const emojiGoodKey = `item_${index}_emoji_good`
+        const emojiBadKey = `item_${index}_emoji_bad`
 
-        if (emojiGood || emojiBad) {
-          product.attributes = []
+        if (session.metadata?.[emojiGoodKey] || session.metadata?.[emojiBadKey]) {
+          productData.attributes = []
 
-          if (emojiGood) {
-            product.attributes.push({
+          if (session.metadata[emojiGoodKey]) {
+            productData.attributes.push({
               name: "emoji_good",
-              value: emojiGood,
+              value: session.metadata[emojiGoodKey],
             })
-            console.log(`✅ Added Tesla/Good emoji attribute: ${emojiGood}`)
           }
 
-          if (emojiBad) {
-            product.attributes.push({
+          if (session.metadata[emojiBadKey]) {
+            productData.attributes.push({
               name: "emoji_bad",
-              value: emojiBad,
+              value: session.metadata[emojiBadKey],
             })
-            console.log(`✅ Added Elon/Bad emoji attribute: ${emojiBad}`)
           }
         }
 
-        products.push(product)
+        orderData.products.push(productData)
       })
     }
 
-    // Create order data
-    const orderData = {
-      customer,
-      payment_id,
-      products,
-      shipping: 0,
-      tax: 0,
-    }
+    console.log("📦 Processed order data:", JSON.stringify(orderData, null, 2))
 
-    console.log("📋 Order data with attributes:", JSON.stringify(orderData, null, 2))
+    // Send to backend
+    const backendUrl = process.env.API_BASE_URL || "https://api.muskmustgo.com"
 
-    // Send to backend if configured
-    const backendUrl = process.env.API_BASE_URL
-    if (backendUrl) {
-      try {
-        console.log("📤 Sending to backend:", `${backendUrl}/orders`)
+    try {
+      console.log("🚀 Sending order to backend:", `${backendUrl}/orders`)
 
-        const backendResponse = await fetch(`${backendUrl}/orders`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(process.env.BACKEND_API_KEY && {
-              Authorization: `Bearer ${process.env.BACKEND_API_KEY}`,
-            }),
-          },
-          body: JSON.stringify(orderData),
+      const backendResponse = await fetch(`${backendUrl}/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      })
+
+      if (backendResponse.ok) {
+        const backendResult = await backendResponse.json()
+        console.log("✅ Backend response:", backendResult)
+
+        return NextResponse.json({
+          success: true,
+          message: "Order processed successfully",
+          orderData,
+          backendResponse: backendResult,
         })
+      } else {
+        const errorText = await backendResponse.text()
+        console.error("❌ Backend error:", errorText)
 
-        if (backendResponse.ok) {
-          console.log("✅ Successfully sent to backend")
-        } else {
-          console.error("❌ Backend response error:", backendResponse.status)
-          const errorText = await backendResponse.text()
-          console.error("❌ Backend error details:", errorText)
-        }
-      } catch (backendError) {
-        console.error("❌ Backend request failed:", backendError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Backend processing failed",
+            orderData,
+            backendError: errorText,
+          },
+          { status: 500 },
+        )
       }
-    } else {
-      console.log("⚠️ No backend URL configured")
-    }
+    } catch (backendError) {
+      console.error("❌ Backend request failed:", backendError)
 
-    return NextResponse.json({
-      success: true,
-      message: "Order processed successfully",
-      orderData,
-    })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to connect to backend",
+          orderData,
+          backendError: backendError instanceof Error ? backendError.message : "Unknown error",
+        },
+        { status: 500 },
+      )
+    }
   } catch (error) {
-    console.error("❌ Manual processing error:", error)
+    console.error("❌ Order processing error:", error)
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Processing failed",
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )

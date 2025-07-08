@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2, Package } from "lucide-react"
 import Link from "next/link"
 
 export default function SuccessPage() {
@@ -59,83 +58,139 @@ export default function SuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          {orderStatus === "processing" && (
-            <>
-              <Loader2 className="h-12 w-12 text-blue-500 animate-spin mx-auto mb-4" />
-              <CardTitle>Processing Your Order</CardTitle>
-              <CardDescription>Please wait while we process your payment and prepare your order...</CardDescription>
-            </>
-          )}
+    <div className="min-h-screen bg-black text-white">
+      {/* Navbar */}
+      <nav className="flex items-center justify-between p-6 border-b border-gray-800">
+        <div className="flex items-center space-x-2">
+          <span className="text-red-500 text-xl font-bold">Musk</span>
+          <span className="text-white text-xl font-bold">MustGo</span>
+        </div>
+        <div className="flex items-center space-x-8">
+          <Link href="/shop" className="text-white hover:text-gray-300">
+            SHOP
+          </Link>
+          <div className="relative">
+            <Link href="/community" className="text-white hover:text-gray-300">
+              COMMUNITY
+            </Link>
+          </div>
+          <Link href="/about" className="text-white hover:text-gray-300">
+            ABOUT
+          </Link>
+          <Link href="/contact" className="text-white hover:text-gray-300">
+            CONTACT
+          </Link>
+        </div>
+      </nav>
 
-          {orderStatus === "success" && (
-            <>
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <CardTitle>Payment Successful!</CardTitle>
-              <CardDescription>Your order has been processed and sent to our fulfillment center.</CardDescription>
-            </>
-          )}
+      {/* Main Content */}
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
+        {orderStatus === "processing" && (
+          <div className="text-center">
+            <Loader2 className="h-16 w-16 text-green-500 animate-spin mx-auto mb-8" />
+            <h1 className="text-4xl font-bold mb-4">Processing Your Order</h1>
+            <p className="text-gray-400 text-lg">Please wait while we process your payment and prepare your order...</p>
+          </div>
+        )}
 
-          {orderStatus === "error" && (
-            <>
-              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <CardTitle>Processing Issue</CardTitle>
-              <CardDescription>There was an issue processing your order. Your payment was successful.</CardDescription>
-            </>
-          )}
-        </CardHeader>
+        {orderStatus === "success" && (
+          <div className="text-center max-w-4xl">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-8" />
+            <h1 className="text-5xl font-bold mb-6">Order Confirmed!</h1>
+            <p className="text-gray-400 text-lg mb-12">
+              Thank you for your purchase. Your order has been successfully processed.
+            </p>
 
-        <CardContent className="space-y-4">
-          {sessionId && (
-            <div className="text-sm text-gray-600">
-              <p>
-                <strong>Session ID:</strong> {sessionId}
-              </p>
-            </div>
-          )}
-
-          {orderStatus === "success" && orderData && (
-            <div className="space-y-2">
-              <h4 className="font-semibold">Order Details:</h4>
-              <div className="text-sm space-y-1">
-                <p>
-                  <strong>Email:</strong> {orderData.customer.email}
-                </p>
-                <p>
-                  <strong>Products:</strong> {orderData.products.length} item(s)
-                </p>
-                {orderData.products.some((p: any) => p.attributes) && (
-                  <div className="mt-2 p-2 bg-green-50 rounded">
-                    <p className="text-green-700 font-medium">✅ Custom emoji choices included!</p>
-                  </div>
-                )}
+            {/* Order Details */}
+            <div className="bg-gray-900 rounded-lg p-8 mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold">Order Details</h2>
+                <Package className="h-8 w-8 text-gray-400" />
               </div>
-            </div>
-          )}
 
-          {orderStatus === "error" && (
-            <div className="space-y-2">
-              <p className="text-red-600 text-sm">{error}</p>
-              <Button onClick={retryProcessing} variant="outline" className="w-full bg-transparent">
-                Retry Processing
-              </Button>
-            </div>
-          )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+                <div>
+                  <p className="text-gray-400 mb-2">Email:</p>
+                  <p className="text-white text-lg">{orderData?.customer?.email || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400 mb-2">Products:</p>
+                  <p className="text-white text-lg">{orderData?.products?.length || 0} item(s)</p>
+                </div>
+                <div>
+                  <p className="text-gray-400 mb-2">Total:</p>
+                  <p className="text-white text-lg">${orderData?.total || "0.00"}</p>
+                </div>
+              </div>
 
-          <div className="flex gap-2">
-            <Button asChild className="flex-1">
-              <Link href="/">Continue Shopping</Link>
-            </Button>
-            {orderStatus === "success" && (
-              <Button asChild variant="outline" className="flex-1 bg-transparent">
+              {orderData?.products?.some((p: any) => p.attributes) && (
+                <div className="mt-6 p-4 bg-green-900/20 border border-green-500/30 rounded-lg">
+                  <p className="text-green-400 font-medium">✅ Custom emoji choices included!</p>
+                </div>
+              )}
+
+              {sessionId && (
+                <div className="mt-6 pt-6 border-t border-gray-700">
+                  <p className="text-gray-400 text-sm">Session ID: {sessionId}</p>
+                </div>
+              )}
+            </div>
+
+            <p className="text-gray-400 mb-8">
+              You'll receive an email confirmation shortly with your order details and tracking information.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                asChild
+                variant="outline"
+                className="bg-transparent border-gray-600 text-white hover:bg-gray-800 px-8 py-3"
+              >
                 <Link href="/account/orders">View Orders</Link>
               </Button>
-            )}
+              <Button asChild className="bg-red-600 hover:bg-red-700 text-white px-8 py-3">
+                <Link href="/">Continue Shopping →</Link>
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {orderStatus === "error" && (
+          <div className="text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-8" />
+            <h1 className="text-4xl font-bold mb-4">Processing Issue</h1>
+            <p className="text-gray-400 text-lg mb-6">
+              There was an issue processing your order. Your payment was successful.
+            </p>
+
+            {error && (
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 mb-6 max-w-md mx-auto">
+                <p className="text-red-400 text-sm">{error}</p>
+              </div>
+            )}
+
+            {sessionId && (
+              <div className="mb-6">
+                <p className="text-gray-400 text-sm">Session ID: {sessionId}</p>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                onClick={retryProcessing}
+                variant="outline"
+                className="bg-transparent border-gray-600 text-white hover:bg-gray-800"
+              >
+                Retry Processing
+              </Button>
+              <Button asChild className="bg-red-600 hover:bg-red-700 text-white">
+                <Link href="/">Continue Shopping</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
