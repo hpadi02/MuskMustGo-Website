@@ -61,19 +61,19 @@ export async function POST(req: NextRequest) {
         // For Tesla vs Elon emoji products, store the emoji choices with number prefixes
         if (item.customOptions.teslaEmoji) {
           // Extract filename with number prefix from path
-          const emojiValue = item.customOptions.teslaEmoji.path
+          const teslaEmojiValue = item.customOptions.teslaEmoji.path
             ? item.customOptions.teslaEmoji.path.split("/").pop()?.replace(".png", "")
             : item.customOptions.teslaEmoji.name
-          sessionMetadata[`item_${index}_emoji_good`] = emojiValue
-          console.log(`✅ Added Tesla emoji: ${emojiValue}`)
+          sessionMetadata[`item_${index}_emoji_good`] = teslaEmojiValue
+          console.log(`✅ Added Tesla emoji: ${teslaEmojiValue}`)
         }
         if (item.customOptions.elonEmoji) {
           // Extract filename with number prefix from path
-          const emojiValue = item.customOptions.elonEmoji.path
+          const elonEmojiValue = item.customOptions.elonEmoji.path
             ? item.customOptions.elonEmoji.path.split("/").pop()?.replace(".png", "")
             : item.customOptions.elonEmoji.name
-          sessionMetadata[`item_${index}_emoji_bad`] = emojiValue
-          console.log(`✅ Added Elon emoji: ${emojiValue}`)
+          sessionMetadata[`item_${index}_emoji_bad`] = elonEmojiValue
+          console.log(`✅ Added Elon emoji: ${elonEmojiValue}`)
         }
 
         index++
