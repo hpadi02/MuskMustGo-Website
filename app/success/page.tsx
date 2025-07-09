@@ -1,6 +1,4 @@
-"use client"
-
-import { Suspense, useState } from "react"
+import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { stripe } from "@/lib/stripe"
 import Link from "next/link"
@@ -14,46 +12,9 @@ interface SuccessPageProps {
   }
 }
 
-const SuccessPage = ({ searchParams }: SuccessPageProps) => {
-  const sessionId = searchParams.session_id
-  const [orderNumber, setOrderNumber] = useState<string | null>(null)
-  const [orderNumberLoading, setOrderNumberLoading] = useState(true)
+async function SuccessContent({ sessionId }: { sessionId: string }) {
+  let orderNumber: string | null = null
 
-  console.log("🚀 === SUCCESS PAGE ENTRY ===")
-  console.log("🚀 Session ID from URL:", sessionId)
-
-  if (!sessionId) {
-    console.error("❌ No session_id in URL parameters")
-    redirect("/cart")
-  }
-
-  return (
-    <Suspense
-      fallback={
-        <div className="bg-black text-white min-h-screen pt-32 pb-20">
-          <div className="container mx-auto px-6 md:px-10">
-            <div className="max-w-2xl mx-auto text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
-              <p className="mt-4 text-white/70">Processing your order...</p>
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <SuccessContent
-        sessionId={sessionId}
-        setOrderNumber={setOrderNumber}
-        setOrderNumberLoading={setOrderNumberLoading}
-      />
-    </Suspense>
-  )
-}
-
-async function SuccessContent({
-  sessionId,
-  setOrderNumber,
-  setOrderNumberLoading,
-}: { sessionId: string; setOrderNumber: any; setOrderNumberLoading: any }) {
   try {
     console.log("🎉 === SUCCESS PAGE STARTED ===")
     console.log("⏰ Timestamp:", new Date().toISOString())
@@ -102,7 +63,6 @@ async function SuccessContent({
     })
 
     // Process the order - send to backend
-
     try {
       console.log("🏗️ === BUILDING ORDER DATA ===")
       const orderData = {
@@ -187,45 +147,36 @@ async function SuccessContent({
 
       // Send to Ed's backend via your API route
       console.log("📡 Making API call to backend...")
-      setOrderNumberLoading(true)
+      const backendResponse = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData),
+      })
 
-      try {
-        const backendResponse = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(orderData),
-        })
+      console.log("📡 Backend response status:", backendResponse.status)
+      console.log("📡 Backend response headers:", Object.fromEntries(backendResponse.headers.entries()))
 
-        console.log("📡 Backend response status:", backendResponse.status)
-        console.log("📡 Backend response headers:", Object.fromEntries(backendResponse.headers.entries()))
+      if (!backendResponse.ok) {
+        const errorText = await backendResponse.text()
+        console.error("❌ Failed to send order to backend:")
+        console.error("❌ Status:", backendResponse.status)
+        console.error("❌ Error text:", errorText)
+        console.error("❌ Order number will not be displayed due to backend error")
+      } else {
+        const result = await backendResponse.json()
+        console.log("✅ Order successfully sent to Ed's backend:")
+        console.log("✅ Backend response:", JSON.stringify(result, null, 2))
 
-        if (!backendResponse.ok) {
-          const errorText = await backendResponse.text()
-          console.error("❌ Failed to send order to backend:")
-          console.error("❌ Status:", backendResponse.status)
-          console.error("❌ Error text:", errorText)
-          setOrderNumber(null)
+        // Extract order number from backend response
+        if (result.order_number) {
+          console.log("🎯 Order number received:", result.order_number)
+          orderNumber = result.order_number
         } else {
-          const result = await backendResponse.json()
-          console.log("✅ Order successfully sent to Ed's backend:")
-          console.log("✅ Backend response:", JSON.stringify(result, null, 2))
-
-          // Extract order number from backend response
-          if (result.order_number) {
-            console.log("🎯 Order number received:", result.order_number)
-            setOrderNumber(result.order_number)
-          } else {
-            console.warn("⚠️ No order_number in backend response:", result)
-            setOrderNumber(null)
-          }
+          console.warn("⚠️ No order_number in backend response:", result)
+          console.warn("⚠️ Expected 'order_number' field but got:", Object.keys(result))
         }
-      } catch (fetchError) {
-        console.error("💥 Backend API call failed:", fetchError)
-        setOrderNumber(null)
-      } finally {
-        setOrderNumberLoading(false)
       }
     } catch (error) {
       console.error("💥 === ORDER PROCESSING ERROR ===")
@@ -234,10 +185,12 @@ async function SuccessContent({
         console.error("💥 Error message:", error.message)
         console.error("💥 Error stack:", error.stack)
       }
+      console.error("💥 Order number will not be displayed due to processing error")
     }
 
     console.log("🎉 === SUCCESS PAGE RENDERING ===")
     console.log("🎉 Rendering success page for user")
+    console.log("🎯 Final order number for display:", orderNumber || "None")
 
     return (
       <div className="bg-black text-white min-h-screen">
@@ -263,20 +216,12 @@ async function SuccessContent({
               </div>
               <div className="space-y-4 text-left">
                 {/* Order Number - Display at top if available */}
-                {orderNumberLoading ? (
-                  <div className="flex justify-between">
-                    <span className="text-white/70">Order Number:</span>
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      <span className="text-white/50">Processing...</span>
-                    </div>
-                  </div>
-                ) : orderNumber ? (
+                {orderNumber && (
                   <div className="flex justify-between">
                     <span className="text-white/70">Order Number:</span>
                     <span className="font-medium text-green-400">{orderNumber}</span>
                   </div>
-                ) : null}
+                )}
 
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
@@ -322,4 +267,31 @@ async function SuccessContent({
   }
 }
 
-export default SuccessPage
+export default function SuccessPage({ searchParams }: SuccessPageProps) {
+  const sessionId = searchParams.session_id
+
+  console.log("🚀 === SUCCESS PAGE ENTRY ===")
+  console.log("🚀 Session ID from URL:", sessionId)
+
+  if (!sessionId) {
+    console.error("❌ No session_id in URL parameters")
+    redirect("/cart")
+  }
+
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-black text-white min-h-screen pt-32 pb-20">
+          <div className="container mx-auto px-6 md:px-10">
+            <div className="max-w-2xl mx-auto text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
+              <p className="mt-4 text-white/70">Processing your order...</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <SuccessContent sessionId={sessionId} />
+    </Suspense>
+  )
+}
