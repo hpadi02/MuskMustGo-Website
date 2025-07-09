@@ -56,15 +56,25 @@ export async function POST(request: NextRequest) {
       if (item.customOptions) {
         console.log(`🎭 Item ${index} emoji choices:`, JSON.stringify(item.customOptions, null, 2))
 
-        // For Tesla vs Elon emoji products, store the emoji choices directly
+        // For Tesla vs Elon emoji products, store the emoji choices with number prefix
         if (item.customOptions.teslaEmoji) {
-          sessionMetadata[`item_${index}_emoji_good`] = item.customOptions.teslaEmoji.name
-          console.log(`✅ Added Tesla emoji: ${item.customOptions.teslaEmoji.name}`)
+          // Extract filename with number prefix from path
+          const emojiValue = item.customOptions.teslaEmoji.path
+            ? item.customOptions.teslaEmoji.path.split("/").pop()?.replace(".png", "")
+            : item.customOptions.teslaEmoji.name
+
+          sessionMetadata[`item_${index}_emoji_good`] = emojiValue
+          console.log(`✅ Added Tesla emoji: ${emojiValue}`)
         }
 
         if (item.customOptions.elonEmoji) {
-          sessionMetadata[`item_${index}_emoji_bad`] = item.customOptions.elonEmoji.name
-          console.log(`✅ Added Elon emoji: ${item.customOptions.elonEmoji.name}`)
+          // Extract filename with number prefix from path
+          const emojiValue = item.customOptions.elonEmoji.path
+            ? item.customOptions.elonEmoji.path.split("/").pop()?.replace(".png", "")
+            : item.customOptions.elonEmoji.name
+
+          sessionMetadata[`item_${index}_emoji_bad`] = emojiValue
+          console.log(`✅ Added Elon emoji: ${emojiValue}`)
         }
 
         // Store product ID for matching in webhook
