@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
 
         // For Tesla vs Elon emoji products, store the emoji choices with number prefixes
         if (item.customOptions.teslaEmoji) {
-          // Extract filename with number prefix from path
           const teslaEmojiValue = item.customOptions.teslaEmoji.path
             ? item.customOptions.teslaEmoji.path.split("/").pop()?.replace(".png", "")
             : item.customOptions.teslaEmoji.name
@@ -68,7 +67,6 @@ export async function POST(req: NextRequest) {
           console.log(`✅ Added Tesla emoji: ${teslaEmojiValue}`)
         }
         if (item.customOptions.elonEmoji) {
-          // Extract filename with number prefix from path
           const elonEmojiValue = item.customOptions.elonEmoji.path
             ? item.customOptions.elonEmoji.path.split("/").pop()?.replace(".png", "")
             : item.customOptions.elonEmoji.name
