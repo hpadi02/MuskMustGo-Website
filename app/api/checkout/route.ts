@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
   try {
     console.log("🚀 === CHECKOUT API STARTED ===")
     console.log("⏰ Timestamp:", new Date().toISOString())
-
     const body = await request.json()
     console.log("📥 Request body:", JSON.stringify(body, null, 2))
 
@@ -34,6 +33,7 @@ export async function POST(request: NextRequest) {
       if (!item.price) {
         throw new Error(`Missing price ID for item: ${JSON.stringify(item)}`)
       }
+
       return {
         price: item.price,
         quantity: item.quantity || 1,
@@ -56,15 +56,23 @@ export async function POST(request: NextRequest) {
       if (item.customOptions) {
         console.log(`🎭 Item ${index} emoji choices:`, JSON.stringify(item.customOptions, null, 2))
 
-        // For Tesla vs Elon emoji products, store the emoji choices directly
+        // For Tesla vs Elon emoji products, store the emoji choices with number prefixes
         if (item.customOptions.teslaEmoji) {
-          sessionMetadata[`item_${index}_emoji_good`] = item.customOptions.teslaEmoji.name
-          console.log(`✅ Added Tesla emoji: ${item.customOptions.teslaEmoji.name}`)
+          // Extract filename with number prefix from path
+          const teslaEmojiValue = item.customOptions.teslaEmoji.path
+            ? item.customOptions.teslaEmoji.path.split("/").pop()?.replace(".png", "")
+            : item.customOptions.teslaEmoji.name
+          sessionMetadata[`item_${index}_emoji_good`] = teslaEmojiValue
+          console.log(`✅ Added Tesla emoji: ${teslaEmojiValue}`)
         }
 
         if (item.customOptions.elonEmoji) {
-          sessionMetadata[`item_${index}_emoji_bad`] = item.customOptions.elonEmoji.name
-          console.log(`✅ Added Elon emoji: ${item.customOptions.elonEmoji.name}`)
+          // Extract filename with number prefix from path
+          const elonEmojiValue = item.customOptions.elonEmoji.path
+            ? item.customOptions.elonEmoji.path.split("/").pop()?.replace(".png", "")
+            : item.customOptions.elonEmoji.name
+          sessionMetadata[`item_${index}_emoji_bad`] = elonEmojiValue
+          console.log(`✅ Added Elon emoji: ${elonEmojiValue}`)
         }
 
         // Store product ID for matching in webhook
@@ -76,10 +84,8 @@ export async function POST(request: NextRequest) {
 
     // ===== URL DETECTION =====
     console.log("🌐 === URL DETECTION DEBUG ===")
-
     const getBaseUrl = () => {
       console.log("🧪 === TESTING URL DETECTION METHODS ===")
-
       // Method 1: Environment variable PUBLIC_URL (highest priority)
       if (process.env.PUBLIC_URL) {
         console.log("✅ Method 1 - PUBLIC_URL found:", process.env.PUBLIC_URL)
