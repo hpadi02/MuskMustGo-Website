@@ -13,6 +13,8 @@ interface SuccessPageProps {
 }
 
 async function SuccessContent({ sessionId }: { sessionId: string }) {
+  let orderNumber: string | null = null
+
   try {
     console.log("🎉 === SUCCESS PAGE STARTED ===")
     console.log("⏰ Timestamp:", new Date().toISOString())
@@ -161,10 +163,20 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         console.error("❌ Failed to send order to backend:")
         console.error("❌ Status:", backendResponse.status)
         console.error("❌ Error text:", errorText)
+        console.error("❌ Order number will not be displayed due to backend error")
       } else {
         const result = await backendResponse.json()
         console.log("✅ Order successfully sent to Ed's backend:")
         console.log("✅ Backend response:", JSON.stringify(result, null, 2))
+
+        // Extract order number from backend response
+        if (result.order_number) {
+          console.log("🎯 Order number received:", result.order_number)
+          orderNumber = result.order_number
+        } else {
+          console.warn("⚠️ No order_number in backend response:", result)
+          console.warn("⚠️ Expected 'order_number' field but got:", Object.keys(result))
+        }
       }
     } catch (error) {
       console.error("💥 === ORDER PROCESSING ERROR ===")
@@ -173,10 +185,12 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
         console.error("💥 Error message:", error.message)
         console.error("💥 Error stack:", error.stack)
       }
+      console.error("💥 Order number will not be displayed due to processing error")
     }
 
     console.log("🎉 === SUCCESS PAGE RENDERING ===")
     console.log("🎉 Rendering success page for user")
+    console.log("🎯 Final order number for display:", orderNumber || "None")
 
     return (
       <div className="bg-black text-white min-h-screen">
@@ -201,6 +215,14 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                 <Package className="h-6 w-6 text-white/60" />
               </div>
               <div className="space-y-4 text-left">
+                {/* Order Number - Display at top if available */}
+                {orderNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-white/70">Order Number:</span>
+                    <span className="font-medium text-green-400">{orderNumber}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
