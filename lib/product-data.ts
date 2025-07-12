@@ -42,7 +42,8 @@ const DISPLAY_NAMES: Record<string, string> = {
 }
 
 // MANUAL PRODUCT ORDERING - Ed can change these numbers to reorder products
-const PRODUCT_SORT_ORDER: Record<string, number> = {
+// Now controlled by environment variable PRODUCT_SORT_ORDER
+const FALLBACK_PRODUCT_SORT_ORDER: Record<string, number> = {
   no_elon_face: 1, // Say No to Elon! - Ed's top choice
   tesla_vs_elon_emoji: 2, // Tesla vs Elon Emoji - customizable, popular
   not_ceo_wavy: 3, // Elon Is Not My CEO - clear statement
@@ -50,6 +51,28 @@ const PRODUCT_SORT_ORDER: Record<string, number> = {
   deport_elon: 5, // Deport Elon - controversial, last
   did_not_invent: 6, // Elon Did Not Invent Tesla - educational
 }
+
+// Function to get product sort order from environment variable or fallback
+function getProductSortOrder(): Record<string, number> {
+  try {
+    const envSortOrder = process.env.PRODUCT_SORT_ORDER
+    if (envSortOrder) {
+      console.log("🔄 SORT: Using environment variable PRODUCT_SORT_ORDER")
+      const parsed = JSON.parse(envSortOrder)
+      console.log("🔄 SORT: Parsed sort order:", parsed)
+      return parsed
+    }
+  } catch (error) {
+    console.warn("🔄 SORT: Failed to parse PRODUCT_SORT_ORDER environment variable:", error)
+    console.warn("🔄 SORT: Falling back to hardcoded sort order")
+  }
+
+  console.log("🔄 SORT: Using fallback sort order")
+  return FALLBACK_PRODUCT_SORT_ORDER
+}
+
+// Get the actual sort order to use
+const PRODUCT_SORT_ORDER = getProductSortOrder()
 
 // Product features
 const DEFAULT_FEATURES = ["Weather and UV resistant", "Easy application", "Removable without residue", "Made in USA"]
@@ -223,7 +246,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRg7CHXKGu0DvSUGROSqLjd",
     productId: "prod_SMOvz7QTtXbzeO",
-    sortOrder: 5,
+    sortOrder: PRODUCT_SORT_ORDER["deport_elon"] || 5,
   },
   {
     product_id: "a6b2deb6-d6ee-4afe-9d9f-00f54f6dc123",
@@ -236,7 +259,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRg7dHXKGu0DvSUUuTUPmxH",
     productId: "prod_SMOv2AdKsIZdCv",
-    sortOrder: 5,
+    sortOrder: PRODUCT_SORT_ORDER["deport_elon"] || 5,
   },
   {
     product_id: "25715ee1-0ce8-47a1-a815-c5a7fde888d3",
@@ -249,7 +272,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRg5NHXKGu0DvSUQHxTKKeJ",
     productId: "prod_SMOtIBBTRR6MWe",
-    sortOrder: 6,
+    sortOrder: PRODUCT_SORT_ORDER["did_not_invent"] || 6,
   },
   {
     product_id: "996ef07f-0994-4127-9c57-eb14b3c1d88a",
@@ -262,7 +285,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRg61HXKGu0DvSUcKARoUTL",
     productId: "prod_SMOtyyjmBf1DjJ",
-    sortOrder: 6,
+    sortOrder: PRODUCT_SORT_ORDER["did_not_invent"] || 6,
   },
   {
     product_id: "500b3f79-e18b-4a4e-a61f-166934edfa61",
@@ -275,7 +298,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRgAoHXKGu0DvSU02nSht9K",
     productId: "prod_SMOymK1lY8V7nB",
-    sortOrder: 4,
+    sortOrder: PRODUCT_SORT_ORDER["hate_nazis"] || 4,
   },
   {
     product_id: "986c722c-823f-4004-95f2-fd027eb61c2f",
@@ -288,7 +311,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRgBYHXKGu0DvSUDXpqZmob",
     productId: "prod_SMOzL5UlT5wbsO",
-    sortOrder: 4,
+    sortOrder: PRODUCT_SORT_ORDER["hate_nazis"] || 4,
   },
   {
     product_id: "d2617bd5-8387-40e5-bdf9-ade5717f1cec",
@@ -301,7 +324,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRgECHXKGu0DvSUe24j6AID",
     productId: "prod_SMP2rxDM8XwFoX",
-    sortOrder: 3,
+    sortOrder: PRODUCT_SORT_ORDER["not_ceo_wavy"] || 3,
   },
   {
     product_id: "3e982525-202d-4c18-a15d-e02c6d631b52",
@@ -314,7 +337,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRgEkHXKGu0DvSUaRbPVBds",
     productId: "prod_SMP21kBsg5qxRM",
-    sortOrder: 3,
+    sortOrder: PRODUCT_SORT_ORDER["not_ceo_wavy"] || 3,
   },
   {
     product_id: "9e445577-58a2-4615-b63f-8e0713e1f413",
@@ -327,7 +350,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRgGGHXKGu0DvSUDr9q1mNa",
     productId: "prod_SMP47IhOUcO1kn",
-    sortOrder: 1,
+    sortOrder: PRODUCT_SORT_ORDER["no_elon_face"] || 1,
   },
   {
     product_id: "adc3f2ae-9128-4352-8071-685ace54d19b",
@@ -340,7 +363,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRgH0HXKGu0DvSUb9ggZcDF",
     productId: "prod_SMP5jwQujuz3Cl",
-    sortOrder: 1,
+    sortOrder: PRODUCT_SORT_ORDER["no_elon_face"] || 1,
   },
   // FIXED: Tesla emoji products with correct Stripe IDs
   {
@@ -354,7 +377,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper magnet",
     stripeId: "price_1RRg0LHXKGu0DvSUz39kCbyI", // Tesla vs. Elon Emoji Magnet
     productId: "prod_SMOn24zhjeCmXm", // Tesla vs. Elon Emoji Magnet
-    sortOrder: 2,
+    sortOrder: PRODUCT_SORT_ORDER["tesla_vs_elon_emoji"] || 2,
   },
   {
     product_id: "376de82f-fc72-4e9c-ac92-93e3055ccfc2",
@@ -367,7 +390,7 @@ export const RAW_PRODUCTS = [
     medium_name: "bumper sticker",
     stripeId: "price_1RRg2MHXKGu0DvSUrcUOYZIO", // Tesla vs. Elon Emoji Bumper Sticker
     productId: "prod_SMOquwq3mLZSDE", // Tesla vs. Elon Emoji Bumper Sticker
-    sortOrder: 2,
+    sortOrder: PRODUCT_SORT_ORDER["tesla_vs_elon_emoji"] || 2,
   },
 ]
 
