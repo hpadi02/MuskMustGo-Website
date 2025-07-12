@@ -324,6 +324,10 @@ export default function CartPage() {
                   <span className="font-medium">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-white/70">Tax</span>
+                  <span className="font-medium text-white/60">Calculated at checkout</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-white/70">Shipping</span>
                   <span className="font-medium">{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
                 </div>
@@ -333,8 +337,9 @@ export default function CartPage() {
               <div className="border-t border-gray-800 pt-4 mb-8">
                 <div className="flex justify-between text-xl font-bold">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${total.toFixed(2)} + tax</span>
                 </div>
+                <p className="text-sm text-white/50 mt-1">Tax calculated based on billing address</p>
               </div>
 
               <Button

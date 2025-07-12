@@ -44,9 +44,18 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    console.log("💰 === PAYMENT PROCESSING ===")
+    // Extract tax information
+    const taxAmount = session.total_details?.amount_tax || 0
+    const subtotalAmount = (session.amount_subtotal || 0) / 100
+    const totalAmount = (session.amount_total || 0) / 100
+    const taxAmountDollars = taxAmount / 100
+
+    console.log("💰 === PAYMENT AND TAX DETAILS ===")
     console.log("💰 Session ID:", session.id)
     console.log("💰 Payment Intent ID:", paymentIntentId)
+    console.log("💰 Subtotal:", subtotalAmount)
+    console.log("💰 Tax Amount:", taxAmountDollars)
+    console.log("💰 Total Amount:", totalAmount)
     console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
     // Log line items details
@@ -112,7 +121,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
             }
           }) || [],
         shipping: 0,
-        tax: 0,
+        tax: taxAmountDollars, // ✅ Now includes actual tax amount
       }
 
       console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
@@ -227,9 +236,22 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
                 </div>
+
                 <div className="flex justify-between">
+                  <span className="text-white/70">Subtotal:</span>
+                  <span className="font-medium">${subtotalAmount.toFixed(2)}</span>
+                </div>
+
+                {taxAmountDollars > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-white/70">Tax:</span>
+                    <span className="font-medium">${taxAmountDollars.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between border-t border-gray-800 pt-2">
                   <span className="text-white/70">Total:</span>
-                  <span className="font-medium">${((session.amount_total || 0) / 100).toFixed(2)}</span>
+                  <span className="font-medium text-lg">${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>

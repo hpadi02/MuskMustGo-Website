@@ -158,10 +158,13 @@ export async function POST(request: NextRequest) {
       success_url: finalSuccessUrl,
       cancel_url: finalCancelUrl,
       metadata: sessionMetadata,
+      automatic_tax: {
+        enabled: true,
+      },
+      billing_address_collection: "required",
       shipping_address_collection: {
         allowed_countries: ["US", "CA"],
       },
-      billing_address_collection: "required",
     })
 
     console.log("✅ === STRIPE SESSION CREATED SUCCESSFULLY ===")
