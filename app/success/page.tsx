@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { stripe } from "@/lib/stripe"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, ArrowRight } from 'lucide-react'
+import { CheckCircle, Package, ArrowRight } from "lucide-react"
 import { CartClearer } from "@/components/cart-clearer"
 
 interface SuccessPageProps {
