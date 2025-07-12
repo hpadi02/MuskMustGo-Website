@@ -165,6 +165,11 @@ export async function POST(request: NextRequest) {
       shipping_address_collection: {
         allowed_countries: ["US", "CA"],
       },
+      shipping_options: [
+        {
+          shipping_rate: "shr_1RbrUmHXKGu0DvSUkRoVtOeu",
+        },
+      ],
     })
 
     console.log("✅ === STRIPE SESSION CREATED SUCCESSFULLY ===")
@@ -173,6 +178,7 @@ export async function POST(request: NextRequest) {
     console.log("✅ Success URL sent to Stripe:", finalSuccessUrl)
     console.log("✅ Cancel URL sent to Stripe:", finalCancelUrl)
     console.log("✅ Metadata sent to Stripe:", JSON.stringify(sessionMetadata, null, 2))
+    console.log("✅ Shipping rate applied:", "shr_1RbrUmHXKGu0DvSUkRoVtOeu")
 
     return NextResponse.json({
       sessionId: session.id,

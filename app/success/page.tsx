@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { stripe } from "@/lib/stripe"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, Package, ArrowRight } from "lucide-react"
+import { CheckCircle, Package, ArrowRight } from 'lucide-react'
 import { CartClearer } from "@/components/cart-clearer"
 
 interface SuccessPageProps {
@@ -44,17 +44,20 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    // Extract tax information
+    // Extract tax and shipping information
     const taxAmount = session.total_details?.amount_tax || 0
+    const shippingAmount = session.total_details?.amount_shipping || 0
     const subtotalAmount = (session.amount_subtotal || 0) / 100
     const totalAmount = (session.amount_total || 0) / 100
     const taxAmountDollars = taxAmount / 100
+    const shippingAmountDollars = shippingAmount / 100
 
-    console.log("💰 === PAYMENT AND TAX DETAILS ===")
+    console.log("💰 === PAYMENT, TAX, AND SHIPPING DETAILS ===")
     console.log("💰 Session ID:", session.id)
     console.log("💰 Payment Intent ID:", paymentIntentId)
     console.log("💰 Subtotal:", subtotalAmount)
     console.log("💰 Tax Amount:", taxAmountDollars)
+    console.log("💰 Shipping Amount:", shippingAmountDollars)
     console.log("💰 Total Amount:", totalAmount)
     console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
@@ -120,7 +123,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               quantity: item.quantity || 1,
             }
           }) || [],
-        shipping: 0,
+        shipping: shippingAmountDollars, // ✅ Now includes actual shipping amount
         tax: taxAmountDollars, // ✅ Now includes actual tax amount
       }
 
@@ -246,6 +249,13 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                   <div className="flex justify-between">
                     <span className="text-white/70">Tax:</span>
                     <span className="font-medium">${taxAmountDollars.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {shippingAmountDollars > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-white/70">Shipping:</span>
+                    <span className="font-medium">${shippingAmountDollars.toFixed(2)}</span>
                   </div>
                 )}
 
