@@ -44,7 +44,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    // Extract tax and shipping information
+    // ✅ EXTRACT TAX AND SHIPPING INFORMATION FROM STRIPE SESSION
     const taxAmount = session.total_details?.amount_tax || 0
     const shippingAmount = session.total_details?.amount_shipping || 0
     const subtotalAmount = (session.amount_subtotal || 0) / 100
@@ -55,10 +55,12 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     console.log("💰 === PAYMENT, TAX, AND SHIPPING DETAILS ===")
     console.log("💰 Session ID:", session.id)
     console.log("💰 Payment Intent ID:", paymentIntentId)
-    console.log("💰 Subtotal:", subtotalAmount)
-    console.log("💰 Tax Amount:", taxAmountDollars)
-    console.log("💰 Shipping Amount:", shippingAmountDollars)
-    console.log("💰 Total Amount:", totalAmount)
+    console.log("💰 Subtotal (dollars):", subtotalAmount)
+    console.log("💰 Tax Amount (cents):", taxAmount)
+    console.log("💰 Tax Amount (dollars):", taxAmountDollars)
+    console.log("💰 Shipping Amount (cents):", shippingAmount)
+    console.log("💰 Shipping Amount (dollars):", shippingAmountDollars)
+    console.log("💰 Total Amount (dollars):", totalAmount)
     console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
     // Log line items details
@@ -76,7 +78,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     // Process the order - send to backend
     try {
-      console.log("🏗️ === BUILDING ORDER DATA ===")
+      console.log("🏗️ === BUILDING ORDER DATA FOR BACKEND ===")
       const orderData = {
         customer: {
           email: session.customer_details?.email || "",
@@ -123,12 +125,17 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               quantity: item.quantity || 1,
             }
           }) || [],
-        shipping: shippingAmountDollars, // ✅ Now includes actual shipping amount
-        tax: taxAmountDollars, // ✅ Now includes actual tax amount
+        shipping: shippingAmountDollars, // ✅ ACTUAL SHIPPING AMOUNT IN DOLLARS
+        tax: taxAmountDollars, // ✅ ACTUAL TAX AMOUNT IN DOLLARS
       }
 
-      console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
-      console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
+      console.log("📤 === FINAL ORDER DATA BEING SENT TO BACKEND ===")
+      console.log("📤 Customer email:", orderData.customer.email)
+      console.log("📤 Payment ID:", orderData.payment_id)
+      console.log("📤 Number of products:", orderData.products.length)
+      console.log("📤 Shipping amount (dollars):", orderData.shipping)
+      console.log("📤 Tax amount (dollars):", orderData.tax)
+      console.log("📤 Complete order data:", JSON.stringify(orderData, null, 2))
 
       // ✅ URL determination with extensive debugging
       console.log("🌐 === DETERMINING API URL ===")
@@ -157,14 +164,14 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
       console.log("🎯 Final API URL:", apiUrl)
 
-      // Send to Ed's backend via your API route
-      console.log("📡 Making API call to backend...")
+      // ✅ SEND TO ED'S BACKEND VIA YOUR API ROUTE
+      console.log("📡 Making POST request to backend with tax and shipping data...")
       const backendResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify(orderData), // ✅ INCLUDES TAX AND SHIPPING AMOUNTS
       })
 
       console.log("📡 Backend response status:", backendResponse.status)
