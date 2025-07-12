@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Trash2, Plus, Minus, ArrowLeft, Loader2, AlertCircle } from "lucide-react"
+import { Trash2, Plus, Minus, ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
 import FallbackImage from "@/components/fallback-image"
 import { useCart } from "@/hooks/use-cart-simplified"
 import { useRouter } from "next/navigation"
@@ -19,8 +19,6 @@ export default function CartPage() {
   const { toast } = useToast()
 
   const subtotal = getCartTotal()
-  const shipping = subtotal > 50 ? 0 : 5.99
-  const total = subtotal + shipping
 
   // Save cart to localStorage for order history
   const saveOrderToHistory = () => {
@@ -37,12 +35,11 @@ export default function CartPage() {
           day: "numeric",
         }),
         status: "Processing",
-        total: total,
+        total: subtotal, // Will be updated with actual total including tax and shipping
         items: items.map((item) => ({
           ...item,
           price: item.price,
         })),
-        shipping: shipping,
         payment_id: null, // Will be updated after Stripe payment
       }
 
@@ -324,17 +321,21 @@ export default function CartPage() {
                   <span className="font-medium">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-white/70">Shipping</span>
-                  <span className="font-medium">{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
+                  <span className="text-white/70">Tax</span>
+                  <span className="font-medium text-white/60">Calculated at checkout</span>
                 </div>
-                {shipping > 0 && <p className="text-sm text-white/50">Free shipping on orders over $50</p>}
+                <div className="flex justify-between">
+                  <span className="text-white/70">Shipping</span>
+                  <span className="font-medium text-white/60">Calculated at checkout</span>
+                </div>
               </div>
 
               <div className="border-t border-gray-800 pt-4 mb-8">
                 <div className="flex justify-between text-xl font-bold">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${subtotal.toFixed(2)} + tax + shipping</span>
                 </div>
+                <p className="text-sm text-white/50 mt-1">Tax and shipping calculated at checkout</p>
               </div>
 
               <Button

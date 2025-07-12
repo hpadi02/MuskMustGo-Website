@@ -44,9 +44,23 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
     const paymentIntentId =
       typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || session.id
 
-    console.log("💰 === PAYMENT PROCESSING ===")
+    // ✅ EXTRACT TAX AND SHIPPING INFORMATION FROM STRIPE SESSION
+    const taxAmount = session.total_details?.amount_tax || 0
+    const shippingAmount = session.total_details?.amount_shipping || 0
+    const subtotalAmount = (session.amount_subtotal || 0) / 100
+    const totalAmount = (session.amount_total || 0) / 100
+    const taxAmountDollars = taxAmount / 100
+    const shippingAmountDollars = shippingAmount / 100
+
+    console.log("💰 === PAYMENT, TAX, AND SHIPPING DETAILS ===")
     console.log("💰 Session ID:", session.id)
     console.log("💰 Payment Intent ID:", paymentIntentId)
+    console.log("💰 Subtotal (dollars):", subtotalAmount)
+    console.log("💰 Tax Amount (cents):", taxAmount)
+    console.log("💰 Tax Amount (dollars):", taxAmountDollars)
+    console.log("💰 Shipping Amount (cents):", shippingAmount)
+    console.log("💰 Shipping Amount (dollars):", shippingAmountDollars)
+    console.log("💰 Total Amount (dollars):", totalAmount)
     console.log("💰 Session metadata:", JSON.stringify(session.metadata, null, 2))
 
     // Log line items details
@@ -64,7 +78,7 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
 
     // Process the order - send to backend
     try {
-      console.log("🏗️ === BUILDING ORDER DATA ===")
+      console.log("🏗️ === BUILDING ORDER DATA FOR BACKEND ===")
       const orderData = {
         customer: {
           email: session.customer_details?.email || "",
@@ -111,12 +125,17 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
               quantity: item.quantity || 1,
             }
           }) || [],
-        shipping: 0,
-        tax: 0,
+        shipping: shippingAmountDollars, // ✅ ACTUAL SHIPPING AMOUNT IN DOLLARS
+        tax: taxAmountDollars, // ✅ ACTUAL TAX AMOUNT IN DOLLARS
       }
 
-      console.log("📤 === SENDING ORDER TO ED'S BACKEND ===")
-      console.log("📤 Order data:", JSON.stringify(orderData, null, 2))
+      console.log("📤 === FINAL ORDER DATA BEING SENT TO BACKEND ===")
+      console.log("📤 Customer email:", orderData.customer.email)
+      console.log("📤 Payment ID:", orderData.payment_id)
+      console.log("📤 Number of products:", orderData.products.length)
+      console.log("📤 Shipping amount (dollars):", orderData.shipping)
+      console.log("📤 Tax amount (dollars):", orderData.tax)
+      console.log("📤 Complete order data:", JSON.stringify(orderData, null, 2))
 
       // ✅ URL determination with extensive debugging
       console.log("🌐 === DETERMINING API URL ===")
@@ -145,14 +164,14 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
       const apiUrl = `${baseUrl}/api/orders` // ✅ Calls your Next.js API route
       console.log("🎯 Final API URL:", apiUrl)
 
-      // Send to Ed's backend via your API route
-      console.log("📡 Making API call to backend...")
+      // ✅ SEND TO ED'S BACKEND VIA YOUR API ROUTE
+      console.log("📡 Making POST request to backend with tax and shipping data...")
       const backendResponse = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(orderData),
+        body: JSON.stringify(orderData), // ✅ INCLUDES TAX AND SHIPPING AMOUNTS
       })
 
       console.log("📡 Backend response status:", backendResponse.status)
@@ -227,9 +246,29 @@ async function SuccessContent({ sessionId }: { sessionId: string }) {
                   <span className="text-white/70">Email:</span>
                   <span>{session.customer_details?.email}</span>
                 </div>
+
                 <div className="flex justify-between">
+                  <span className="text-white/70">Subtotal:</span>
+                  <span className="font-medium">${subtotalAmount.toFixed(2)}</span>
+                </div>
+
+                {taxAmountDollars > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-white/70">Tax:</span>
+                    <span className="font-medium">${taxAmountDollars.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {shippingAmountDollars > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-white/70">Shipping:</span>
+                    <span className="font-medium">${shippingAmountDollars.toFixed(2)}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between border-t border-gray-800 pt-2">
                   <span className="text-white/70">Total:</span>
-                  <span className="font-medium">${((session.amount_total || 0) / 100).toFixed(2)}</span>
+                  <span className="font-medium text-lg">${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
